@@ -1,0 +1,170 @@
+# -----------------------------
+# OS / System Files
+# -----------------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+.nfs*
+
+# -----------------------------
+# IDE / Editor Files
+# -----------------------------
+# IntelliJ IDEA / JetBrains
+.idea/
+*.iws
+*.iml
+*.ipr
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/shelf/
+.idea/**/dictionaries
+.idea/**/httpRequests
+.idea/**/dataSources/
+.idea/**/dataSources.ids
+.idea/**/dataSources.local.xml
+
+# VS Code
+.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+
+# Atom
+.atom/
+
+# Misc editors / tools
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# -----------------------------
+# Flutter / Dart
+# -----------------------------
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+.packages
+.generated/
+**/doc/api/
+
+# Flutter build outputs
+/build/
+ios/Flutter/.last_build_id
+
+# Flutter symbolication
+app.*.symbols
+
+# Flutter obfuscation
+app.*.map.json
+
+# Android (Flutter app)
+android/app/debug/
+android/app/profile/
+android/app/release/
+
+# iOS (Flutter app)
+ios/Pods/
+ios/Runner/GeneratedPluginRegistrant.*
+ios/.symlinks/
+*.xcuserstate
+*.xcworkspace
+*.xcuserdata
+
+# Flutter web build cache
+web/.dart_tool/
+web/.packages
+
+# -----------------------------
+# Spring Boot / Gradle / Java
+# -----------------------------
+.gradle/
+**/build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# Gradle caches and lock files
+gradle-app.setting
+
+# Java / Kotlin compiler output
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+# Maven (if ever used)
+target/
+
+# Eclipse / STS
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# -----------------------------
+# PostgreSQL
+# -----------------------------
+# Database dump files
+*.sql
+*.sql.gz
+*.dump
+*.backup
+
+# Local PostgreSQL data directory
+pgdata/
+.pgdata/
+
+# Postgres config files
+postgresql.conf
+pg_hba.conf
+pg_ident.conf
+
+# Docker/Postgres volume mounts
+docker-entrypoint-initdb.d/
+postgres-data/
+
+# -----------------------------
+# Common Environment Files
+# -----------------------------
+.env
+.env.*
+!env.example
+
+# -----------------------------
+# Keys / Certificates / Secrets
+# -----------------------------
+*.keystore
+*.jks
+*.p12
+*.pem
+*.key
+google-services.json
+GoogleService-Info.plist
+
+# -----------------------------
+# Misc / Logs
+# -----------------------------
+*.log
