@@ -1,35 +1,40 @@
 plugins {
-    id 'org.springframework.boot' version '3.2.4'
-    id 'io.spring.dependency-management' version '1.1.4'
+    id 'org.springframework.boot' version '3.5.4'
+    id 'io.spring.dependency-management' version '1.1.7'
     id 'java'
 }
 
 group = 'com.parkpie'
 version = '0.0.1-SNAPSHOT'
-sourceCompatibility = '21'
+description = 'Full Java Spring Boot backend implementation for the ParkPie application'
 
-repositories {
-    mavenCentral()
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(24)
+    }
 }
+
+repositories { mavenCentral() }
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.postgresql:postgresql'
-// JTS for geospatial operations
-    implementation 'org.locationtech.jts:jts-core:1.18.2'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
-// Jakarta Bean Validation annotations
-    implementation 'jakarta.validation:jakarta.validation-api:3.0.2'
+    runtimeOnly 'org.postgresql:postgresql'
 
-// Hibernate validator implementation (optional but useful for runtime validation)
-    implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
-
-// Optional (required by hibernate-validator)
-    implementation 'org.glassfish:jakarta.el:4.0.2'
+    // Let Spring Boot pick matching Hibernate versions:
+    implementation 'org.hibernate.orm:hibernate-spatial'
+    implementation 'org.locationtech.jts:jts-core:1.19.0'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
 
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
 }
 
 bootJar {
