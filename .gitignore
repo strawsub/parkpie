@@ -168,3 +168,10 @@ GoogleService-Info.plist
 # Misc / Logs
 # -----------------------------
 *.log
+apps/frontend/ios/Podfile
+apps/frontend/ios/Podfile.lock
+apps/frontend/ios/Flutter/Debug.xcconfig
+apps/frontend/ios/Flutter/Release.xcconfig
+apps/frontend/ios/Runner.xcodeproj/project.pbxproj
+apps/frontend/ios/Runner/Info.plist
+apps/frontend/.metadata
