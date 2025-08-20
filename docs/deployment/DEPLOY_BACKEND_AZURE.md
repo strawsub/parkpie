@@ -1,4 +1,3 @@
-
 # Azure Deployment Instruction
 
 This guide helps ParkPie team members redeploy the **Spring Boot backend** to Azure App Service.

@@ -19,9 +19,10 @@ Users can take photos of parking signs, which are processed via computer vision,
 parkpie/ (root)
 ├── apps/
 │ ├── backend/ # Java Spring Boot API
-│ ├── frontend/ # Flutter app
-├── docs/ # Documentation and meeting notes
-├── infra/ # Infrastructure scripts
+│ └── frontend/ # Flutter app
+├── docs/
+│ ├── deployment/ # Deployment Guides
+│ └── architecture/ # System Architecture
 └── README.md # This file
 ```
 
