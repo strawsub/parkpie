@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
-import 'features/map/map_screen.dart';
-import 'features/contribute/contribute_screen.dart';
-import 'shared/widgets/nav_bar.dart'; // Make sure you created this
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:frontend/features/camera/camera_screen.dart';
+import 'package:frontend/features/map/map_screen.dart';
+import 'package:frontend/features/navigation/navigation_cubit.dart';
+import 'package:frontend/l10n/app_localizations.dart';
+import 'package:frontend/widgets/nav_bar.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 void main() {
   runApp(const ParkPieApp());
@@ -12,60 +16,51 @@ class ParkPieApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: HomeContainer(), // changed from MapScreen()
-    );
-  }
-}
-
-class HomeContainer extends StatefulWidget {
-  const HomeContainer({super.key});
-
-  @override
-  _HomeContainerState createState() => _HomeContainerState();
-}
-
-class _HomeContainerState extends State<HomeContainer> {
-  int _selectedIndex = 0;
-
-  // List of screens to switch between
-  final List<Widget> _screens = [
-    MapScreen(),
-    ContributeScreen(),
-  ];
-
-  void _onNavTap(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: _screens[_selectedIndex], // show selected screen
-      bottomNavigationBar: BottomNavBar(
-        currentIndex: _selectedIndex,
-        onTap: _onNavTap,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en', ''),
+      ],
+      home: BlocProvider(
+        create: (context) => NavigationCubit(),
+        child: const HomeContainer(),
       ),
     );
   }
 }
 
-// void main() {
-//   runApp(const ProviderScope(child: ParkPieApp()));
-// }
+class HomeContainer extends StatelessWidget {
+  const HomeContainer({super.key});
 
-// class ParkPieApp extends StatelessWidget {
-//   const ParkPieApp({super.key});
+  Widget _getSelectedView(int index) {
+    switch (index) {
+      case 0:
+        return const MapScreen();
+      case 1:
+        return const CameraScreen();
+      default:
+        return const MapScreen(); // fallback
+    }
+  }
 
-//   @override
-//   Widget build(BuildContext context) {
-//     return MaterialApp(
-//       title: 'ParkPie Demo',
-//       theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.green)),
-//       home: const SignsDemoPage(),
-//     );
-//   }
-// }
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<NavigationCubit, int>(
+      builder: (context, selectedIndex) {
+        return Scaffold(
+          body: _getSelectedView(selectedIndex),
+          bottomNavigationBar: BottomNavBar(
+            currentIndex: selectedIndex,
+            onTap: (index) => context.read<NavigationCubit>().setIndex(index),
+          ),
+        );
+      },
+    );
+  }
+}

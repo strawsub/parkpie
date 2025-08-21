@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:frontend/core/http_client.dart';
-import 'package:frontend/core/config.dart';
+import '../../core/http_client.dart';
+import '../../core/config.dart';
 import 'repo.dart';
 import 'models.dart';
 import 'dart:io' show Platform;

@@ -1,4 +1,4 @@
-import 'package:frontend/core/http_client.dart';
+import '../../core/http_client.dart';
 import 'models.dart';
 
 class SignRepository {

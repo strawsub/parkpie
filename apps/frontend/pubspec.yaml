@@ -46,6 +46,12 @@ dependencies:
   # for camera
   image_picker: ^1.0.7
   permission_handler: ^11.3.0
+  bloc: ^9.0.0
+  flutter_bloc: ^9.1.1
+
+  # for string
+  flutter_localizations:
+    sdk: flutter
 
 dev_dependencies:
   flutter_test:
@@ -63,10 +69,14 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+
+  # for graphic
   assets:
     - assets/
-    
   uses-material-design: true
+
+  # for string
+  generate: true
 
   # To add assets to your application, add an assets section, like this:
   # assets:

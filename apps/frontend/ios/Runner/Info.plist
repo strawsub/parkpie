@@ -49,7 +49,5 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>CFBundleIdentifier</key>
-  	<string>com.90018.parkpie</string>
 </dict>
 </plist>
