@@ -26,10 +26,6 @@ class CameraView extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.contribute),
-        backgroundColor: Colors.blue,
-      ),
       body: BlocConsumer<CameraBloc, CameraState>(
         listener: (context, state) {
           if (state is CameraError) {

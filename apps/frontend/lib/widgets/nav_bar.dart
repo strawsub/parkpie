@@ -9,9 +9,13 @@ class BottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // get the bottom safe area padding
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
     return Container(
-      color: Color(0xFFEDEDED), // background color
-      height: 70,
+      color: const Color(0xFFEDEDED),
+      padding: EdgeInsets.only(bottom: bottomPadding),
+      height: 70 + bottomPadding, 
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
@@ -42,12 +46,12 @@ class BottomNavBar extends StatelessWidget {
             iconPath,
             width: 24,
             height: 24,
-            color: isSelected ? Colors.blue : Colors.black, // optional highlight
+            color: isSelected ? const Color(0xFF016C34) : Colors.black, // optional highlight
           ),
-          SizedBox(height: 4),
+          const SizedBox(height: 4),
           Text(
             label,
-            style: TextStyle(
+            style: const TextStyle(
               color: Color(0xFF3A3A3C),
               fontSize: 12,
             ),
