@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:http/http.dart' as http;  
 
 class ContributeScreen extends StatefulWidget {
   const ContributeScreen({super.key});
@@ -50,6 +51,58 @@ class _ContributeScreenState extends State<ContributeScreen> {
       }
     }
   }
+  
+  // Upload photos to cloud
+  Future<void> _uploadPhoto() async {
+    if (_capturedImage == null) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final file = _capturedImage!;
+      final fileName = "${DateTime.now().millisecondsSinceEpoch}.jpg";
+
+  
+      final url = Uri.parse(
+        "https://parkpie.blob.core.windows.net/sign-photo-container/$fileName"
+        "?sp=rac&st=2025-08-21T03:30:32Z&se=2025-12-21T10:45:32Z&spr=https&sv=2024-11-04&sr=c&sig=1UreYplNAKWeImXjTxXJ1OTSAlRQ3lO2kVHWEaHhpkE%3D",
+      );
+
+      final bytes = await file.readAsBytes();
+
+      final response = await http.put(
+        url,
+        headers: {
+          "x-ms-blob-type": "BlockBlob", 
+          "Content-Type": "image/jpeg",
+        },
+        body: bytes,
+      );
+
+      if (mounted) {
+        if (response.statusCode == 201) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Upload successful!')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Upload failed! Code: ${response.statusCode}')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -89,19 +142,14 @@ class _ContributeScreenState extends State<ContributeScreen> {
                         child: const Text('Retake'),
                       ),
                       ElevatedButton(
-                        onPressed: () {
-                          // TODO: Next step - process the image
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Image processing will be implemented next')),
-                          );
-                        },
+                        onPressed: _uploadPhoto, 
                         child: const Text('Use This Photo'),
-        ),
+                      ),
                     ],
                   ),
                 ),
               ],
-      ),
+            ),
     );
   }
 }
