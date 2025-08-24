@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>CSV Import • ParkPie Admin</title>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <style>
+        body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#f6f7fb;margin:0}
+        header{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;background:#fff;box-shadow:0 1px 0 #eee}
+        h1{font-size:18px;margin:0}
+        .wrap{max-width:980px;margin:24px auto;display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+        .card{background:#fff;border-radius:16px;box-shadow:0 8px 30px rgba(0,0,0,.08);padding:20px}
+        .card h2{margin:0 0 8px;font-size:16px}
+        .muted{color:#6b7280}
+        input[type=file]{margin:10px 0}
+        button{padding:10px 14px;border:0;border-radius:10px;background:#111827;color:#fff;font-weight:600;cursor:pointer}
+        .msg{max-width:980px;margin:16px auto;color:#065f46;background:#d1fae5;border:1px solid #10b981;padding:10px 14px;border-radius:12px}
+    </style>
+</head>
+<body>
+<header>
+    <h1>CSV Import</h1>
+    <a th:href="@{/admin}">← Back</a>
+</header>
+
+<div th:if="${message}" class="msg" th:text="${message}"></div>
+
+<section class="wrap">
+    <div class="card">
+        <h2>On-street Parking Bays</h2>
+        <p class="muted">Columns: RoadSegmentID, KerbsideID, RoadSegmentDescription, Latitude, Longitude, LastUpdated, Location.</p>
+        <form th:action="@{/admin/upload/bays}" method="post" enctype="multipart/form-data">
+            <input type="file" name="file" accept=".csv" required/>
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <button type="submit">Upload CSV</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Pay Stay zones ↔ street segments</h2>
+        <p class="muted">Columns: pay_stay_zone, street, between_street_1, between_street_2, street_segment_id.</p>
+        <form th:action="@{/admin/upload/zone-links}" method="post" enctype="multipart/form-data">
+            <input type="file" name="file" accept=".csv" required/>
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <button type="submit">Upload CSV</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Pay Stay parking restrictions</h2>
+        <p class="muted">Columns: pay_stay_zone, day_of_week, start_time, end_time, minimum_stay, maximum_stay, cost_per_hour, day_of_week_name.</p>
+        <form th:action="@{/admin/upload/restrictions}" method="post" enctype="multipart/form-data">
+            <input type="file" name="file" accept=".csv" required/>
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <button type="submit">Upload CSV</button>
+        </form>
+    </div>
+</section>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
+<head>
+    <title>Admin Dashboard • ParkPie</title>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <style>
+        body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#f6f7fb;margin:0}
+        header{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;background:#fff;box-shadow:0 1px 0 #eee}
+        h1{font-size:18px;margin:0}
+        a.btn{display:inline-block;padding:10px 14px;border-radius:10px;background:#111827;color:#fff;text-decoration:none}
+        .grid{max-width:980px;margin:32px auto;display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+        .card{background:#fff;border-radius:16px;box-shadow:0 8px 30px rgba(0,0,0,.08);padding:20px}
+        .card h2{margin:0 0 8px;font-size:16px}
+        .card p{margin:0;color:#6b7280}
+    </style>
+</head>
+<body>
+<header>
+    <h1>ParkPie • Admin Dashboard</h1>
+    <a class="btn" th:href="@{/admin/logout}">Logout</a>
+</header>
+
+<section class="grid">
+    <div class="card">
+        <h2>Database (Azure Postgres)</h2>
+        <p>Check connection, versions & table counts.</p>
+        <p><a th:href="@{/admin/database}">Open Database Overview →</a></p>
+    </div>
+    <div class="card">
+        <h2>Upload CSV</h2>
+        <p>On-street Parking Bays, Pay Stay Zone Links, Pay Stay Restrictions.</p>
+        <p><a th:href="@{/admin/upload}">Import CSV →</a></p>
+    </div>
+</section>
+</body>
+</html>

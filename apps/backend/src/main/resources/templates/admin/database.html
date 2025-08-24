@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Database Overview • ParkPie</title>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <style>
+        body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#f6f7fb;margin:0}
+        header{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;background:#fff;box-shadow:0 1px 0 #eee}
+        h1{font-size:18px;margin:0}
+        main{max-width:980px;margin:24px auto;background:#fff;border-radius:16px;box-shadow:0 8px 30px rgba(0,0,0,.08);padding:20px}
+        table{border-collapse:collapse;width:100%;margin-top:14px}
+        td,th{border-bottom:1px solid #eee;padding:10px;text-align:left}
+        a{color:#111827;text-decoration:none}
+    </style>
+</head>
+<body>
+<header>
+    <h1>Database Overview</h1>
+    <a th:href="@{/admin}">← Back</a>
+</header>
+<main>
+    <h2>Connection</h2>
+    <table>
+        <tr><th>URL</th><td th:text="${database.url}"></td></tr>
+        <tr><th>User</th><td th:text="${database.user}"></td></tr>
+        <tr><th>Database</th><td th:text="${database.database}"></td></tr>
+        <tr><th>Version</th><td th:text="${database.version}"></td></tr>
+        <tr><th>PostGIS</th><td th:text="${database.postgis} ?: 'n/a'"></td></tr>
+    </table>
+
+    <h2 style="margin-top:24px">Table counts</h2>
+    <table>
+        <tr><th>parking_signs</th><td th:text="${counts.parking_signs}"></td></tr>
+        <tr><th>parking_bays</th><td th:text="${counts.parking_bays}"></td></tr>
+        <tr><th>pay_stay_zone_links</th><td th:text="${counts.pay_stay_zone_links}"></td></tr>
+        <tr><th>pay_stay_restrictions</th><td th:text="${counts.pay_stay_restrictions}"></td></tr>
+    </table>
+</main>
+</body>
+</html>
