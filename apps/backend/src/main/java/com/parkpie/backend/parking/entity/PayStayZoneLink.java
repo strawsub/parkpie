@@ -3,24 +3,31 @@ package com.parkpie.backend.parking.entity;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "pay_stay_zone_links")
+@Table(
+        name = "pay_stay_zone_links",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_zone_segment",
+                columnNames = {"pay_stay_zone","street_segment_id"}
+        )
+)
 public class PayStayZoneLink {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(length = 32, nullable = false)
+    @Column(name = "pay_stay_zone", length = 32, nullable = false)
     private String payStayZone;
 
     @Column(length = 128)
     private String street;
 
-    @Column(length = 128)
+    @Column(name = "between_street_1", length = 128)
     private String betweenStreet1;
 
-    @Column(length = 128)
+    @Column(name = "between_street_2", length = 128)
     private String betweenStreet2;
 
+    @Column(name = "street_segment_id", nullable = false)
     private Long streetSegmentId;
 
     // getters/setters

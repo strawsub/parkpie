@@ -11,25 +11,31 @@ import java.time.Instant;
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "parking_bays")
+@Table(
+        name = "parking_bays",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_bay_natkey",
+                columnNames = {"street_segment_id", "kerbside_id", "lat", "lng"}
+        )
+)
 public class ParkingBay {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long roadSegmentId;
+    @Column(name = "street_segment_id", nullable = false)
+    private Long streetSegmentId;
 
-    private Long kerbsideId;
+    @Column(name = "kerbside_id", nullable = false)
+    private long kerbsideId;
 
     @Column(length = 500)
     private String description;
 
-    // Redundant lat/lng for convenient projections & debugging
     private double lat;
 
     private double lng;
 
-    // Geometry
     @Column(columnDefinition = "geometry(Point,4326)")
     @JdbcTypeCode(SqlTypes.GEOMETRY)
     private Point location;
@@ -51,19 +57,19 @@ public class ParkingBay {
         this.id = id;
     }
 
-    public Long getRoadSegmentId() {
-        return roadSegmentId;
+    public Long getStreetSegmentId() {
+        return streetSegmentId;
     }
 
-    public void setRoadSegmentId(Long roadSegmentId) {
-        this.roadSegmentId = roadSegmentId;
+    public void setStreetSegmentId(Long streetSegmentId) {
+        this.streetSegmentId = streetSegmentId;
     }
 
-    public Long getKerbsideId() {
+    public long getKerbsideId() {
         return kerbsideId;
     }
 
-    public void setKerbsideId(Long kerbsideId) {
+    public void setKerbsideId(long kerbsideId) {
         this.kerbsideId = kerbsideId;
     }
 

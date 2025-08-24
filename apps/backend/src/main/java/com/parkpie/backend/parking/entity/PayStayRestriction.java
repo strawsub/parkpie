@@ -1,31 +1,40 @@
 package com.parkpie.backend.parking.entity;
 
 import jakarta.persistence.*;
-
 import java.time.LocalTime;
 
 @Entity
-@Table(name = "pay_stay_restrictions")
+@Table(
+        name = "pay_stay_restrictions",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_zone_day_time",
+                columnNames = {"pay_stay_zone","day_of_week","start_time","end_time"}
+        )
+)
 public class PayStayRestriction {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(length = 32, nullable = false)
+    @Column(name = "pay_stay_zone", length = 32, nullable = false)
     private String payStayZone;
 
+    @Column(name = "day_of_week", nullable = false)
     private int dayOfWeek; // 1-7
 
+    @Column(name = "start_time", nullable = false)
     private LocalTime startTime;
 
+    @Column(name = "end_time", nullable = false)
     private LocalTime endTime;
 
-    // minutes
+    @Column(name = "minimum_stay_minutes", nullable = false)
     private int minimumStayMinutes;
 
+    @Column(name = "maximum_stay_minutes", nullable = false)
     private int maximumStayMinutes;
 
-    // cents per hour
+    @Column(name = "cost_per_hour_cents", nullable = false)
     private int costPerHourCents;
 
     @Column(length = 32)
