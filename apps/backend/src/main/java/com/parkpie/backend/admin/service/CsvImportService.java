@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -25,75 +26,111 @@ public class CsvImportService {
     private final PayStayZoneLinkRepository payStayZoneLinkRepository;
     private final PayStayRestrictionRepository payStayRestrictionRepository;
 
-    public CsvImportService(
-            ParkingBayRepository parkingBayRepository,
-            PayStayZoneLinkRepository payStayZoneLinkRepository,
-            PayStayRestrictionRepository payStayRestrictionRepository
-    ) {
+    public CsvImportService(ParkingBayRepository parkingBayRepository,
+                            PayStayZoneLinkRepository payStayZoneLinkRepository,
+                            PayStayRestrictionRepository payStayRestrictionRepository) {
         this.parkingBayRepository = parkingBayRepository;
         this.payStayZoneLinkRepository = payStayZoneLinkRepository;
         this.payStayRestrictionRepository = payStayRestrictionRepository;
     }
 
-    @Transactional
+    // Convenience overloads (safe if called synchronously)
     public String importParkingBays(MultipartFile file) {
-        int upserts = 0;
+        try {
+            return importParkingBays(file.getBytes());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to read upload: " + e.getMessage(), e);
+        }
+    }
 
-        try (var reader = new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8);
-             var parser = CSVParser.parse(
-                     reader,
-                     CSVFormat.DEFAULT.builder()
-                             .setHeader("RoadSegmentID","KerbsideID","RoadSegmentDescription",
-                                     "Latitude","Longitude","LastUpdated","Location")
-                             .setSkipHeaderRecord(true)
-                             .setIgnoreHeaderCase(true)
-                             .setTrim(true)
-                             .build()
-             )) {
+    public String importZoneLinks(MultipartFile file) {
+        try {
+            return importZoneLinks(file.getBytes());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to read upload: " + e.getMessage(), e);
+        }
+    }
+
+    public String importRestrictions(MultipartFile file) {
+        try {
+            return importRestrictions(file.getBytes());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to read upload: " + e.getMessage(), e);
+        }
+    }
+
+    // The async-safe versions the controller uses
+    @Transactional
+    public String importParkingBays(byte[] bytes) {
+        int upserts = 0;
+        int skipped = 0;
+        StringBuilder firstErrors = new StringBuilder();
+
+        try (var reader = new InputStreamReader(new ByteArrayInputStream(bytes), StandardCharsets.UTF_8);
+             var parser = CSVParser.parse(reader, CSVFormat.DEFAULT.builder()
+                     .setHeader("RoadSegmentID","KerbsideID","RoadSegmentDescription",
+                             "Latitude","Longitude","LastUpdated","Location")
+                     .setSkipHeaderRecord(true)
+                     .setIgnoreHeaderCase(true)
+                     .setTrim(true)
+                     .build())) {
 
             for (CSVRecord r : parser) {
-                String segIdStr = r.get("RoadSegmentID");
-                if (segIdStr == null || segIdStr.isBlank()) continue;
+                try {
+                    String segIdStr = r.get("RoadSegmentID");
+                    if (segIdStr == null || segIdStr.isBlank()) {
+                        skipped++; continue;
+                    }
 
-                long streetSegmentId = Long.parseLong(segIdStr.trim());
-                long kerbsideId = parseLongOrZero(nullIfBlank(r.get("KerbsideID"))); // missing -> 0
-                String desc = nullIfBlank(r.get("RoadSegmentDescription"));
+                    long streetSegmentId = Long.parseLong(segIdStr.trim());
+                    long kerbsideId = parseLongOrZero(nullIfBlank(r.get("KerbsideID")));
+                    String desc = nullIfBlank(r.get("RoadSegmentDescription"));
 
-                double lat = round6(Double.parseDouble(r.get("Latitude")));
-                double lng = round6(Double.parseDouble(r.get("Longitude")));
-                LocalDate lastUpdated = parseFlexibleDate(r.get("LastUpdated"));
+                    String latRaw = r.get("Latitude");
+                    String lngRaw = r.get("Longitude");
+                    if (latRaw == null || lngRaw == null || latRaw.isBlank() || lngRaw.isBlank()) {
+                        skipped++;
+                        continue;
+                    }
+                    double lat = round6(Double.parseDouble(latRaw));
+                    double lng = round6(Double.parseDouble(lngRaw));
 
-                // Geometry is created in SQL inside the repository UPSERT
-                upserts += parkingBayRepository.upsertBay(
-                        streetSegmentId, kerbsideId, desc, lat, lng, lastUpdated
-                );
+                    LocalDate lastUpdated = parseFlexibleDateNullable(r.get("LastUpdated")); // nullable
+
+                    upserts += parkingBayRepository.upsertBay(
+                            streetSegmentId, kerbsideId, desc, lat, lng, lastUpdated
+                    );
+                } catch (Exception rowEx) {
+                    skipped++;
+                    if (firstErrors.length() < 1000) {
+                        firstErrors.append("Row ").append(r.getRecordNumber()).append(": ").append(rowEx.getMessage()).append("\n");
+                    }
+                }
             }
         } catch (Exception e) {
             throw new RuntimeException("Failed to import Parking Bays: " + e.getMessage(), e);
         }
-        return upserts + " rows upserted";
+
+        String summary = upserts + " rows upserted, " + skipped + " rows skipped";
+        if (firstErrors.length() > 0) {
+            summary += " | sample errors:\n" + firstErrors;
+        }
+        return summary;
     }
 
     @Transactional
-    public String importZoneLinks(MultipartFile file) {
+    public String importZoneLinks(byte[] bytes) {
         int upserts = 0;
-        try (var reader = new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8);
-             var parser = CSVParser.parse(
-                     reader,
-                     CSVFormat.DEFAULT.builder()
-                             .setHeader("pay_stay_zone","street","between_street_1","between_street_2","street_segment_id")
-                             .setSkipHeaderRecord(true)
-                             .setIgnoreHeaderCase(true)
-                             .setTrim(true)
-                             .build()
-             )) {
+        try (var reader = new InputStreamReader(new ByteArrayInputStream(bytes), StandardCharsets.UTF_8);
+             var parser = CSVParser.parse(reader, CSVFormat.DEFAULT.builder()
+                     .setHeader("pay_stay_zone","street","between_street_1","between_street_2","street_segment_id")
+                     .setSkipHeaderRecord(true).setIgnoreHeaderCase(true).setTrim(true).build())) {
             for (CSVRecord r : parser) {
                 String zone = r.get("pay_stay_zone").trim();
                 long segId = Long.parseLong(r.get("street_segment_id").trim());
                 String street = nullIfBlank(r.get("street"));
                 String b1 = nullIfBlank(r.get("between_street_1"));
                 String b2 = nullIfBlank(r.get("between_street_2"));
-
                 upserts += payStayZoneLinkRepository.upsertLink(zone, segId, street, b1, b2);
             }
         } catch (Exception e) {
@@ -103,21 +140,14 @@ public class CsvImportService {
     }
 
     @Transactional
-    public String importRestrictions(MultipartFile file) {
+    public String importRestrictions(byte[] bytes) {
         int upserts = 0;
-        DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("H:mm"); // 7:30 or 07:30
-
-        try (var reader = new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8);
-             var parser = CSVParser.parse(
-                     reader,
-                     CSVFormat.DEFAULT.builder()
-                             .setHeader("pay_stay_zone","day_of_week","start_time","end_time",
-                                     "minimum_stay","maximum_stay","cost_per_hour","day_of_week_name")
-                             .setSkipHeaderRecord(true)
-                             .setIgnoreHeaderCase(true)
-                             .setTrim(true)
-                             .build()
-             )) {
+        DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("H:mm");
+        try (var reader = new InputStreamReader(new ByteArrayInputStream(bytes), StandardCharsets.UTF_8);
+             var parser = CSVParser.parse(reader, CSVFormat.DEFAULT.builder()
+                     .setHeader("pay_stay_zone","day_of_week","start_time","end_time",
+                             "minimum_stay","maximum_stay","cost_per_hour","day_of_week_name")
+                     .setSkipHeaderRecord(true).setIgnoreHeaderCase(true).setTrim(true).build())) {
             for (CSVRecord r : parser) {
                 String zone = r.get("pay_stay_zone").trim();
                 int dow = Integer.parseInt(r.get("day_of_week").trim());
@@ -127,7 +157,6 @@ public class CsvImportService {
                 int maxStay = Integer.parseInt(r.get("maximum_stay").trim());
                 int cents = Integer.parseInt(r.get("cost_per_hour").trim());
                 String dowName = nullIfBlank(r.get("day_of_week_name"));
-
                 upserts += payStayRestrictionRepository.upsertRestriction(
                         zone, dow, startT, endT, minStay, maxStay, cents, dowName
                 );
@@ -138,10 +167,13 @@ public class CsvImportService {
         return upserts + " rows upserted";
     }
 
-    // ---------- helpers ----------
+    // ---- helpers ----
+    private static LocalDate parseFlexibleDateNullable(String raw) {
+        try { return parseFlexibleDate(raw); } catch (Exception ignored) { return null; }
+    }
+
     private static long parseLongOrZero(String s) {
-        if (s == null || s.isBlank()) return 0L;
-        return Long.parseLong(s.trim());
+        return (s == null || s.isBlank()) ? 0L : Long.parseLong(s.trim());
     }
 
     private static String nullIfBlank(String s) {
@@ -152,30 +184,28 @@ public class CsvImportService {
         return Math.round(v * 1_000_000d) / 1_000_000d;
     }
 
-    private static final java.time.format.DateTimeFormatter[] DATE_FORMATS = new java.time.format.DateTimeFormatter[]{
-            java.time.format.DateTimeFormatter.ISO_LOCAL_DATE, // 2024-04-08
-            java.time.format.DateTimeFormatter.ofPattern("d/M/uuuu"), // 8/4/2024
-            java.time.format.DateTimeFormatter.ofPattern("dd/MM/uuuu"), // 08/04/2024
-            java.time.format.DateTimeFormatter.ofPattern("M/d/uuuu"), // 4/8/2024 (US)
-            java.time.format.DateTimeFormatter.ofPattern("d-MM-uuuu"), // 8-04-2024
-            java.time.format.DateTimeFormatter.ofPattern("dd-MM-uuuu"), // 08-04-2024
-            java.time.format.DateTimeFormatter.ofPattern("d MMM uuuu", Locale.ENGLISH) // 8 Apr 2024
+    private static final DateTimeFormatter[] DATE_FORMATS = new DateTimeFormatter[] {
+            DateTimeFormatter.ISO_LOCAL_DATE,
+            DateTimeFormatter.ofPattern("d/M/uuuu"),
+            DateTimeFormatter.ofPattern("dd/MM/uuuu"),
+            DateTimeFormatter.ofPattern("M/d/uuuu"),
+            DateTimeFormatter.ofPattern("d-MM-uuuu"),
+            DateTimeFormatter.ofPattern("dd-MM-uuuu"),
+            DateTimeFormatter.ofPattern("d MMM uuuu", Locale.ENGLISH)
     };
 
     private static LocalDate parseFlexibleDate(String raw) {
         if (raw == null) throw new DateTimeParseException("null", "", 0);
         String s = raw.trim();
         if (s.isEmpty()) throw new DateTimeParseException("empty", s, 0);
-        for (java.time.format.DateTimeFormatter f : DATE_FORMATS) {
+        for (var f : DATE_FORMATS) {
             try { return LocalDate.parse(s, f); } catch (DateTimeParseException ignored) {}
         }
-        if (s.matches("\\d+(\\.\\d+)?")) { // Excel serial
-            try {
-                double v = Double.parseDouble(s);
-                long days = (long)Math.floor(v);
-                return LocalDate.of(1899, 12, 30).plusDays(days);
-            } catch (Exception ignored) {}
+        if (s.matches("\\d+(\\.\\d+)?")) {
+            double v = Double.parseDouble(s);
+            long days = (long) Math.floor(v);
+            return LocalDate.of(1899, 12, 30).plusDays(days);
         }
-        return LocalDate.parse(s, java.time.format.DateTimeFormatter.ISO_LOCAL_DATE);
+        return LocalDate.parse(s, DateTimeFormatter.ISO_LOCAL_DATE);
     }
 }

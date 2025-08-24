@@ -4,6 +4,10 @@ import com.parkpie.backend.admin.service.AdminDatabaseService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Controller
 public class AdminPageController {
@@ -15,7 +19,8 @@ public class AdminPageController {
     }
 
     @GetMapping("/admin")
-    public String dashboard() {
+    public String dashboard(Model model) {
+        model.addAttribute("counts", adminDatabaseService.fetchTableCounts());
         return "admin/dashboard";
     }
 
@@ -29,5 +34,23 @@ public class AdminPageController {
     @GetMapping("/admin/upload")
     public String upload() {
         return "admin/upload";
+    }
+    
+    @GetMapping("/admin/health")
+    @ResponseBody
+    public Map<String, Object> health() {
+        Map<String, Object> health = new HashMap<>();
+        try {
+            Map<String, Object> dbInfo = adminDatabaseService.fetchDbInfo();
+            health.put("status", "UP");
+            health.put("database", "UP");
+            health.put("timestamp", System.currentTimeMillis());
+            health.put("version", "1.0.0");
+        } catch (Exception e) {
+            health.put("status", "DOWN");
+            health.put("database", "DOWN");
+            health.put("error", e.getMessage());
+        }
+        return health;
     }
 }
