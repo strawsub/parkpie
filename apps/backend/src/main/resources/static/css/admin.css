@@ -1,0 +1,585 @@
+/* ParkPie Admin Dashboard - Shared Styles */
+:root {
+    --parkpie-green: #8B9A47;
+    --parkpie-blue: #007BFF;
+    --parkpie-dark: #2C3E50;
+    --parkpie-light: #F8F9FA;
+    --parkpie-success: #28A745;
+    --parkpie-danger: #DC3545;
+    --parkpie-warning: #FFC107;
+    --parkpie-info: #17A2B8;
+    --parkpie-orange: #FD7E14;
+    --parkpie-purple: #6F42C1;
+    --parkpie-accent: #E74C3C;
+}
+
+/* Global Styles */
+body {
+    background-color: var(--parkpie-light);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+}
+
+/* Navigation */
+.navbar {
+    background: linear-gradient(135deg, var(--parkpie-green) 0%, var(--parkpie-dark) 100%);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    padding: 1rem 0;
+}
+
+.navbar-brand {
+    display: flex;
+    align-items: center;
+    color: white !important;
+    font-weight: 600;
+    font-size: 1.5rem;
+}
+
+.navbar-brand img {
+    width: 40px;
+    height: 40px;
+    margin-right: 12px;
+}
+
+.navbar-nav .nav-link {
+    color: rgba(255,255,255,0.9) !important;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.navbar-nav .nav-link:hover,
+.navbar-nav .nav-link.active {
+    color: white !important;
+    background: rgba(255,255,255,0.1);
+}
+
+/* Main Content */
+.main-content {
+    padding: 2rem 0;
+    min-height: calc(100vh - 200px);
+}
+
+/* Page Headers */
+.page-header, .welcome-section {
+    background: linear-gradient(135deg, var(--parkpie-blue) 0%, var(--parkpie-green) 100%);
+    color: white;
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+    border-radius: 0 0 30px 30px;
+}
+
+.page-header h1, .welcome-section h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.page-header p, .welcome-section p {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin-bottom: 0;
+}
+
+/* Cards */
+.info-card, .stats-card, .upload-card {
+    background: white;
+    border-radius: 15px;
+    padding: 2rem;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    border: none;
+    margin-bottom: 2rem;
+    transition: all 0.3s ease;
+}
+
+.info-card:hover, .stats-card:hover, .upload-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+}
+
+.info-card h3, .upload-card h3 {
+    color: var(--parkpie-dark);
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
+
+.info-card h3 i, .upload-card h3 i {
+    margin-right: 0.75rem;
+    color: var(--parkpie-blue);
+}
+
+/* Stats Cards */
+.stats-card {
+    text-align: center;
+    height: 100%;
+}
+
+.stats-card .icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+    margin: 0 auto 1rem auto;
+}
+
+.stats-card .icon.parking { background: var(--parkpie-green); }
+.stats-card .icon.bays { background: var(--parkpie-blue); }
+.stats-card .icon.zones { background: var(--parkpie-accent); }
+.stats-card .icon.restrictions { background: var(--parkpie-dark); }
+
+.stats-card h3 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--parkpie-dark);
+    margin-bottom: 0.5rem;
+}
+
+.stats-card p {
+    color: #6C757D;
+    margin-bottom: 0;
+    font-weight: 500;
+}
+
+/* Info Items */
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 0;
+    border-bottom: 1px solid #E9ECEF;
+}
+
+.info-item:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-weight: 600;
+    color: var(--parkpie-dark);
+}
+
+.info-value {
+    color: #6C757D;
+    font-family: 'Courier New', monospace;
+    background: #F8F9FA;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: 1px solid #E9ECEF;
+}
+
+/* Stats Grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.stat-item {
+    background: var(--parkpie-light);
+    padding: 1.5rem;
+    border-radius: 12px;
+    text-align: center;
+    border-left: 4px solid var(--parkpie-blue);
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--parkpie-blue);
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    color: var(--parkpie-dark);
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+/* Upload Areas */
+.upload-area {
+    border: 3px dashed var(--parkpie-blue);
+    border-radius: 15px;
+    padding: 3rem 2rem;
+    text-align: center;
+    background: #F8F9FA;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    margin-bottom: 1.5rem;
+}
+
+.upload-area:hover,
+.upload-area.dragover {
+    border-color: var(--parkpie-green);
+    background: rgba(139, 154, 71, 0.05);
+    transform: scale(1.02);
+}
+
+.upload-area i {
+    font-size: 3rem;
+    color: var(--parkpie-blue);
+    margin-bottom: 1rem;
+}
+
+.upload-area h4 {
+    color: var(--parkpie-dark);
+    margin-bottom: 0.5rem;
+}
+
+.upload-area p {
+    color: #6C757D;
+    margin-bottom: 0;
+}
+
+/* Buttons */
+.upload-btn, .action-btn {
+    background: var(--parkpie-blue);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 1rem 2rem;
+    font-weight: 600;
+    font-size: 1.1rem;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.upload-btn:hover, .action-btn:hover {
+    background: #357ABD;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(74, 144, 226, 0.4);
+}
+
+.upload-btn:disabled {
+    background: #6C757D;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.action-btn.upload { background: var(--parkpie-green); }
+.action-btn.upload:hover { background: #7A8A3E; }
+.action-btn.database { background: var(--parkpie-accent); }
+.action-btn.database:hover { background: #C0392B; }
+
+.refresh-btn {
+    background: var(--parkpie-green);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.refresh-btn:hover {
+    background: #7A8A3E;
+    color: white;
+    transform: translateY(-1px);
+}
+
+/* File Info */
+.file-info {
+    background: var(--parkpie-light);
+    border-radius: 10px;
+    padding: 1rem;
+    margin-top: 1rem;
+    border-left: 4px solid var(--parkpie-green);
+}
+
+.file-info h5 {
+    color: var(--parkpie-dark);
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+}
+
+.file-info p {
+    color: #6C757D;
+    margin-bottom: 0;
+    font-size: 0.9rem;
+}
+
+/* Alerts */
+.alert {
+    border-radius: 10px;
+    border: none;
+    margin-bottom: 1rem;
+}
+
+.alert-success {
+    background: #D4EDDA;
+    color: #155724;
+    border-left: 4px solid var(--parkpie-success);
+}
+
+.alert-danger {
+    background: #F8D7DA;
+    color: #721C24;
+    border-left: 4px solid var(--parkpie-danger);
+}
+
+/* Quick Actions */
+.quick-actions {
+    background: white;
+    border-radius: 15px;
+    padding: 2rem;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    margin-top: 2rem;
+}
+
+.quick-actions h3 {
+    color: var(--parkpie-dark);
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+}
+
+/* Upload Instructions */
+.upload-instructions {
+    background: rgba(74, 144, 226, 0.1);
+    border: 1px solid rgba(74, 144, 226, 0.2);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.upload-instructions h4 {
+    color: var(--parkpie-blue);
+    margin-bottom: 1rem;
+}
+
+.upload-instructions ul {
+    color: var(--parkpie-dark);
+    margin-bottom: 0;
+}
+
+.upload-instructions li {
+    margin-bottom: 0.5rem;
+}
+
+/* Footer */
+.footer {
+    background: var(--parkpie-dark);
+    color: white;
+    text-align: center;
+    padding: 1rem 0;
+    margin-top: 3rem;
+}
+
+.logout-btn {
+    color: rgba(255,255,255,0.8) !important;
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.logout-btn:hover {
+    color: white !important;
+    background: rgba(255,255,255,0.1);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .page-header h1, .welcome-section h1 {
+        font-size: 2rem;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .info-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .upload-area {
+        padding: 2rem 1rem;
+    }
+}
+
+/* Animations */
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.slide-up {
+    animation: slideUp 0.6s ease-out;
+}
+
+/* Loading States */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid var(--parkpie-blue);
+    border-top: 2px solid transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Upload Progress Bars */
+.upload-progress {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--parkpie-light);
+    border-radius: 10px;
+    border: 1px solid #E9ECEF;
+}
+
+.progress-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.progress-text {
+    color: var(--parkpie-dark);
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.progress-percentage {
+    color: var(--parkpie-blue);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.upload-progress .progress {
+    height: 10px;
+    border-radius: 10px;
+    background: #E9ECEF;
+    overflow: hidden;
+}
+
+.upload-progress .progress-bar {
+    background: linear-gradient(90deg, var(--parkpie-green) 0%, var(--parkpie-blue) 100%);
+    border-radius: 10px;
+    transition: width 0.5s ease;
+    position: relative;
+}
+
+.upload-progress .progress-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* Upload States */
+.uploading .upload-btn {
+    display: none;
+}
+
+.uploading .upload-progress {
+    display: block !important;
+}
+
+.upload-success .progress-bar {
+    background: var(--parkpie-success);
+}
+
+.upload-error .progress-bar {
+    background: var(--parkpie-danger);
+}
+
+/* Database Processing Stages */
+.progress-text[data-stage="validation"] {
+    color: var(--parkpie-blue);
+}
+
+.progress-text[data-stage="parsing"] {
+    color: var(--parkpie-green);
+}
+
+.progress-text[data-stage="processing"] {
+    color: var(--parkpie-orange);
+}
+
+.progress-text[data-stage="saving"] {
+    color: var(--parkpie-purple);
+}
+
+.progress-text[data-stage="completed"] {
+    color: var(--parkpie-success);
+}
+
+/* Enhanced Progress Bar Animations */
+.upload-progress.processing .progress-bar {
+    background: linear-gradient(90deg, var(--parkpie-green) 0%, var(--parkpie-blue) 50%, var(--parkpie-orange) 100%);
+    background-size: 200% 100%;
+    animation: gradientMove 3s ease infinite;
+}
+
+@keyframes gradientMove {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* Stage-specific progress indicators */
+.progress-stage-indicator {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--parkpie-dark);
+}
+
+.stage-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #E9ECEF;
+    transition: all 0.3s ease;
+}
+
+.stage-dot.active {
+    background: var(--parkpie-blue);
+    transform: scale(1.2);
+}
+
+.stage-dot.completed {
+    background: var(--parkpie-success);
+}
