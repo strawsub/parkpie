@@ -53,6 +53,9 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
+  # for image recognition
+  google_generative_ai: ^0.4.7
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -73,6 +76,7 @@ flutter:
   # for graphic
   assets:
     - assets/
+    
   uses-material-design: true
 
   # for string

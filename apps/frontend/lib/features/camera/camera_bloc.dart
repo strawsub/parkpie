@@ -1,14 +1,23 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
 import 'dart:io';
 import 'package:frontend/features/camera/camera_event.dart';
 import 'package:frontend/features/camera/camera_state.dart';
+import 'package:google_generative_ai/google_generative_ai.dart';
+
+// Khue's API key, use sparingly
+const apiKey = "AIzaSyBTF-RFzdOlaveCX-5N6WVA_6UjaJ6KZ9M";
 
 class CameraBloc extends Bloc<CameraEvent, CameraState> {
   final ImagePicker _picker = ImagePicker();
-  
+  late final GenerativeModel _model;
+
   CameraBloc() : super(CameraInitial()) {
+    _model = GenerativeModel(
+      model: 'gemini-2.5-flash-lite',
+      apiKey: apiKey,
+    );
+
     on<CameraOpened>(_onCameraOpened);
     on<PhotoCaptured>(_onPhotoCaptured);
     on<PhotoRetaken>(_onPhotoRetaken);
@@ -18,11 +27,12 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
   Future<void> _onCameraOpened(CameraOpened event, Emitter<CameraState> emit) async {
     try {
       emit(CameraLoading());
+
       final XFile? image = await _picker.pickImage(
         source: ImageSource.camera,
         imageQuality: 80,
       );
-      
+
       if (image != null) {
         emit(PhotoCapturedSuccess(image.path));
       } else {
@@ -44,32 +54,49 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
   Future<void> _onPhotoUploaded(PhotoUploaded event, Emitter<CameraState> emit) async {
     try {
       emit(PhotoUploading());
-      
+
       final file = File(event.imagePath);
-      final fileName = "${DateTime.now().millisecondsSinceEpoch}.jpg";
-      
-      final url = Uri.parse(
-        "https://parkpie.blob.core.windows.net/sign-photo-container/$fileName"
-        "?sp=rac&st=2025-08-21T03:30:32Z&se=2025-12-21T10:45:32Z&spr=https&sv=2024-11-04&sr=c&sig=1UreYplNAKWeImXjTxXJ1OTSAlRQ3lO2kVHWEaHhpkE%3D",
-      );
-
       final bytes = await file.readAsBytes();
-      final response = await http.put(
-        url,
-        headers: {
-          "x-ms-blob-type": "BlockBlob",
-          "Content-Type": "image/jpeg", 
-        },
-        body: bytes,
-      );
 
-      if (response.statusCode == 201) {
-        emit(PhotoUploadSuccess());
-      } else {
-        emit(CameraError('Upload failed with status ${response.statusCode}'));
+      // Send image + prompt to Gemini
+      final response = await _model.generateContent([
+        Content.multi([
+          TextPart("Extract all the readable text from this parking sign image."),
+          DataPart('image/jpeg', bytes),
+        ])
+      ]);
+
+      final ocrText = response.text ?? "";
+
+      if (ocrText.isEmpty) {
+        emit(CameraError("OCR returned no text"));
+        return;
       }
+
+      // Parse OCR into structured fields
+      final databaseEntry = _parseOcrTextToFields(ocrText);
+
+      // Emit success state
+      emit(PhotoOCRSuccess(
+        imagePath: event.imagePath,
+        ocrText: ocrText,
+        databaseEntry: databaseEntry,
+      ));
     } catch (e) {
-      emit(CameraError(e.toString()));
+      emit(CameraError("Gemini OCR failed: $e"));
     }
+  }
+
+  // Helper to extract structured fields
+  Map<String, dynamic> _parseOcrTextToFields(String text) {
+    final maxHoursMatch = RegExp(r"Maximum Hours:\s*(\d+)").firstMatch(text);
+    final dayOfWeekMatch = RegExp(r"Day of Week:\s*(\w+)").firstMatch(text);
+    final startTimeMatch = RegExp(r"Start Time:\s*([\d:APM]+)").firstMatch(text);
+
+    return {
+      "maximum_hours_restriction": maxHoursMatch?.group(1) ?? "",
+      "day_of_week": dayOfWeekMatch?.group(1) ?? "",
+      "start_time": startTimeMatch?.group(1) ?? "",
+    };
   }
 }
