@@ -13,6 +13,9 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
     on<PhotoCaptured>(_onPhotoCaptured);
     on<PhotoRetaken>(_onPhotoRetaken);
     on<PhotoUploaded>(_onPhotoUploaded);
+
+    // Auto-Trgger camera openings:
+    add(CameraOpened());
   }
 
   Future<void> _onCameraOpened(CameraOpened event, Emitter<CameraState> emit) async {
@@ -24,7 +27,8 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
       );
       
       if (image != null) {
-        emit(PhotoCapturedSuccess(image.path));
+        // Skip flutter preview, go directly to upload
+        add(PhotoUploaded(image.path));
       } else {
         emit(CameraInitial());
       }
@@ -65,6 +69,8 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
 
       if (response.statusCode == 201) {
         emit(PhotoUploadSuccess());
+        await Future.delayed(const Duration(seconds: 1));
+        emit(CameraInitial());
       } else {
         emit(CameraError('Upload failed with status ${response.statusCode}'));
       }
@@ -73,3 +79,4 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
     }
   }
 }
+

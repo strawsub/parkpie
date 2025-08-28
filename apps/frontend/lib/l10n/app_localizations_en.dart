@@ -21,7 +21,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noPhotoCaptured => 'No photo captured';
 
   @override
-  String get takePhoto => 'Take Photo';
+  String get takePhoto => 'Scan Sign';
 
   @override
   String get retake => 'Retake';

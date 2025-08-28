@@ -43,40 +43,38 @@ class CameraView extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (state is PhotoCapturedSuccess) {
-            return Column(
-              children: [
-                Expanded(
-                  child: Image.file(File(state.imagePath)),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      ElevatedButton(
-                        onPressed: () => context.read<CameraBloc>().add(PhotoRetaken()),
-                        child: Text(l10n.retake),
-                      ),
-                      ElevatedButton(
-                        onPressed: () => context.read<CameraBloc>().add(
-                          PhotoUploaded(state.imagePath)
-                        ),
-                        child: Text(l10n.useThisPhoto),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          }
+          // if (state is PhotoCapturedSuccess) {
+          //   return Column(
+          //     children: [
+          //       Expanded(
+          //         child: Image.file(File(state.imagePath)),
+          //       ),
+          //       Padding(
+          //         padding: const EdgeInsets.all(16.0),
+          //         child: Row(
+          //           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          //           children: [
+          //             ElevatedButton(
+          //               onPressed: () => context.read<CameraBloc>().add(PhotoRetaken()),
+          //               child: Text(l10n.retake),
+          //             ),
+          //             ElevatedButton(
+          //               onPressed: () => context.read<CameraBloc>().add(
+          //                 PhotoUploaded(state.imagePath)
+          //               ),
+          //               child: Text(l10n.useThisPhoto),
+          //             ),
+          //           ],
+          //         ),
+          //       ),
+          //     ],
+          //   );
+          // }
 
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(l10n.noPhotoCaptured),
-                const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () => context.read<CameraBloc>().add(CameraOpened()),
                   child: Text(l10n.takePhoto),

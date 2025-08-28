@@ -27,7 +27,7 @@ class BottomNavBar extends StatelessWidget {
           _buildNavItem(
             index: 1,
             iconPath: 'assets/contribute_nav.svg',
-            label: 'Contribute',
+            label: 'Scan',
           ),
         ],
       ),
