@@ -9,7 +9,7 @@ Group 3, Tutorial 10
 | Tan | [Student Number] | [Email] |
 | Kwan | [Student Number] | [Email] |
 | Zhuofei | [Student Number] | [Email] |
-| Gin | [Student Number] | [Email] |
+| Gin | 1535351 | huichun@student.unimelb.edu.au |
 | Cynwell | [Student Number] | [Email] |
 
 ## Individual Contributions Plan
@@ -31,9 +31,10 @@ Group 3, Tutorial 10
 - Integrate accelerometer and Bluetooth for parking detection
 
 **Gin - Cloud Services & Sensor Integration**
-- Set up Microsoft Azure cloud infrastructure and database for images
+- Set up Microsoft Azure cloud infrastructure and blob database for images
 - Implement cloud service features in front-end
-- Implement camera...
+- Implement GPS location features in the front end
+- Set up GPS location uploads to the cloud
 
 **Kwan - Database Management & Backend**
 - Integrate with City of Melbourne parking datasets
