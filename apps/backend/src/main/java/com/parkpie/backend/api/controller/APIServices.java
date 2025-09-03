@@ -14,7 +14,7 @@ public class APIServices {
         this.dbService = dbService;
     }
 
-    @GetMapping("/api/landing")
+    @GetMapping("/api/updateavailability")
     public String landing(Model model) {
         dbService.downloadCSV();
         model.addAttribute("dataList", dbService.getRows());
