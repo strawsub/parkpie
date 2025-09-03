@@ -34,9 +34,9 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
       );
 
       if (image != null) {
-        emit(PhotoCapturedSuccess(image.path));
+        add(PhotoUploaded(image.path));
       } else {
-        emit(CameraInitial());
+        emit(CameraCanceled());
       }
     } catch (e) {
       emit(CameraError(e.toString()));
@@ -47,7 +47,10 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
     emit(PhotoCapturedSuccess(event.imagePath));
   }
 
-  void _onPhotoRetaken(PhotoRetaken event, Emitter<CameraState> emit) {
+  void _onPhotoRetaken(PhotoRetaken event, Emitter<CameraState> emit) async {
+    emit(CameraInitial());
+    // Small delay to ensure state is properly reset before opening camera
+    await Future.delayed(const Duration(milliseconds: 100));
     add(CameraOpened());
   }
 
