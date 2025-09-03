@@ -87,4 +87,22 @@ public class APIDatabaseService {
                     (Integer) row.get("kerbsideid"));              
         }
     }
+
+    private List<Map<String, Object>> allLoc = new ArrayList<>();
+
+    public List<Map<String, Object>> getAllFromLocationTable() {
+        String sql = """
+                SELECT kerbside_id,
+                       lat,
+                       lng
+                FROM public.parking_bays
+                LiMIT 1000;
+                """;
+        allLoc = jdbc.queryForList(sql);
+        return allLoc;
+    }
+
+    public List<Map<String, Object>> getAllLoc() {
+        return allLoc;
+    }
 }
