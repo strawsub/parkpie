@@ -38,8 +38,7 @@ public class APIDatabaseService {
         try (
                 InputStream input = new URL(csvUrl).openStream();
                 InputStreamReader reader = new InputStreamReader(input, StandardCharsets.UTF_8);
-                BufferedReader br = new BufferedReader(reader)
-        ) {
+                BufferedReader br = new BufferedReader(reader)) {
             String header = br.readLine();
             String line;
 
@@ -69,8 +68,7 @@ public class APIDatabaseService {
     }
 
     public void updateDatabase() {
-        String sql =
-                "UPDATE public.parking_bay_realtime " +
+        String sql = "UPDATE public.parking_bay_realtime " +
                 "SET lastupdated = ?, " +
                 "    status_timestamp = ?, " +
                 "    status_description = ?::occupancy_status " +
@@ -78,13 +76,13 @@ public class APIDatabaseService {
 
         for (Map<String, Object> row : rows) {
             var lastUpdated = OffsetDateTime.parse((String) row.get("lastupdated")).toLocalDateTime();
-            var statusTs    = OffsetDateTime.parse((String) row.get("status_timestamp")).toLocalDateTime();
+            var statusTs = OffsetDateTime.parse((String) row.get("status_timestamp")).toLocalDateTime();
 
             jdbc.update(sql,
                     lastUpdated,
-                    statusTs, 
-                    (String) row.get("status_description"),        
-                    (Integer) row.get("kerbsideid"));              
+                    statusTs,
+                    (String) row.get("status_description"),
+                    (Integer) row.get("kerbsideid"));
         }
     }
 
