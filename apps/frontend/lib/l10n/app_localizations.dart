@@ -105,6 +105,12 @@ abstract class AppLocalizations {
   /// **'Contribute'**
   String get contribute;
 
+  /// No description provided for @scan.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan'**
+  String get scan;
+
   /// No description provided for @uploadSuccessful.
   ///
   /// In en, this message translates to:

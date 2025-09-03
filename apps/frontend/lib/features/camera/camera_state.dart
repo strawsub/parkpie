@@ -13,6 +13,8 @@ class PhotoUploading extends CameraState {}
 
 class PhotoUploadSuccess extends CameraState {}
 
+class CameraCanceled extends CameraState {}
+
 class CameraError extends CameraState {
   final String message;
   CameraError(this.message);
