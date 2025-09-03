@@ -5,21 +5,40 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:frontend/features/camera/camera_event.dart';
 import 'package:frontend/features/camera/camera_state.dart';
 import 'package:frontend/features/camera/camera_bloc.dart';
+import 'package:frontend/features/navigation/navigation_cubit.dart';
 
 class CameraScreen extends StatelessWidget {
   const CameraScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => CameraBloc(),
-      child: const CameraView(),
-    );
+    return const CameraView();
   }
 }
 
-class CameraView extends StatelessWidget {
+class CameraView extends StatefulWidget {
   const CameraView({super.key});
+
+  @override
+  State<CameraView> createState() => _CameraViewState();
+}
+
+class _CameraViewState extends State<CameraView> {
+  bool _hasTriggeredCamera = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final currentState = context.read<CameraBloc>().state;
+    
+    // Auto-open camera when navigating to this screen
+    if ((currentState is CameraInitial || currentState is CameraCanceled) && !_hasTriggeredCamera) {
+      _hasTriggeredCamera = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<CameraBloc>().add(CameraOpened());
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +55,11 @@ class CameraView extends StatelessWidget {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(l10n.uploadSuccessful)),
             );
+          } else if (state is CameraCanceled) {
+            // Reset the trigger flag so camera can be opened again next time
+            _hasTriggeredCamera = false;
+            // Navigate back to map screen when camera is canceled
+            context.read<NavigationCubit>().setIndex(0);
           }
         },
         builder: (context, state) {
@@ -43,30 +67,6 @@ class CameraView extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // Show captured photo before uploading
-          if (state is PhotoCapturedSuccess) {
-            return Column(
-              children: [
-                Expanded(child: Image.file(File(state.imagePath))),
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      ElevatedButton(
-                        onPressed: () => context.read<CameraBloc>().add(PhotoRetaken()),
-                        child: Text(l10n.retake),
-                      ),
-                      ElevatedButton(
-                        onPressed: () => context.read<CameraBloc>().add(PhotoUploaded(state.imagePath)),
-                        child: Text(l10n.useThisPhoto),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          }
 
           // Show OCR result after upload + OCR
           if (state is PhotoOCRSuccess) {
@@ -104,20 +104,8 @@ class CameraView extends StatelessWidget {
             );
           }
 
-          // Initial UI
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(l10n.noPhotoCaptured),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () => context.read<CameraBloc>().add(CameraOpened()),
-                  child: Text(l10n.takePhoto),
-                ),
-              ],
-            ),
-          );
+          // Auto-opening camera, show loading while waiting
+          return const Center(child: CircularProgressIndicator());
         },
       ),
     );

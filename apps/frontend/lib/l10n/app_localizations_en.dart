@@ -28,4 +28,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get useThisPhoto => 'Use This Photo';
+
+  @override
+  String get scan => 'Scan';
 }

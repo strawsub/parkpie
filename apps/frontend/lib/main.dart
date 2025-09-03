@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:frontend/features/camera/camera_screen.dart';
+import 'package:frontend/features/camera/camera_bloc.dart';
 import 'package:frontend/features/map/map_screen.dart';
 import 'package:frontend/features/navigation/navigation_cubit.dart';
 import 'package:frontend/l10n/app_localizations.dart';
@@ -27,8 +28,11 @@ class ParkPieApp extends StatelessWidget {
       supportedLocales: const [
         Locale('en', ''),
       ],
-      home: BlocProvider(
-        create: (context) => NavigationCubit(),
+      home: MultiBlocProvider(
+        providers: [
+          BlocProvider(create: (context) => NavigationCubit()),
+          BlocProvider(create: (context) => CameraBloc()),
+        ],
         child: const HomeContainer(),
       ),
     );
