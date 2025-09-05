@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>ParkPie Admin - Scheduler</title>
+    <link rel="icon" type="image/png" href="/img/parkpie-logo.png">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="/css/admin.css" rel="stylesheet">
+</head>
+<body>
+<nav class="navbar navbar-expand-lg">
+    <div class="container">
+        <a class="navbar-brand" href="/admin">
+            <img src="/img/parkpie-logo.png" alt="ParkPie Logo">
+            ParkPie Admin
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item"><a class="nav-link" href="/admin"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="/admin/database"><i class="fas fa-database me-2"></i>Database</a></li>
+                <li class="nav-item"><a class="nav-link" href="/admin/upload"><i class="fas fa-upload me-2"></i>Upload</a></li>
+                <li class="nav-item"><a class="nav-link active" href="/admin/scheduler"><i class="fas fa-clock me-2"></i>Scheduler</a></li>
+            </ul>
+            <div class="navbar-nav">
+                <form th:action="@{/logout}" method="post" class="d-inline m-0 p-0">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                    <button type="submit" class="nav-link logout-btn btn btn-link p-0">
+                        <i class="fas fa-sign-out-alt me-2"></i>Logout
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    </nav>
+
+<div class="main-content">
+    <div class="container">
+        <div class="page-header text-center">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h1>Availability Auto-Update</h1>
+                    <p>Configure automatic CSV fetch and DB update frequency.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="info-card">
+                    <h3 class="mb-3"><i class="fas fa-sliders-h me-2"></i>Settings</h3>
+                    <form th:action="@{/admin/scheduler}" method="post">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="enabled" name="enabled" th:checked="${enabled}">
+                            <label class="form-check-label" for="enabled">Enable auto update</label>
+                        </div>
+                        <div class="mb-3">
+                            <label for="intervalMinutes" class="form-label">Frequency (minutes)</label>
+                            <input type="number" class="form-control" id="intervalMinutes" name="intervalMinutes" min="1" step="1" th:value="${intervalMinutes}">
+                        </div>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>Save</button>
+                    </form>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="info-card">
+                    <h3 class="mb-3"><i class="fas fa-info-circle me-2"></i>Status</h3>
+                    <ul class="list-unstyled mb-3">
+                        <li><strong>Running:</strong> <span id="running" th:text="${running}">false</span></li>
+                        <li><strong>Last Start:</strong> <span id="lastRunStart" th:text="${lastRunStart}">-</span></li>
+                        <li><strong>Last End:</strong> <span id="lastRunEnd" th:text="${lastRunEnd}">-</span></li>
+                        <li><strong>Last Status:</strong> <span id="lastStatus" th:text="${lastStatus}">Never run</span></li>
+                        <li th:if="${lastError}"><strong>Last Error:</strong> <span class="text-danger" id="lastError" th:text="${lastError}"></span></li>
+                        <li><strong>Run Count:</strong> <span id="runCount" th:text="${runCount}">0</span></li>
+                    </ul>
+                    <form th:action="@{/admin/scheduler/trigger}" method="post" class="d-inline">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                        <button type="submit" class="btn btn-outline-secondary" th:disabled="${running}">
+                            <i class="fas fa-play me-2"></i>Run Now
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer class="footer">
+    <div class="container">
+        <p class="mb-0">&copy; 2025 ParkPie. All rights reserved.</p>
+    </div>
+    </footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Simple polling to refresh status
+    setInterval(async () => {
+        try {
+            const res = await fetch('/admin/scheduler/status');
+            if (!res.ok) return;
+            const s = await res.json();
+            document.getElementById('running').textContent = s.running;
+            document.getElementById('lastRunStart').textContent = s.lastRunStart || '-';
+            document.getElementById('lastRunEnd').textContent = s.lastRunEnd || '-';
+            document.getElementById('lastStatus').textContent = s.lastStatus || '';
+            const err = document.getElementById('lastError');
+            if (err) err.textContent = s.lastError || '';
+            document.getElementById('runCount').textContent = s.runCount || 0;
+        } catch (e) { /* ignore */ }
+    }, 10000);
+</script>
+</body>
+</html>
+
