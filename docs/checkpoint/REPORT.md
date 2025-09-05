@@ -54,6 +54,7 @@ This approach differs from existing solutions like EasyPark (which only covers t
 - Design logo and other app assets
 - Set up backend infrastructure using Spring Boot
 - Set up backend dashboard for updating of database information
+- Set up baseline Continuous Integration (CI) for both frontend and backend
 
 
 ## Material
