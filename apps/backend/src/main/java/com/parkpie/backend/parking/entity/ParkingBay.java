@@ -14,8 +14,8 @@ import java.time.LocalDate;
 @Table(
         name = "parking_bays",
         uniqueConstraints = @UniqueConstraint(
-                name = "uq_bay_natkey",
-                columnNames = {"street_segment_id", "kerbside_id", "lat", "lng"}
+                name = "uq_bay_seg_kerb",
+                columnNames = {"street_segment_id", "kerbside_id"}
         )
 )
 public class ParkingBay {
@@ -26,8 +26,8 @@ public class ParkingBay {
     @Column(name = "street_segment_id", nullable = false)
     private Long streetSegmentId;
 
-    @Column(name = "kerbside_id", nullable = false)
-    private long kerbsideId;
+    @Column(name = "kerbside_id")
+    private Long kerbsideId;
 
     @Column(length = 500)
     private String description;
@@ -65,11 +65,11 @@ public class ParkingBay {
         this.streetSegmentId = streetSegmentId;
     }
 
-    public long getKerbsideId() {
+    public Long getKerbsideId() {
         return kerbsideId;
     }
 
-    public void setKerbsideId(long kerbsideId) {
+    public void setKerbsideId(Long kerbsideId) {
         this.kerbsideId = kerbsideId;
     }
 

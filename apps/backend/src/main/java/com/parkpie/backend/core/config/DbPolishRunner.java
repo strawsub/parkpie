@@ -37,5 +37,9 @@ public class DbPolishRunner implements ApplicationRunner {
             END
             $$;
         """);
+
+        // Clean up any legacy indexes created in earlier dev iterations
+        jdbc.execute("DROP INDEX IF EXISTS uq_bay_seg_kerb_when_present");
+        jdbc.execute("DROP INDEX IF EXISTS uq_bay_seg_lat_lng_when_missing_kerb");
     }
 }

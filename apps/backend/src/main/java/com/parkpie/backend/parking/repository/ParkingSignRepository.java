@@ -16,8 +16,7 @@ public interface ParkingSignRepository extends JpaRepository<ParkingSign, Long> 
         double getLng();
     }
 
-    @Query(value =
-        """
+    @Query(value = """
         SELECT id,text, ST_Y(location)::float8 AS lat, ST_X(location)::float8 AS lng
         FROM parking_signs
         WHERE ST_DWithin(location::geography, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography, :meters)

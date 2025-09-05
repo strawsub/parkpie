@@ -60,7 +60,6 @@ public class CsvImportService {
     }
 
     // The async-safe versions the controller uses
-    @Transactional
     public String importParkingBays(byte[] bytes) {
         int upserts = 0;
         int skipped = 0;
@@ -83,7 +82,7 @@ public class CsvImportService {
                     }
 
                     long streetSegmentId = Long.parseLong(segIdStr.trim());
-                    long kerbsideId = parseLongOrZero(nullIfBlank(r.get("KerbsideID")));
+                    Long kerbsideId = parseLongOrNull(nullIfBlank(r.get("KerbsideID")));
                     String desc = nullIfBlank(r.get("RoadSegmentDescription"));
 
                     String latRaw = r.get("Latitude");
@@ -97,9 +96,18 @@ public class CsvImportService {
 
                     LocalDate lastUpdated = parseFlexibleDateNullable(r.get("LastUpdated")); // nullable
 
-                    upserts += parkingBayRepository.upsertBay(
-                            streetSegmentId, kerbsideId, desc, lat, lng, lastUpdated
-                    );
+                    if (kerbsideId != null && kerbsideId > 0) {
+                        upserts += parkingBayRepository.upsertBay(
+                                streetSegmentId, kerbsideId, desc, lat, lng, lastUpdated
+                        );
+                    } else {
+                        int updated = parkingBayRepository.updateBayWithoutKerbside(streetSegmentId, desc, lat, lng, lastUpdated);
+                        if (updated == 0) {
+                            upserts += parkingBayRepository.insertBayWithoutKerbside(streetSegmentId, desc, lat, lng, lastUpdated);
+                        } else {
+                            upserts += updated;
+                        }
+                    }
                 } catch (Exception rowEx) {
                     skipped++;
                     if (firstErrors.length() < 1000) {
@@ -139,32 +147,54 @@ public class CsvImportService {
         return upserts + " rows upserted";
     }
 
-    @Transactional
     public String importRestrictions(byte[] bytes) {
         int upserts = 0;
-        DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("H:mm");
+        int skipped = 0;
+        StringBuilder firstErrors = new StringBuilder();
         try (var reader = new InputStreamReader(new ByteArrayInputStream(bytes), StandardCharsets.UTF_8);
              var parser = CSVParser.parse(reader, CSVFormat.DEFAULT.builder()
                      .setHeader("pay_stay_zone","day_of_week","start_time","end_time",
                              "minimum_stay","maximum_stay","cost_per_hour","day_of_week_name")
-                     .setSkipHeaderRecord(true).setIgnoreHeaderCase(true).setTrim(true).build())) {
+                     .setSkipHeaderRecord(true)
+                     .setIgnoreHeaderCase(true)
+                     .setTrim(true)
+                     .build())) {
             for (CSVRecord r : parser) {
-                String zone = r.get("pay_stay_zone").trim();
-                int dow = Integer.parseInt(r.get("day_of_week").trim());
-                var startT = LocalTime.parse(r.get("start_time").trim(), timeFmt);
-                var endT = LocalTime.parse(r.get("end_time").trim(), timeFmt);
-                int minStay = Integer.parseInt(r.get("minimum_stay").trim());
-                int maxStay = Integer.parseInt(r.get("maximum_stay").trim());
-                int cents = Integer.parseInt(r.get("cost_per_hour").trim());
-                String dowName = nullIfBlank(r.get("day_of_week_name"));
-                upserts += payStayRestrictionRepository.upsertRestriction(
-                        zone, dow, startT, endT, minStay, maxStay, cents, dowName
-                );
+                try {
+                    String zone = r.get("pay_stay_zone");
+                    if (zone == null || zone.isBlank()) { skipped++; continue; }
+                    zone = zone.trim();
+
+                    String dowRaw = r.get("day_of_week");
+                    if (dowRaw == null || dowRaw.isBlank()) { skipped++; continue; }
+                    int dow = Integer.parseInt(dowRaw.trim());
+
+                    LocalTime startT = parseFlexibleTime(r.get("start_time"));
+                    LocalTime endT = parseFlexibleTime(r.get("end_time"));
+
+                    int minStay = Integer.parseInt(r.get("minimum_stay").trim());
+                    int maxStay = Integer.parseInt(r.get("maximum_stay").trim());
+                    int cents = parseCents(r.get("cost_per_hour"));
+                    String dowName = nullIfBlank(r.get("day_of_week_name"));
+
+                    upserts += payStayRestrictionRepository.upsertRestriction(
+                            zone, dow, startT, endT, minStay, maxStay, cents, dowName
+                    );
+                } catch (Exception rowEx) {
+                    skipped++;
+                    if (firstErrors.length() < 1000) {
+                        firstErrors.append("Row ").append(r.getRecordNumber()).append(": ").append(rowEx.getMessage()).append("\n");
+                    }
+                }
             }
         } catch (Exception e) {
             throw new RuntimeException("Failed to import Restrictions: " + e.getMessage(), e);
         }
-        return upserts + " rows upserted";
+        String summary = upserts + " rows upserted, " + skipped + " rows skipped";
+        if (firstErrors.length() > 0) {
+            summary += " | sample errors:\n" + firstErrors;
+        }
+        return summary;
     }
 
     // ---- helpers ----
@@ -172,8 +202,8 @@ public class CsvImportService {
         try { return parseFlexibleDate(raw); } catch (Exception ignored) { return null; }
     }
 
-    private static long parseLongOrZero(String s) {
-        return (s == null || s.isBlank()) ? 0L : Long.parseLong(s.trim());
+    private static Long parseLongOrNull(String s) {
+        return (s == null || s.isBlank()) ? null : Long.parseLong(s.trim());
     }
 
     private static String nullIfBlank(String s) {
@@ -207,5 +237,46 @@ public class CsvImportService {
             return LocalDate.of(1899, 12, 30).plusDays(days);
         }
         return LocalDate.parse(s, DateTimeFormatter.ISO_LOCAL_DATE);
+    }
+
+    private static LocalTime parseFlexibleTime(String raw) {
+        if (raw == null) throw new DateTimeParseException("null", "", 0);
+        String s = raw.trim();
+        if (s.isEmpty()) throw new DateTimeParseException("empty", s, 0);
+        DateTimeFormatter[] fmts = new DateTimeFormatter[] {
+                DateTimeFormatter.ofPattern("H:mm"),
+                DateTimeFormatter.ofPattern("HH:mm"),
+                DateTimeFormatter.ofPattern("H:mm:ss"),
+                DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH),
+                DateTimeFormatter.ofPattern("h:mma", Locale.ENGLISH)
+        };
+        for (var f : fmts) {
+            try { return LocalTime.parse(s, f); } catch (DateTimeParseException ignored) {}
+        }
+        // Convert 24:00 to 00:00 of next day by normalizing to 00:00
+        if (s.equals("24:00") || s.equals("24:00:00")) {
+            return LocalTime.MIDNIGHT;
+        }
+        // Last resort: let ISO parser try
+        return LocalTime.parse(s);
+    }
+
+    private static int parseCents(String raw) {
+        if (raw == null) return 0;
+        String s = raw.trim();
+        if (s.isEmpty()) return 0;
+        // Remove currency symbols and spaces
+        s = s.replace("$", "").replace(",", "");
+        try {
+            if (s.matches("^-?\\d+$")) {
+                // already cents
+                return Integer.parseInt(s);
+            }
+            // decimal dollars -> cents
+            java.math.BigDecimal d = new java.math.BigDecimal(s);
+            return d.movePointRight(2).setScale(0, java.math.RoundingMode.HALF_UP).intValueExact();
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid cost value: '" + raw + "'");
+        }
     }
 }
