@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter_map/flutter_map.dart';
 import 'package:frontend/features/parking_info/parking_info_screen.dart';
 import 'package:latlong2/latlong.dart';
@@ -16,7 +17,16 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   final MapController _mapController = MapController();
 
-  static const String _apiUrl = 'http://localhost:8081/api/map/getlocforpin';
+  // Resolve API base per platform; override via --dart-define=API_BASE_URL
+  String _apiBase() {
+    const fromEnv = String.fromEnvironment('API_BASE_URL');
+    if (fromEnv.isNotEmpty) return fromEnv;
+    if (kIsWeb) return 'http://localhost:8081';
+    if (defaultTargetPlatform == TargetPlatform.android) return 'http://10.0.2.2:8081';
+    return 'http://localhost:8081';
+  }
+
+  late final String _apiUrl = '${_apiBase()}/api/map/getlocforpin';
 
   bool _loading = true;
   String? _error;
