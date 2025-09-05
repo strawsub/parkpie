@@ -10,7 +10,7 @@ description = 'Full Java Spring Boot backend implementation for the ParkPie appl
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(24)
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 

@@ -5,7 +5,7 @@ Spring Boot REST API for ParkPie.
 ---
 
 ## Requirements
-- Java 24
+- Java 21
 - Gradle 8.14+ (via wrapper)
 - PostgreSQL 17
 

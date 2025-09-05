@@ -15,12 +15,12 @@ This repository contains two applications with baseline GitHub Actions CI:
 ## Workflows
 
 - `.github/workflows/backend-ci.yml`
-  - Java 24 (Temurin) with Gradle wrapper caching.
+  - Java 21 (Temurin) with Gradle wrapper caching.
   - Runs `./gradlew test --no-daemon` and `./gradlew build --no-daemon`.
   - Uploads `apps/backend/build/libs/*.jar` as an artifact.
 
 - `.github/workflows/frontend-ci.yml`
-  - Installs Flutter (stable channel) and Java 17 for Android toolchain.
+  - Installs Flutter (stable channel) and Java 21 for Android toolchain.
   - Runs `flutter pub get`, `flutter analyze`, and `flutter test`.
   - Uploads `apps/frontend/coverage/lcov.info` if generated.
 

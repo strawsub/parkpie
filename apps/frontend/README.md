@@ -7,7 +7,7 @@ Flutter mobile app for ParkPie.
 ## Requirements
 - Flutter 3.24+ / Dart 3.5+
 - Android Studio (Android SDK) or Xcode (macOS for iOS)
-- Java 24 for building Android with Gradle 8.14.3
+- Java 21 for building Android with Gradle 8.14.3
 
 ---
 
