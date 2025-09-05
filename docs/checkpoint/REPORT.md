@@ -9,7 +9,7 @@ Group 3, Tutorial 10
 | Rungthip Chaothayee (Tan) | 1572000 | chaothayeer@student.unimelb.edu.au |
 | Wasutum Kethom (Kwan) | 1537761| wkethom@student.unimelb.edu.au |
 | Zhuofei Yan | 1638660 | zhuofeiyan@student.unimelb.edu.au |
-| Gin Lee | 1535351 | huichun@student.unimelb.edu.au |
+| Huichun Lee (Gin) | 1535351 | huichun@student.unimelb.edu.au |
 | Hsing-Wei Liao (Cynwell) | 1607270 | hsingweil@student.unimelb.edu.au |
 
 ## Project: Parkpie
