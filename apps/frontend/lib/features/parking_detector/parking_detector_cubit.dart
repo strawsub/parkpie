@@ -2,13 +2,15 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
 import 'parking_detector_state.dart';
-import 'sensors_service.dart'; // 导入新创建的服务
+import 'sensors_service.dart';
 
 class ParkingDetectorCubit extends Cubit<ParkingDetectorState> {
   final SensorsService _sensorsService;
   final Duration _parkingTimeout = const Duration(seconds: 15);
-  final double _parkingSpeedThreshold = 1.0; // in m/s (3.6 km/h)
+  final double _parkingSpeedThreshold = 1.5; // in m/s (3.6 km/h)
+  final double _accThreshold = 0.5; // in m/s^2
   StreamSubscription<Position>? _positionSubscription;
+  StreamSubscription<double>? _accSubscription;
   Timer? _parkingTimer;
 
   ParkingDetectorCubit(this._sensorsService) : super(const ParkingDetectorState()) {
@@ -17,53 +19,66 @@ class ParkingDetectorCubit extends Cubit<ParkingDetectorState> {
 
   void _startListeningToSensors() {
     _positionSubscription = _sensorsService.position$.listen((position) {
+      // make the decision based on velocity and location
       _checkParkingStatus(position);
     });
-    // 你也可以订阅加速度流：
-    // _sensorsService.userAccMag$.listen((mag) {
-    //   // 根据加速度数据进行更精细的判断
-    // });
+
+    _accSubscription = _sensorsService.userAccMag$.listen((mag) {
+      // make the decision based on accelerator
+      // i.e., when the status is parking, if the acc is increased a lot,
+      // it means the user may leave
+    });
   }
 
   void _checkParkingStatus(Position position) {
     final speed = position.speed;
+    var next = state.copyWith(lastPosition: position);
 
     if (speed < _parkingSpeedThreshold) {
-      // 速度低于阈值，可能正在停车
-      if (state.state != ParkingState.parking) {
-        // 如果之前不是停车状态，就启动计时器
-        emit(state.copyWith(state: ParkingState.parking, startParkingPosition: position));
+      // If parked, keep this status, no changes
+      if (state.state == ParkingState.parked) {
+        emit(next);
+        return;
+      }
+
+      // If the status is driving, and the vel is below a threshold,
+      // the system starts detecting
+      if (state.state == ParkingState.driving) {
+        next = next.copyWith(
+            state: ParkingState.parking, startParkingPosition: position);
         _startParkingConfirmationTimer();
       }
+
+      emit(next);
     } else {
-      // 速度正常，正在行驶
-      emit(const ParkingDetectorState());
+      // if the vel is back to a normal level, the status will be set to driving
       _parkingTimer?.cancel();
+      emit(const ParkingDetectorState());
     }
-    emit(state.copyWith(lastPosition: position));
   }
 
   void _startParkingConfirmationTimer() {
     _parkingTimer?.cancel();
     _parkingTimer = Timer(_parkingTimeout, () {
+      // when the timer is ended, and the status is still parking, we confirm parked
       if (state.state == ParkingState.parking) {
-        // 计时器结束后，如果状态仍为 'parking'，则确认已泊车
         emit(state.copyWith(state: ParkingState.parked));
         _parkingTimer?.cancel();
-        // 通知后端服务
+        // TBD: to call the backend later to save the parked information
         _notifyBackend();
       }
     });
   }
 
   void _notifyBackend() {
-    // TBD: 在这里调用你的后端服务来保存泊车信息
+    // TBD: to call the backend later to save the parked information
     print('Parking detected! Notifying backend...');
   }
 
   @override
   Future<void> close() {
     _positionSubscription?.cancel();
+    _accSubscription?.cancel();
     _parkingTimer?.cancel();
     return super.close();
   }

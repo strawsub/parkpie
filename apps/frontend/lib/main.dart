@@ -6,9 +6,10 @@ import 'package:frontend/features/navigation/navigation_cubit.dart';
 import 'package:frontend/l10n/app_localizations.dart';
 import 'package:frontend/widgets/nav_bar.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 void main() {
-  runApp(const ParkPieApp());
+  runApp(ProviderScope(child: const ParkPieApp()));
 }
 
 class ParkPieApp extends StatelessWidget {

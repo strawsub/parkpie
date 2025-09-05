@@ -52,6 +52,7 @@ dependencies:
   # for string
   flutter_localizations:
     sdk: flutter
+  equatable: ^2.0.5
 
   # for image recognition
   google_generative_ai: ^0.4.7
