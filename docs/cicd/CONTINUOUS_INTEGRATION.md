@@ -33,16 +33,3 @@ This repository contains two applications with baseline GitHub Actions CI:
 
 - Backend: `cd apps/backend && ./gradlew test build`
 - Frontend: `cd apps/frontend && flutter pub get && flutter analyze && flutter test`
-
-## Troubleshooting
-
-- Java 24 availability: If your runner cannot provision JDK 24, lower `java-version` in the workflow (e.g., 21). Gradle’s toolchain in `apps/backend/build.gradle` can still fetch 24 for compilation.
-- Database needs: Current tests are lightweight (`@SpringBootTest` context load). If future tests require Postgres, add a service container to the backend workflow.
-
-## Optional Enhancements
-
-- Gradle wrapper validation: `gradle/wrapper-validation-action@v2` before build.
-- Concurrency: cancel in‑progress runs per branch to save minutes.
-- Test reports: upload JUnit XML from backend for easier triage.
-- Matrices: run backend against JDK 21 and 24 if desired.
-

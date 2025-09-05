@@ -46,7 +46,10 @@ class BottomNavBar extends StatelessWidget {
             iconPath,
             width: 24,
             height: 24,
-            color: isSelected ? const Color(0xFF016C34) : Colors.black, // optional highlight
+            colorFilter: ColorFilter.mode(
+              isSelected ? const Color(0xFF016C34) : Colors.black,
+              BlendMode.srcIn,
+            ), // optional highlight
           ),
           const SizedBox(height: 4),
           Text(

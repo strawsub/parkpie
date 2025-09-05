@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/l10n/app_localizations.dart';
 import 'package:latlong2/latlong.dart';
 
 class ParkingInfoSheet extends StatelessWidget {
@@ -9,8 +8,6 @@ class ParkingInfoSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-
     return DraggableScrollableSheet(
       initialChildSize: 0.5, // initial height as % of screen
       minChildSize: 0.3,
