@@ -56,6 +56,9 @@ dependencies:
   # for image recognition
   google_generative_ai: ^0.4.7
 
+  # for accelerometer, gyroscope, magnetometer and barometer
+  sensors_plus: ^6.1.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

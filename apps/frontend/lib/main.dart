@@ -7,6 +7,8 @@ import 'package:frontend/features/navigation/navigation_cubit.dart';
 import 'package:frontend/l10n/app_localizations.dart';
 import 'package:frontend/widgets/nav_bar.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:frontend/features/map/pin/pin_cubit.dart';
+
 
 void main() {
   runApp(const ParkPieApp());
@@ -32,6 +34,7 @@ class ParkPieApp extends StatelessWidget {
         providers: [
           BlocProvider(create: (context) => NavigationCubit()),
           BlocProvider(create: (context) => CameraBloc()),
+          BlocProvider(create: (_) => PinCubit()..loadPins()),
         ],
         child: const HomeContainer(),
       ),

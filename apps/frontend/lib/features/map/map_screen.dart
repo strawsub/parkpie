@@ -42,56 +42,53 @@ class MapScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => PinCubit()..loadPins(),
-      child: Scaffold(
-        body: BlocBuilder<PinCubit, PinState>(
-          builder: (context, state) {
-            if (state is PinLoading || state is PinInitial) {
-              return const Center(child: CircularProgressIndicator());
-            }
+    return Scaffold(
+      body: BlocBuilder<PinCubit, PinState>(
+        builder: (context, state) {
+          if (state is PinLoading || state is PinInitial) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-            if (state is PinError) {
-              return Center(
-                child: Card(
-                  color: Colors.red.shade700,
-                  margin: const EdgeInsets.all(16),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Text(
-                      'Failed to load pins:\n${state.message}',
-                      style: const TextStyle(color: Colors.white),
-                    ),
+          if (state is PinError) {
+            return Center(
+              child: Card(
+                color: Colors.red.shade700,
+                margin: const EdgeInsets.all(16),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Text(
+                    'Failed to load pins:\n${state.message}',
+                    style: const TextStyle(color: Colors.white),
                   ),
                 ),
-              );
-            }
-
-            final pins = (state as PinLoaded).pins;
-
-            return FlutterMap(
-              mapController: _mapController,
-              options: const MapOptions(
-                initialCenter: LatLng(-37.8035820, 144.9593280),
-                initialZoom: 12,
-                minZoom: 2,
-                maxZoom: 20,
               ),
-              children: [
-                TileLayer(
-                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.parkpie.frontend',
-                ),
-                MarkerLayer(markers: _buildMarkers(context, pins)),
-              ],
             );
-          },
-        ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () => context.read<PinCubit>().loadPins(),
-          icon: const Icon(Icons.refresh),
-          label: const Text('Reload'),
-        ),
+          }
+
+          final pins = (state as PinLoaded).pins;
+
+          return FlutterMap(
+            mapController: _mapController,
+            options: const MapOptions(
+              initialCenter: LatLng(-37.8035820, 144.9593280),
+              initialZoom: 12,
+              minZoom: 2,
+              maxZoom: 20,
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.parkpie.frontend',
+              ),
+              MarkerLayer(markers: _buildMarkers(context, pins)),
+            ],
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.read<PinCubit>().loadPins(),
+        icon: const Icon(Icons.refresh),
+        label: const Text('Reload'),
       ),
     );
   }
