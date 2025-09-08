@@ -45,11 +45,11 @@ class HomeContainer extends StatelessWidget {
   Widget _getSelectedView(int index) {
     switch (index) {
       case 0:
-        return const MapScreen();
+        return MapScreen();
       case 1:
         return const CameraScreen();
       default:
-        return const MapScreen(); // fallback
+        return MapScreen(); // fallback
     }
   }
 

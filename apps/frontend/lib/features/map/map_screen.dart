@@ -1,166 +1,98 @@
 import 'dart:convert';
-import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:frontend/features/parking_info/parking_info_screen.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:frontend/features/map/parking_info/parking_info_screen.dart';
+import 'package:frontend/features/map/pin/pin_cubit.dart';
+import 'package:frontend/features/map/pin/pin_state.dart';
+import 'package:frontend/features/map/pin/pin_model.dart';
 
-class MapScreen extends StatefulWidget {
-  const MapScreen({super.key});
+class MapScreen extends StatelessWidget {
+  MapScreen({super.key});
 
-  @override
-  State<MapScreen> createState() => _MapScreenState();
-}
-
-class _MapScreenState extends State<MapScreen> {
   final MapController _mapController = MapController();
 
-  // Resolve API base per platform; override via --dart-define=API_BASE_URL
-  String _apiBase() {
-    const fromEnv = String.fromEnvironment('API_BASE_URL');
-    if (fromEnv.isNotEmpty) return fromEnv;
-    if (kIsWeb) return 'http://localhost:8081';
-    if (defaultTargetPlatform == TargetPlatform.android) return 'http://10.0.2.2:8081';
-    return 'http://localhost:8081';
+  void _showParkingInfo(BuildContext context, LatLng location) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ParkingInfoSheet(location: location),
+    );
   }
 
-  late final String _apiUrl = '${_apiBase()}/api/map/getlocforpin';
-
-  bool _loading = true;
-  String? _error;
-  List<Pin> _pins = const [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPins();
-  }
-
-  Future<void> _loadPins() async {
-    try {
-      final res = await http.get(Uri.parse(_apiUrl));
-      if (res.statusCode != 200) {
-        throw Exception('HTTP ${res.statusCode}: ${res.body}');
-      }
-
-      final decoded = jsonDecode(res.body);
-      if (decoded is! List) throw Exception('Unexpected JSON shape');
-
-      final pins = decoded
-          .map((e) => Pin.fromJson(e as Map<String, dynamic>))
-          .where((p) => p.lat != null && p.lng != null)
-          .toList();
-
-      setState(() {
-        _pins = pins;
-        _error = null;
-        _loading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
-    }
+  List<Marker> _buildMarkers(BuildContext context, List<Pin> pins) {
+    return pins.map((pin) {
+      final pos = LatLng(pin.lat!, pin.lng!);
+      return Marker(
+        point: pos,
+        width: 40,
+        height: 40,
+        child: GestureDetector(
+          onTap: () => _showParkingInfo(context, pos),
+          child: SvgPicture.asset('assets/park_sign.svg', width: 40, height: 40),
+        ),
+      );
+    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final markers = _pins.map((p) {
-      final ll = LatLng(p.lat!, p.lng!);
-      return Marker(
-        point: ll,
-        width: 40,
-        height: 40,
-        child: GestureDetector(
-          onTap: () {
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (context) => ParkingInfoSheet(location: ll),
-            );
-          },
-          child: SvgPicture.asset(
-            'assets/park_sign.svg',
-            width: 40,
-            height: 40,
-          ),
-        ),
-      );
-    }).toList();
+    return BlocProvider(
+      create: (_) => PinCubit()..loadPins(),
+      child: Scaffold(
+        body: BlocBuilder<PinCubit, PinState>(
+          builder: (context, state) {
+            if (state is PinLoading || state is PinInitial) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-    return Scaffold(
-      body: Stack(
-        children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: const MapOptions(
-              initialCenter: LatLng(-37.8035820, 144.9593280),
-              initialZoom: 12,
-              minZoom: 2,
-              maxZoom: 20,
-            ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.parkpie.frontend',
-              ),
-              MarkerLayer(markers: markers),
-            ],
-          ),
-
-          if (_loading)
-            const Positioned.fill(
-              child: IgnorePointer(
-                child: Center(child: CircularProgressIndicator()),
-              ),
-            ),
-          if (_error != null && !_loading)
-            Positioned(
-              left: 12,
-              right: 12,
-              bottom: 24,
-              child: Card(
-                color: Colors.red.shade700,
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Text(
-                    'Failed to load pins:\n$_error',
-                    style: const TextStyle(color: Colors.white),
+            if (state is PinError) {
+              return Center(
+                child: Card(
+                  color: Colors.red.shade700,
+                  margin: const EdgeInsets.all(16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(
+                      'Failed to load pins:\n${state.message}',
+                      style: const TextStyle(color: Colors.white),
+                    ),
                   ),
                 ),
+              );
+            }
+
+            final pins = (state as PinLoaded).pins;
+
+            return FlutterMap(
+              mapController: _mapController,
+              options: const MapOptions(
+                initialCenter: LatLng(-37.8035820, 144.9593280),
+                initialZoom: 12,
+                minZoom: 2,
+                maxZoom: 20,
               ),
-            ),
-        ],
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.parkpie.frontend',
+                ),
+                MarkerLayer(markers: _buildMarkers(context, pins)),
+              ],
+            );
+          },
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () => context.read<PinCubit>().loadPins(),
+          icon: const Icon(Icons.refresh),
+          label: const Text('Reload'),
+        ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _loadPins,
-        icon: const Icon(Icons.refresh),
-        label: const Text('Reload'),
-      ),
-    );
-  }
-}
-
-class Pin {
-  final dynamic kerbsideId;
-  final double? lat;
-  final double? lng;
-
-  const Pin({required this.kerbsideId, required this.lat, required this.lng});
-
-  factory Pin.fromJson(Map<String, dynamic> json) {
-    double? toD(dynamic v) => v == null
-        ? null
-        : (v is num ? v.toDouble() : double.tryParse(v.toString()));
-
-    return Pin(
-      kerbsideId: json['kerbsideid'],
-      lat: toD(json['lat']),
-      lng: toD(json['lng']),
     );
   }
 }
