@@ -11,11 +11,12 @@ class PinCubit extends Cubit<PinState> {
 
   /// Resolve API base
   String _apiBase() {
-    const fromEnv = String.fromEnvironment('API_BASE_URL');
+    const fromEnv = String.fromEnvironment('API_BASE_URL',
+      defaultValue: 'https://parkpie-90018.azurewebsites.net',);
     if (fromEnv.isNotEmpty) return fromEnv;
     if (kIsWeb) return 'http://localhost:8081';
     if (defaultTargetPlatform == TargetPlatform.android) return 'http://10.0.2.2:8081';
-    return 'http://localhost:8081';
+    return 'https://parkpie-90018.azurewebsites.net';
   }
 
   /// Load pins from API
