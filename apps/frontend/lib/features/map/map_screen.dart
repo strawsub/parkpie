@@ -1,15 +1,15 @@
-import 'dart:convert';
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:http/http.dart' as http;
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:latlong2/latlong.dart';
+
 import 'package:frontend/features/map/parking_info/parking_info_screen.dart';
 import 'package:frontend/features/map/pin/pin_cubit.dart';
 import 'package:frontend/features/map/pin/pin_state.dart';
 import 'package:frontend/features/map/pin/pin_model.dart';
+import 'package:frontend/features/parking_status_detected/parking_status_bloc.dart'; // for ParkingBloc
+import 'package:frontend/features/debug/debug_screen.dart';
 
 class MapScreen extends StatelessWidget {
   MapScreen({super.key});
@@ -85,10 +85,39 @@ class MapScreen extends StatelessWidget {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.read<PinCubit>().loadPins(),
-        icon: const Icon(Icons.refresh),
-        label: const Text('Reload'),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          FloatingActionButton.extended(
+            heroTag: 'reloadFab',
+            onPressed: () => context.read<PinCubit>().loadPins(),
+            icon: const Icon(Icons.refresh),
+            label: const Text('Reload'),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton(
+            heroTag: 'debugFab',
+            mini: true,
+            onPressed: () {
+              final pinCubit = context.read<PinCubit>();
+              final parkingBloc = context.read<ParkingBloc>();
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => MultiBlocProvider(
+                    providers: [
+                      BlocProvider.value(value: pinCubit),
+                      BlocProvider.value(value: parkingBloc),
+                    ],
+                    child: const DebugScreen(),
+                  ),
+                ),
+              );
+            },
+            child: const Icon(Icons.bug_report),
+            tooltip: 'Debug',
+          ),
+        ],
       ),
     );
   }

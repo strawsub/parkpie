@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-
+import 'package:frontend/features/map/pin/pin_cubit.dart';
 import 'features/camera/camera_screen.dart';
 import 'features/camera/camera_bloc.dart';
 import 'features/map/map_screen.dart';
 import 'features/navigation/navigation_cubit.dart';
-import 'features/map/pin/pin_cubit.dart';
 import 'features/parking_status_detected/parking_status_bloc.dart';
 import 'features/parking_status_detected/parking_status_state.dart';
 import 'features/parking_status_detected/parking_status_event.dart';
@@ -54,7 +53,7 @@ class HomeContainer extends StatelessWidget {
       case 1:
         return const CameraScreen();
       default:
-        return MapScreen();
+        return MapScreen(); // fallback
     }
   }
 
