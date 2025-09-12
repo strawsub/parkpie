@@ -57,4 +57,23 @@ public interface ParkingSignRepository extends JpaRepository<ParkingSign, Long> 
                    @Param("maxStay") Integer maximumStay,
                    @Param("occupancyPercent") Double occupancyPercent,
                    @Param("updatedAt") java.time.LocalDateTime updatedAt);
+
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true, flushAutomatically = true)
+    @org.springframework.transaction.annotation.Transactional
+    @Query(value = """
+        INSERT INTO parking_signs(
+            zone_number, location,
+            day_of_week, start_time, end_time,
+            maximum_stay_minutes, occupancy_percent, updated_at
+        ) VALUES (
+            NULL, ST_SetSRID(ST_MakePoint(:lng,:lat),4326),
+            :dow, :startT, :endT, :maxStay, NULL, NULL
+        )
+        """, nativeQuery = true)
+    int insertManual(@Param("lat") double lat,
+                     @Param("lng") double lng,
+                     @Param("dow") Integer dayOfWeek,
+                     @Param("startT") java.time.LocalTime startTime,
+                     @Param("endT") java.time.LocalTime endTime,
+                     @Param("maxStay") Integer maximumStay);
 }

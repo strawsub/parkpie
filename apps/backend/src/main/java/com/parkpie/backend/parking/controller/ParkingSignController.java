@@ -1,6 +1,7 @@
 package com.parkpie.backend.parking.controller;
 
 import com.parkpie.backend.parking.dto.ParkingSignDto;
+import com.parkpie.backend.parking.dto.UserSignIngestDto;
 import com.parkpie.backend.parking.service.ParkingSignService;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -27,5 +28,10 @@ public class ParkingSignController {
             @RequestParam @DecimalMin("-180.0") @DecimalMax("180.0") double lng,
             @RequestParam(defaultValue = "500") @Positive double meters) {
         return service.findNear(lat, lng, meters);
+    }
+
+    @PostMapping(value = "/ingest", consumes = "application/json")
+    public int ingest(@Validated @RequestBody UserSignIngestDto.Request request) {
+        return service.ingestUserSign(request);
     }
 }
