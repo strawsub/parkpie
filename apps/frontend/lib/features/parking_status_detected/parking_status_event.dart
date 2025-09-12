@@ -16,5 +16,14 @@ class AccelerometerChanged extends ParkingEvent {
   });
 }
 
+class BluetoothAudioChanged extends ParkingEvent {
+  final bool isConnected;
+  final String? deviceName;
+  BluetoothAudioChanged({
+    required this.isConnected,
+    this.deviceName,
+  });
+}
+
 class UserConfirmedParking extends ParkingEvent {}
 class ResetParking extends ParkingEvent {}
