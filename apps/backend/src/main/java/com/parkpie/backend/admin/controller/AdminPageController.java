@@ -32,7 +32,8 @@ public class AdminPageController {
     }
 
     @GetMapping("/admin/upload")
-    public String upload() {
+    public String upload(Model model) {
+        model.addAttribute("counts", adminDatabaseService.fetchTableCounts());
         return "admin/upload";
     }
     

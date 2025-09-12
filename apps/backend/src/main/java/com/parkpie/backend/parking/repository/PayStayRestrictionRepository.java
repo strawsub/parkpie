@@ -26,7 +26,7 @@ public interface PayStayRestrictionRepository extends JpaRepository<PayStayRestr
                           @Param("dow") int dayOfWeek,
                           @Param("startT") LocalTime startTime,
                           @Param("endT") LocalTime endTime,
-                          @Param("minStay") int minimumStayMinutes,
+                          @Param("minStay") Integer minimumStayMinutes,
                           @Param("maxStay") int maximumStayMinutes,
                           @Param("cents") int costPerHourCents,
                           @Param("dowName") String dayOfWeekName);

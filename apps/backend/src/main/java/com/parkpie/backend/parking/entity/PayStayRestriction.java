@@ -28,8 +28,8 @@ public class PayStayRestriction {
     @Column(name = "end_time", nullable = false)
     private LocalTime endTime;
 
-    @Column(name = "minimum_stay_minutes", nullable = false)
-    private int minimumStayMinutes;
+    @Column(name = "minimum_stay_minutes")
+    private Integer minimumStayMinutes; // nullable per dataset (rare blanks)
 
     @Column(name = "maximum_stay_minutes", nullable = false)
     private int maximumStayMinutes;
@@ -81,11 +81,11 @@ public class PayStayRestriction {
         this.endTime = endTime;
     }
 
-    public int getMinimumStayMinutes() {
+    public Integer getMinimumStayMinutes() {
         return minimumStayMinutes;
     }
 
-    public void setMinimumStayMinutes(int minimumStayMinutes) {
+    public void setMinimumStayMinutes(Integer minimumStayMinutes) {
         this.minimumStayMinutes = minimumStayMinutes;
     }
 

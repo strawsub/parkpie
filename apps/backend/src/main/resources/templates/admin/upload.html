@@ -85,12 +85,12 @@
 
             <!-- Upload Instructions -->
             <div class="upload-instructions">
-                <h4><i class="fas fa-info-circle me-2"></i>Upload Instructions</h4>
+                <h4><i class="fas fa-info-circle me-2"></i>Upload Sequence</h4>
                 <ul>
-                    <li>Supported file format: CSV (Comma Separated Values)</li>
-                    <li>Maximum file size: 10MB</li>
-                    <li>Ensure the CSV has the correct column headers for each data type</li>
-                    <li>Files will be validated before import</li>
+                    <li><strong>Step 1:</strong> Upload <em>on-street-parking-bays</em> (segments + bays)</li>
+                    <li><strong>Step 2:</strong> Upload <em>pay-stay-zones-linked-to-street-segments</em> (zones ↔ segments)</li>
+                    <li><strong>Step 3:</strong> Upload <em>pay-stay-parking-restrictions</em> (zone schedules)</li>
+                    <li>Realtime availability (<em>on-street-parking-bay-sensors</em>) is fetched automatically by the scheduler and the API button.</li>
                 </ul>
             </div>
 
@@ -102,7 +102,7 @@
 
             <!-- Parking Bays Upload -->
             <div class="upload-card">
-                <h3><i class="fas fa-car"></i>Upload Parking Bays</h3>
+                <h3><span class="badge bg-secondary me-2">Step 1</span><i class="fas fa-car"></i>Upload Parking Bays</h3>
                 <form th:action="@{/admin/upload/bays}" method="post" enctype="multipart/form-data" class="upload-form" id="baysForm">
                     <input type="hidden" name="progressId" id="baysProgressId">
                     <div class="upload-area" onclick="document.getElementById('baysFile').click()">
@@ -137,15 +137,19 @@
             </div>
 
             <!-- Zone Links Upload -->
-            <div class="upload-card">
-                <h3><i class="fas fa-map-marker-alt"></i>Upload Pay Stay Zone Links</h3>
-                <form th:action="@{/admin/upload/zone-links}" method="post" enctype="multipart/form-data" class="upload-form" id="zoneLinksForm">
+            <div class="upload-card" th:classappend="${(counts['parking_bays'] == 0) ? ' opacity-50' : ''}">
+                <h3>
+                    <span class="badge bg-secondary me-2">Step 2</span>
+                    <i class="fas fa-map-marker-alt"></i>Upload Pay Stay Zone Links
+                    <small class="text-muted ms-2" th:if="${counts['parking_bays'] == 0}">Requires Step 1 (Parking Bays)</small>
+                </h3>
+                <form th:action="@{/admin/upload/zone-links}" method="post" enctype="multipart/form-data" class="upload-form" id="zoneLinksForm" th:attr="data-locked=${counts['parking_bays'] == 0}">
                     <input type="hidden" name="progressId" id="zoneLinksProgressId">
                     <div class="upload-area" onclick="document.getElementById('zoneLinksFile').click()">
                         <i class="fas fa-cloud-upload-alt"></i>
                         <h4>Drop the CSV file here</h4>
                         <p>or click to browse files</p>
-                        <input type="file" id="zoneLinksFile" name="file" class="file-input" accept=".csv" required>
+                        <input type="file" id="zoneLinksFile" name="file" class="file-input" accept=".csv" required th:attr="disabled=${counts['parking_bays'] == 0}">
                     </div>
                     
                     <div id="zoneLinksFileInfo" class="file-info" style="display: none;">
@@ -154,7 +158,7 @@
                     </div>
                     
                     <div class="text-center">
-                        <button type="submit" class="upload-btn" id="zoneLinksUploadBtn" disabled>
+                        <button type="submit" class="upload-btn" id="zoneLinksUploadBtn" th:attr="disabled=${counts['parking_bays'] == 0}">
                             <i class="fas fa-upload me-2"></i>Upload Zone Links
                         </button>
                         
@@ -173,15 +177,19 @@
             </div>
 
             <!-- Restrictions Upload -->
-            <div class="upload-card">
-                <h3><i class="fas fa-ban"></i>Upload Pay Stay Restrictions</h3>
-                <form th:action="@{/admin/upload/restrictions}" method="post" enctype="multipart/form-data" class="upload-form" id="restrictionsForm">
+            <div class="upload-card" th:classappend="${(counts['parking_bays'] == 0 or counts['pay_stay_zone_links'] == 0) ? ' opacity-50' : ''}">
+                <h3>
+                    <span class="badge bg-secondary me-2">Step 3</span>
+                    <i class="fas fa-ban"></i>Upload Pay Stay Restrictions
+                    <small class="text-muted ms-2" th:if="${counts['parking_bays'] == 0 or counts['pay_stay_zone_links'] == 0}">Requires Step 1 and 2</small>
+                </h3>
+                <form th:action="@{/admin/upload/restrictions}" method="post" enctype="multipart/form-data" class="upload-form" id="restrictionsForm" th:attr="data-locked=${counts['parking_bays'] == 0 or counts['pay_stay_zone_links'] == 0}">
                     <input type="hidden" name="progressId" id="restrictionsProgressId">
                     <div class="upload-area" onclick="document.getElementById('restrictionsFile').click()">
                         <i class="fas fa-cloud-upload-alt"></i>
                         <h4>Drop the CSV file here</h4>
                         <p>or click to browse files</p>
-                        <input type="file" id="restrictionsFile" name="file" class="file-input" accept=".csv" required>
+                        <input type="file" id="restrictionsFile" name="file" class="file-input" accept=".csv" required th:attr="disabled=${counts['parking_bays'] == 0 or counts['pay_stay_zone_links'] == 0}">
                     </div>
                     
                     <div id="restrictionsFileInfo" class="file-info" style="display: none;">
@@ -190,7 +198,7 @@
                     </div>
                     
                     <div class="text-center">
-                        <button type="submit" class="upload-btn" id="restrictionsUploadBtn" disabled>
+                        <button type="submit" class="upload-btn" id="restrictionsUploadBtn" th:attr="disabled=${counts['parking_bays'] == 0 or counts['pay_stay_zone_links'] == 0}">
                             <i class="fas fa-upload me-2"></i>Upload Restrictions
                         </button>
                         
@@ -238,7 +246,10 @@
                 if (file) {
                     fileName.textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
                     fileInfo.style.display = 'block';
-                    uploadBtn.disabled = false;
+                    // Respect sequence locking: only enable if not locked
+                    if (!fileInput.disabled && !(form.dataset.locked === 'true')) {
+                        uploadBtn.disabled = false;
+                    }
                     uploadArea.style.borderColor = 'var(--parkpie-green)';
                     uploadArea.style.background = 'rgba(139, 154, 71, 0.1)';
                 }

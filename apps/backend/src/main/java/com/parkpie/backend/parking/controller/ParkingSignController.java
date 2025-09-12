@@ -5,7 +5,6 @@ import com.parkpie.backend.parking.service.ParkingSignService;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Positive;
-import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,11 +19,6 @@ public class ParkingSignController {
 
     public ParkingSignController(ParkingSignService service) {
         this.service = service;
-    }
-
-    @PostMapping(consumes = "application/json")
-    public ResponseEntity<ParkingSignDto.SignView> create(@Validated @RequestBody ParkingSignDto.CreateRequest request) {
-        return ResponseEntity.ok(service.create(request));
     }
 
     @GetMapping("/near")

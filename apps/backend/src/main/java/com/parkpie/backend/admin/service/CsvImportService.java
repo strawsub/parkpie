@@ -172,7 +172,11 @@ public class CsvImportService {
                     LocalTime startT = parseFlexibleTime(r.get("start_time"));
                     LocalTime endT = parseFlexibleTime(r.get("end_time"));
 
-                    int minStay = Integer.parseInt(r.get("minimum_stay").trim());
+                    Integer minStay = null;
+                    String minStayRaw = r.get("minimum_stay");
+                    if (minStayRaw != null && !minStayRaw.trim().isEmpty()) {
+                        minStay = Integer.parseInt(minStayRaw.trim());
+                    }
                     int maxStay = Integer.parseInt(r.get("maximum_stay").trim());
                     int cents = parseCents(r.get("cost_per_hour"));
                     String dowName = nullIfBlank(r.get("day_of_week_name"));

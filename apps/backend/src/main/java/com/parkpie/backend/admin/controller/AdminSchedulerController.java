@@ -1,6 +1,8 @@
 package com.parkpie.backend.admin.controller;
 
 import com.parkpie.backend.admin.service.SchedulerSettingsService;
+import com.parkpie.backend.api.service.AvailabilityFetchLog;
+import com.parkpie.backend.api.service.AvailabilityFetchLogRepository;
 import com.parkpie.backend.api.service.AvailabilityJobRunner;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -9,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @Controller
@@ -17,10 +20,14 @@ public class AdminSchedulerController {
 
     private final SchedulerSettingsService settings;
     private final AvailabilityJobRunner runner;
+    private final AvailabilityFetchLogRepository logRepo;
 
-    public AdminSchedulerController(SchedulerSettingsService settings, AvailabilityJobRunner runner) {
+    public AdminSchedulerController(SchedulerSettingsService settings,
+                                    AvailabilityJobRunner runner,
+                                    AvailabilityFetchLogRepository logRepo) {
         this.settings = settings;
         this.runner = runner;
+        this.logRepo = logRepo;
     }
 
     @GetMapping
@@ -33,6 +40,7 @@ public class AdminSchedulerController {
         model.addAttribute("lastStatus", settings.getLastStatus());
         model.addAttribute("lastError", settings.getLastError());
         model.addAttribute("runCount", settings.getRunCount());
+        model.addAttribute("logs", logRepo.findTop50ByOrderByStartedAtDesc());
         return "admin/scheduler";
     }
 
@@ -55,7 +63,7 @@ public class AdminSchedulerController {
         try {
             settings.setEnabled(settings.isEnabled()); // no-op to keep state
             settings.markStart();
-            String status = runner.runOnce();
+            String status = runner.runOnce("manual");
             settings.markEndSuccess(status);
         } catch (Exception e) {
             settings.markEndError(e.getMessage());
@@ -81,5 +89,10 @@ public class AdminSchedulerController {
         m.put("runCount", settings.getRunCount());
         return ResponseEntity.ok(m);
     }
-}
 
+    @GetMapping("/logs")
+    @ResponseBody
+    public List<AvailabilityFetchLog> logs() {
+        return logRepo.findTop50ByOrderByStartedAtDesc();
+    }
+}

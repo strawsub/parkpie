@@ -9,20 +9,22 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.parkpie.backend.api.service.APIDatabaseService;
+import com.parkpie.backend.api.service.AvailabilityJobRunner;
 
 @Controller
 public class APIServices {
     private final APIDatabaseService dbService;
+    private final AvailabilityJobRunner runner;
 
-    public APIServices(APIDatabaseService dbService) {
+    public APIServices(APIDatabaseService dbService, AvailabilityJobRunner runner) {
         this.dbService = dbService;
+        this.runner = runner;
     }
 
     @GetMapping("/api/updateavailability")
     public String landingUpdateAvailability(Model model) {
-        dbService.downloadCSV();
-        model.addAttribute("dataList", dbService.getRows());
-        dbService.updateDatabase();
+        String status = runner.runOnce("api");
+        model.addAttribute("status", status);
         return "api/landing";
     }
 

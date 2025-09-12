@@ -31,7 +31,7 @@ public class AvailabilityScheduler {
         if (!settings.markRunning()) return;
         try {
             settings.markStart();
-            String status = runner.runOnce();
+            String status = runner.runOnce("auto");
             settings.markEndSuccess(status);
         } catch (Exception e) {
             settings.markEndError(e.getMessage());
@@ -40,4 +40,3 @@ public class AvailabilityScheduler {
         }
     }
 }
-

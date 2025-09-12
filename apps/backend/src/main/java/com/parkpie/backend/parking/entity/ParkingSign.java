@@ -1,73 +1,79 @@
 package com.parkpie.backend.parking.entity;
 
 import jakarta.persistence.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import org.locationtech.jts.geom.Point;
 
-import java.time.Instant;
+import java.time.LocalTime;
 
 @Entity
-@Table(name = "parking_signs")
+@Table(name = "parking_signs",
+       uniqueConstraints = @UniqueConstraint(name = "uq_sign_zone_window",
+               columnNames = {"zone_number","day_of_week","start_time","end_time"}))
 public class ParkingSign {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 500)
-    private String text;
+    // Derived attributes
+    @Column(name = "zone_number")
+    private Integer zoneNumber; // from parking_bay_realtime.zone_number
 
-    // Requires hibernate-spatial + PostGIS; SRID 4326 = WGS84 (lat/lng)
+    // bay_count removed; rely on occupancy_percent + geometry
+
+    // Pin location for frontend
     @Column(columnDefinition = "geometry(Point,4326)")
     @JdbcTypeCode(SqlTypes.GEOMETRY)
     private Point location;
 
-    @CreationTimestamp
-    private Instant createdAt;
+    // Restriction details (copied from pay_stay_restrictions)
+    @Column(name = "day_of_week")
+    private Integer dayOfWeek;
 
-    @UpdateTimestamp
-    private Instant updatedAt;
+    @Column(name = "start_time")
+    private LocalTime startTime;
 
-    public Long getId() {
-        return id;
-    }
+    @Column(name = "end_time")
+    private LocalTime endTime;
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    @Column(name = "maximum_stay_minutes")
+    private Integer maximumStayMinutes;
 
-    public String getText() {
-        return text;
-    }
+    // Percentage (0..1) of bays with Present status in this zone
+    @Column(name = "occupancy_percent")
+    private Double occupancyPercent;
 
-    public void setText(String text) {
-        this.text = text;
-    }
+    // Reflects realtime lastupdated (MAX per zone)
+    @Column(name = "updated_at")
+    private java.time.LocalDateTime updatedAt;
 
-    public Point getLocation() {
-        return location;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public void setLocation(Point location) {
-        this.location = location;
-    }
+    public Integer getZoneNumber() { return zoneNumber; }
+    public void setZoneNumber(Integer zoneNumber) { this.zoneNumber = zoneNumber; }
 
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
 
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
+    public Point getLocation() { return location; }
+    public void setLocation(Point location) { this.location = location; }
 
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
+    public Integer getDayOfWeek() { return dayOfWeek; }
+    public void setDayOfWeek(Integer dayOfWeek) { this.dayOfWeek = dayOfWeek; }
 
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
-    }
+    public LocalTime getStartTime() { return startTime; }
+    public void setStartTime(LocalTime startTime) { this.startTime = startTime; }
+
+    public LocalTime getEndTime() { return endTime; }
+    public void setEndTime(LocalTime endTime) { this.endTime = endTime; }
+
+    public Integer getMaximumStayMinutes() { return maximumStayMinutes; }
+    public void setMaximumStayMinutes(Integer maximumStayMinutes) { this.maximumStayMinutes = maximumStayMinutes; }
+
+    public Double getOccupancyPercent() { return occupancyPercent; }
+    public void setOccupancyPercent(Double occupancyPercent) { this.occupancyPercent = occupancyPercent; }
+
+    public java.time.LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(java.time.LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }
