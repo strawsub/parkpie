@@ -35,7 +35,7 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState> {
   DateTime? _stopCandidateStart;
 
   // Tunables
-  static const double WIN_SEC = 5.0;                 // window seconds
+  static const double winSec = 5.0;                  // window seconds
   static const double stillRmsMaxIn  = 0.05;         // enter stillness
   static const double stillRmsMaxOut = 0.07;         // exit stillness (hysteresis)
   static const double driveRmsMin    = 0.08;         // clearly moving
@@ -44,8 +44,8 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState> {
   static const double quietRatioIn  = 0.80;          // enter stillness
   static const double quietRatioOut = 0.60;          // exit stillness
 
-  static const double T_still_for_candidate = 6.0;   // become candidate
-  static const double T_confirm_still       = 30.0;  // confirm parked (no-spike version)
+  static const double tStillForCandidate = 6.0;      // become candidate
+  static const double tConfirmStill       = 30.0;    // confirm parked (no-spike version)
 
   // Gyro helper: if big rotation -> driving
   static const double gyroMoveThresh = 1.0;          // rad/s approx
@@ -62,12 +62,12 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState> {
     });
 
     // Subscribe sensors
-    _gyroSub = gyroscopeEvents.listen((e) {
+    _gyroSub = gyroscopeEventStream().listen((e) {
       add(GyroscopeChanged(x: e.x, y: e.y, z: e.z));
     });
 
     // Use user accelerometer (gravity removed)
-    _accSub = userAccelerometerEvents.listen((e) {
+    _accSub = userAccelerometerEventStream().listen((e) {
       add(AccelerometerChanged(x: e.x, y: e.y, z: e.z, t: DateTime.now()));
     });
 
@@ -154,7 +154,7 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState> {
       if (quietHit || rmsHit) {
         _stopCandidateStart ??= now;
         final dt = _secsSince(_stopCandidateStart!, now);
-        if (dt >= T_still_for_candidate) {
+        if (dt >= tStillForCandidate) {
           _inStopCandidate = true;
         }
       } else {
@@ -170,7 +170,7 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState> {
     // vote based on total stillness since candidate start
     if (_inStopCandidate && _stopCandidateStart != null) {
       final dtAll = _secsSince(_stopCandidateStart!, now);
-      if (dtAll >= T_confirm_still && (quietHit || rmsHit)) {
+      if (dtAll >= tConfirmStill && (quietHit || rmsHit)) {
         _votes['accelerometer'] = SensorVote.parked;
       } else {
         _votes['accelerometer'] = SensorVote.driving;
@@ -209,7 +209,7 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState> {
   }
 
   void _evictOld(DateTime now) {
-    final cutoff = now.millisecondsSinceEpoch - (WIN_SEC * 1000).toInt();
+    final cutoff = now.millisecondsSinceEpoch - (winSec * 1000).toInt();
     while (_win.isNotEmpty && _win.first.t.millisecondsSinceEpoch < cutoff) {
       final old = _win.removeFirst();
       _sumSq -= old.mag * old.mag;

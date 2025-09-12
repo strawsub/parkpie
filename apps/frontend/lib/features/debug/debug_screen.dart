@@ -41,12 +41,14 @@ class _DebugScreenState extends State<DebugScreen> {
   double get _rms {
     if (_magBuf.isEmpty) return 0;
     double sumSq = 0;
-    for (final m in _magBuf) sumSq += m * m;
+    for (final m in _magBuf) {
+      sumSq += m * m;
+    }
     return math.sqrt(sumSq / _magBuf.length);
   }
 
   // API diagnostics
-  String _apiBaseShown = const String.fromEnvironment(
+  final String _apiBaseShown = const String.fromEnvironment(
     'API_BASE_URL',
     // Default to your Azure endpoint for on-device testing
     defaultValue: 'https://parkpie-90018.azurewebsites.net',
@@ -58,7 +60,7 @@ class _DebugScreenState extends State<DebugScreen> {
   void initState() {
     super.initState();
     // Only subscribe to sensor here; do not read providers in initState
-    _accSub = userAccelerometerEvents.listen((e) {
+    _accSub = userAccelerometerEventStream().listen((e) {
       final mag = math.sqrt(e.x * e.x + e.y * e.y + e.z * e.z);
       setState(() {
         _ax = e.x;

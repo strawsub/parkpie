@@ -114,8 +114,8 @@ class MapScreen extends StatelessWidget {
                 ),
               );
             },
-            child: const Icon(Icons.bug_report),
             tooltip: 'Debug',
+            child: const Icon(Icons.bug_report),
           ),
         ],
       ),
