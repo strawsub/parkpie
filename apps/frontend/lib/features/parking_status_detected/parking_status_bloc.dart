@@ -21,6 +21,9 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState> {
 
   // Voting map: sensor name -> latest vote
   final Map<String, SensorVote> _votes = {};
+  
+  // Public getter for current votes (read-only)
+  Map<String, SensorVote> get currentVotes => Map.unmodifiable(_votes);
 
   // Sliding window samples of |a| (gravity removed)
   final ListQueue<_Sample> _win = ListQueue();

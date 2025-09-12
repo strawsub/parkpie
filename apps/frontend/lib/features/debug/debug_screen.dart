@@ -268,6 +268,58 @@ class _DebugScreenState extends State<DebugScreen> {
               },
             ),
           ),
+
+          const SizedBox(height: 8),
+
+          // Sensor Voting Display
+          Card(
+            child: (parkingBloc == null)
+                ? const ListTile(
+              title: Text('🗳️ Sensor Votes'),
+              subtitle: Text('⚠️ ParkingBloc provider not found'),
+            )
+                : BlocBuilder<ParkingBloc, ParkingState>(
+              bloc: parkingBloc,
+              builder: (context, state) {
+                final votes = parkingBloc.currentVotes;
+                final drivingVotes = votes.values.where((v) => v.toString().contains('driving')).length;
+                final parkedVotes = votes.values.where((v) => v.toString().contains('parked')).length;
+
+                // Build individual sensor vote display
+                List<String> sensorLines = [];
+                
+                // Check each possible sensor
+                if (votes.containsKey('accelerometer')) {
+                  final vote = votes['accelerometer'].toString().split('.').last;
+                  sensorLines.add('• accelerometer → $vote ${vote == 'driving' ? '✅' : '🅿️'}');
+                } else {
+                  sensorLines.add('• accelerometer → (no vote) ⚪');
+                }
+                
+                if (votes.containsKey('gyroscope')) {
+                  final vote = votes['gyroscope'].toString().split('.').last;
+                  sensorLines.add('• gyroscope → $vote ${vote == 'driving' ? '✅' : '🅿️'}');
+                } else {
+                  sensorLines.add('• gyroscope → (no vote) ⚪');
+                }
+                
+                if (votes.containsKey('bluetooth_audio')) {
+                  final vote = votes['bluetooth_audio'].toString().split('.').last;
+                  sensorLines.add('• bluetooth_audio → $vote ${vote == 'driving' ? '✅' : '🅿️'}');
+                } else {
+                  sensorLines.add('• bluetooth_audio → (no vote) ⚪');
+                }
+
+                final voteCountText = 'Driving: $drivingVotes | Parked: $parkedVotes';
+                final sensorText = sensorLines.join('\n');
+
+                return ListTile(
+                  title: const Text('🗳️ Sensor Votes'),
+                  subtitle: Text('$voteCountText\n$sensorText'),
+                );
+              },
+            ),
+          ),
         ],
       ),
     );
