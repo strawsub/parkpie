@@ -10,6 +10,7 @@ import 'package:frontend/features/map/pin/pin_state.dart';
 import 'package:frontend/features/parking_status_detected/parking_status_bloc.dart';
 import 'package:frontend/features/parking_status_detected/parking_status_event.dart';
 import 'package:frontend/features/parking_status_detected/parking_status_state.dart';
+import 'package:frontend/features/bluetooth_detection/audio_bluetooth_service.dart';
 
 // Helper: safely read a Provider/Bloc; returns null if not found (no exception)
 T? maybeReadBloc<T>(BuildContext context) {
@@ -30,6 +31,9 @@ class _DebugScreenState extends State<DebugScreen> {
   // Sensor subscription
   StreamSubscription<UserAccelerometerEvent>? _accSub;
   double _ax = 0, _ay = 0, _az = 0;
+
+  // Bluetooth service
+  final AudioBluetoothService _bluetoothService = AudioBluetoothService();
 
   // Simple RMS over the last N samples
   final int _winN = 50;
@@ -64,11 +68,15 @@ class _DebugScreenState extends State<DebugScreen> {
         if (_magBuf.length > _winN) _magBuf.removeAt(0);
       });
     });
+    
+    // Initialize Bluetooth service
+    _bluetoothService.initialize();
   }
 
   @override
   void dispose() {
     _accSub?.cancel();
+    _bluetoothService.dispose();
     super.dispose();
   }
 
@@ -220,6 +228,44 @@ class _DebugScreenState extends State<DebugScreen> {
                 'ax=${_ax.toStringAsFixed(3)}, ay=${_ay.toStringAsFixed(3)}, az=${_az.toStringAsFixed(3)}\n'
                     'RMS≈${_rms.toStringAsFixed(3)} (window $_winN)',
               ),
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          // Bluetooth status
+          Card(
+            child: StreamBuilder<BluetoothStatus>(
+              stream: _bluetoothService.statusStream,
+              initialData: _bluetoothService.getCurrentStatus(),
+              builder: (context, snapshot) {
+                final status = snapshot.data;
+                if (status == null) {
+                  return const ListTile(
+                    title: Text('Bluetooth Status'),
+                    subtitle: Text('Initializing...'),
+                  );
+                }
+
+                if (status.error != null) {
+                  return ListTile(
+                    title: const Text('Bluetooth Status'),
+                    subtitle: Text('❌ Error: ${status.error}'),
+                  );
+                }
+
+                final bluetoothIcon = status.isBluetoothConnected ? '🛜' : '📱';
+                final routeText = status.isBluetoothConnected ? 'Bluetooth Audio' : 'Phone Audio';
+                final currentRouteInfo = 'Current: ${status.currentRouteName} (${status.currentRouteType})';
+                final availableInfo = status.bluetoothDeviceNames.isNotEmpty 
+                    ? 'Available Bluetooth: ${status.bluetoothDeviceNames.join(', ')}'
+                    : 'No Bluetooth audio devices available';
+
+                return ListTile(
+                  title: Text('Audio Route $bluetoothIcon'),
+                  subtitle: Text('$routeText\n$currentRouteInfo\n$availableInfo'),
+                );
+              },
             ),
           ),
         ],
