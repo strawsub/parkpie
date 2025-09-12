@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'parking_status_event.dart';
 import 'parking_status_state.dart';
+import '../bluetooth_detection/audio_bluetooth_service.dart';
 
 /// Voting-based aggregator:
 /// - Accelerometer vote = your sliding-window stillness algorithm
@@ -13,9 +14,16 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState> {
   // Subscriptions
   StreamSubscription<GyroscopeEvent>? _gyroSub;
   StreamSubscription<UserAccelerometerEvent>? _accSub;
+  StreamSubscription<BluetoothStatus>? _bluetoothSub;
+  
+  // Bluetooth service
+  final AudioBluetoothService _bluetoothService = AudioBluetoothService();
 
   // Voting map: sensor name -> latest vote
   final Map<String, SensorVote> _votes = {};
+  
+  // Public getter for current votes (read-only)
+  Map<String, SensorVote> get currentVotes => Map.unmodifiable(_votes);
 
   // Sliding window samples of |a| (gravity removed)
   final ListQueue<_Sample> _win = ListQueue();
@@ -46,6 +54,7 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState> {
     // Handlers
     on<GyroscopeChanged>(_onGyro);
     on<AccelerometerChanged>(_onAcc);
+    on<BluetoothAudioChanged>(_onBluetoothAudio);
     on<UserConfirmedParking>((e, emit) => emit(ParkedState()));
     on<ResetParking>((e, emit) {
       emit(DrivingState());
@@ -60,6 +69,19 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState> {
     // Use user accelerometer (gravity removed)
     _accSub = userAccelerometerEvents.listen((e) {
       add(AccelerometerChanged(x: e.x, y: e.y, z: e.z, t: DateTime.now()));
+    });
+
+    // Initialize and subscribe to Bluetooth audio service
+    _bluetoothService.initialize().then((_) {
+      _bluetoothSub = _bluetoothService.statusStream.listen((status) {
+        add(BluetoothAudioChanged(
+          isConnected: status.isBluetoothConnected,
+          deviceName: status.currentRouteName,
+        ));
+      });
+    }).catchError((e) {
+      // Bluetooth service initialization failed, continue without it
+      // This ensures the app works even if audio route detection fails
     });
   }
 
@@ -160,6 +182,25 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState> {
     _updateState(emit);
   }
 
+  // --- Bluetooth Audio: connection state -> driving/parked vote ---
+  void _onBluetoothAudio(BluetoothAudioChanged e, Emitter<ParkingState> emit) {
+    // Previous state for comparison
+    final hadBluetoothVote = _votes.containsKey('bluetooth_audio');
+    final previouslyConnected = hadBluetoothVote ? _votes['bluetooth_audio'] == SensorVote.driving : false;
+    
+    if (e.isConnected) {
+      // User connected to Bluetooth audio (likely getting in car) -> driving
+      _votes['bluetooth_audio'] = SensorVote.driving;
+    } else if (previouslyConnected) {
+      // User was connected and now disconnected (likely parked/turned off car) -> parked
+      _votes['bluetooth_audio'] = SensorVote.parked;
+    } else {
+      // No Bluetooth device connected and wasn't connected before -> neutral (no vote)
+      _votes.remove('bluetooth_audio');
+    }
+    _updateState(emit);
+  }
+
   // ==== sliding window helpers ====
   void _appendSample(DateTime t, double mag) {
     _win.addLast(_Sample(t, mag));
@@ -197,6 +238,8 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState> {
   Future<void> close() async {
     await _gyroSub?.cancel();
     await _accSub?.cancel();
+    await _bluetoothSub?.cancel();
+    await _bluetoothService.dispose();
     return super.close();
   }
 }
