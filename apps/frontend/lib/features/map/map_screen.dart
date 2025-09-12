@@ -26,7 +26,7 @@ class _MapScreenState extends State<MapScreen> {
     return 'http://localhost:8081';
   }
 
-  late final String _apiUrl = '${_apiBase()}/api/map/getlocforpin';
+  late final String _apiUrl = '${_apiBase()}/api/map/getsignforpin';
 
   bool _loading = true;
   String? _error;
@@ -136,21 +136,16 @@ class _MapScreenState extends State<MapScreen> {
             ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _loadPins,
-        icon: const Icon(Icons.refresh),
-        label: const Text('Reload'),
-      ),
     );
   }
 }
 
 class Pin {
-  final dynamic kerbsideId;
+  final dynamic occupancy_percent;
   final double? lat;
   final double? lng;
 
-  const Pin({required this.kerbsideId, required this.lat, required this.lng});
+  const Pin({required this.occupancy_percent, required this.lat, required this.lng});
 
   factory Pin.fromJson(Map<String, dynamic> json) {
     double? toD(dynamic v) => v == null
@@ -158,7 +153,7 @@ class Pin {
         : (v is num ? v.toDouble() : double.tryParse(v.toString()));
 
     return Pin(
-      kerbsideId: json['kerbsideid'],
+      occupancy_percent: json['occupancy_percent'],
       lat: toD(json['lat']),
       lng: toD(json['lng']),
     );

@@ -86,21 +86,21 @@ public class APIDatabaseService {
         }
     }
 
-    private List<Map<String, Object>> allLoc = new ArrayList<>();
+    // Get all signs from parking_signs table
+    private List<Map<String, Object>> allPin = new ArrayList<>();
 
-    public List<Map<String, Object>> getAllFromLocationTable() {
+    public List<Map<String, Object>> getSignForPin() {
         String sql = """
-                SELECT kerbside_id,
-                       lat,
-                       lng
-                FROM public.parking_bays
-                LiMIT 1000;
+                SELECT
+                    ST_Y(location::geometry) AS lat,
+                    ST_X(location::geometry) AS lng,
+                    occupancy_percent
+                FROM public.parking_signs
+                GROUP BY location, occupancy_percent;
                 """;
-        allLoc = jdbc.queryForList(sql);
-        return allLoc;
+
+        allPin = jdbc.queryForList(sql);
+        return allPin;
     }
 
-    public List<Map<String, Object>> getAllLoc() {
-        return allLoc;
-    }
 }

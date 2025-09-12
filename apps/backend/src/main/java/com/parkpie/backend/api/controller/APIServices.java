@@ -27,8 +27,8 @@ public class APIServices {
     }
 
     @ResponseBody
-    @GetMapping("/api/map/getlocforpin")
+    @GetMapping("/api/map/getsignforpin")
     public List<Map<String, Object>> getLocForPin() {
-        return dbService.getAllFromLocationTable();
+        return dbService.getSignForPin();
     }
 }
