@@ -9,7 +9,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.time.DayOfWeek;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -90,16 +92,32 @@ public class APIDatabaseService {
     private List<Map<String, Object>> allPin = new ArrayList<>();
 
     public List<Map<String, Object>> getSignForPin() {
+
+        // Get current date
+        LocalDate today = LocalDate.now();
+
+        // Get DayOfWeek (MONDAY=1, ... SUNDAY=7)
+        DayOfWeek dow = today.getDayOfWeek();
+        int dowNo = dow.getValue();
+        System.out.println(dowNo);
+        System.out.println("_________________________________");
+
         String sql = """
                 SELECT
                     ST_Y(location::geometry) AS lat,
-                    ST_X(location::geometry) AS lng,
-                    occupancy_percent
-                FROM public.parking_signs
-                GROUP BY location, occupancy_percent;
-                """;
-
-        allPin = jdbc.queryForList(sql);
+                    ST_X(location::geometry) AS lng,,
+                    day_of_week,
+                    occupancy_percent,
+                    start_time,
+                    end_time,
+                    maximum_stay_minutes
+                FROM public.parking_signs AS ps
+                WHERE day_of_week = ?
+                        """;
+        System.out.println("SQL:\n" + sql);
+        System.out.println("Param dowNo = " + dowNo);
+        System.out.println("_________________________________");
+        allPin = jdbc.queryForList(sql, dowNo);
         return allPin;
     }
 

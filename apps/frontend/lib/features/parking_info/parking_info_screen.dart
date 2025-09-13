@@ -3,8 +3,19 @@ import 'package:latlong2/latlong.dart';
 
 class ParkingInfoSheet extends StatelessWidget {
   final LatLng location;
+  final double? occupancyPercent;
+  final String? startTime;
+  final String? endTime;
+  final int? maximumStayMinutes;
 
-  const ParkingInfoSheet({super.key, required this.location});
+  const ParkingInfoSheet({
+    super.key,
+    required this.location,
+    this.occupancyPercent,
+    this.startTime,
+    this.endTime,
+    this.maximumStayMinutes,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -56,9 +67,14 @@ class ParkingInfoSheet extends StatelessWidget {
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                         const SizedBox(height: 8),
-                        const Text('2P - 8AM to 6PM'),
-                        const Text('Mon - Fri'),
-                        const Text('Permit Holders Excepted'),
+                        if (occupancyPercent != null)
+                          Text(
+                            'Occupancy: ${occupancyPercent!.toStringAsFixed(1)}%',
+                          ),
+                        if (startTime != null && endTime != null)
+                          Text('Hours: $startTime - $endTime'),
+                        if (maximumStayMinutes != null)
+                          Text('Max Stay: $maximumStayMinutes min'),
                       ],
                     ),
                   ),

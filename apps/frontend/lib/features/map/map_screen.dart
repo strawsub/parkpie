@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter_map/flutter_map.dart';
 import 'package:frontend/features/parking_info/parking_info_screen.dart';
 import 'package:latlong2/latlong.dart';
@@ -22,7 +23,8 @@ class _MapScreenState extends State<MapScreen> {
     const fromEnv = String.fromEnvironment('API_BASE_URL');
     if (fromEnv.isNotEmpty) return fromEnv;
     if (kIsWeb) return 'http://localhost:8081';
-    if (defaultTargetPlatform == TargetPlatform.android) return 'http://10.0.2.2:8081';
+    if (defaultTargetPlatform == TargetPlatform.android)
+      return 'http://10.0.2.2:8081';
     return 'http://localhost:8081';
   }
 
@@ -80,7 +82,13 @@ class _MapScreenState extends State<MapScreen> {
               context: context,
               isScrollControlled: true,
               backgroundColor: Colors.transparent,
-              builder: (context) => ParkingInfoSheet(location: ll),
+              builder: (context) => ParkingInfoSheet(
+                location: ll,
+                occupancyPercent: p.occupancyPercent,
+                startTime: p.startTime,
+                endTime: p.endTime,
+                maximumStayMinutes: p.maximumStayMinutes,
+              ),
             );
           },
           child: SvgPicture.asset(
@@ -141,21 +149,37 @@ class _MapScreenState extends State<MapScreen> {
 }
 
 class Pin {
-  final dynamic occupancy_percent;
   final double? lat;
   final double? lng;
+  final double? occupancyPercent;
+  final String? startTime;
+  final String? endTime;
+  final int? maximumStayMinutes;
 
-  const Pin({required this.occupancy_percent, required this.lat, required this.lng});
+  const Pin({
+    required this.lat,
+    required this.lng,
+    this.occupancyPercent,
+    this.startTime,
+    this.endTime,
+    this.maximumStayMinutes,
+  });
 
   factory Pin.fromJson(Map<String, dynamic> json) {
     double? toD(dynamic v) => v == null
         ? null
         : (v is num ? v.toDouble() : double.tryParse(v.toString()));
 
+    int? toI(dynamic v) =>
+        v == null ? null : (v is num ? v.toInt() : int.tryParse(v.toString()));
+
     return Pin(
-      occupancy_percent: json['occupancy_percent'],
       lat: toD(json['lat']),
       lng: toD(json['lng']),
+      occupancyPercent: toD(json['occupancy_percent']),
+      startTime: json['start_time']?.toString(),
+      endTime: json['end_time']?.toString(),
+      maximumStayMinutes: toI(json['maximum_stay_minutes']),
     );
   }
 }
