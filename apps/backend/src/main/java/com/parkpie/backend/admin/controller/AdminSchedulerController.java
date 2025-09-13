@@ -1,15 +1,15 @@
 package com.parkpie.backend.admin.controller;
 
 import com.parkpie.backend.admin.service.SchedulerSettingsService;
-import com.parkpie.backend.api.service.AvailabilityFetchLog;
-import com.parkpie.backend.api.service.AvailabilityFetchLogRepository;
+import com.parkpie.backend.api.entity.AvailabilityFetchLog;
+import com.parkpie.backend.api.repository.AvailabilityFetchLogRepository;
 import com.parkpie.backend.api.service.AvailabilityJobRunner;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -80,10 +80,10 @@ public class AdminSchedulerController {
         m.put("enabled", settings.isEnabled());
         m.put("intervalMinutes", settings.getIntervalMinutes());
         m.put("running", settings.isRunning());
-        Instant s = settings.getLastRunStart();
-        Instant e = settings.getLastRunEnd();
-        m.put("lastRunStart", s != null ? s.toString() : null);
-        m.put("lastRunEnd", e != null ? e.toString() : null);
+        LocalDateTime s = settings.getLastRunStart();
+        LocalDateTime e = settings.getLastRunEnd();
+        m.put("lastRunStart", s);
+        m.put("lastRunEnd", e);
         m.put("lastStatus", settings.getLastStatus());
         m.put("lastError", settings.getLastError());
         m.put("runCount", settings.getRunCount());

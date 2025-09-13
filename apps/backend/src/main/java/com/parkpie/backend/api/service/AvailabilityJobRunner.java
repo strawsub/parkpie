@@ -1,15 +1,11 @@
 package com.parkpie.backend.api.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.parkpie.backend.api.entity.AvailabilityFetchLog;
+import com.parkpie.backend.api.repository.AvailabilityFetchLogRepository;
 import org.springframework.stereotype.Service;
-
-import java.time.Instant;
 
 @Service
 public class AvailabilityJobRunner {
-
-    private static final Logger log = LoggerFactory.getLogger(AvailabilityJobRunner.class);
 
     private final APIDatabaseService dbService;
     private final ParkingSignAggregationService signAggService;
@@ -37,20 +33,13 @@ public class AvailabilityJobRunner {
         entry.setStatus("RUNNING");
         entry = logRepo.save(entry);
         try {
-            log.info("[AvailabilityJob] ({}) Downloading CSV...", source);
             dbService.downloadCSV();
             int count = dbService.getRows() != null ? dbService.getRows().size() : 0;
-            log.info("[AvailabilityJob] {} recent rows fetched.", count);
-
-            log.info("[AvailabilityJob] Updating realtime table...");
             dbService.updateDatabase();
-
-            log.info("[AvailabilityJob] Rebuilding zone signs...");
             int signs = signAggService.rebuildFromRealtime();
 
             long took = System.currentTimeMillis() - t0;
             String status = "Updated " + count + " rows, signs upserted " + signs + " in " + took + " ms";
-            log.info("[AvailabilityJob] {}", status);
 
             entry.setEndedAt(java.time.LocalDateTime.now());
             entry.setRowsFetched(count);
@@ -64,7 +53,6 @@ public class AvailabilityJobRunner {
             entry.setStatus("ERROR");
             entry.setError(e.getMessage());
             logRepo.save(entry);
-            log.error("[AvailabilityJob] Error during run: {}", e.getMessage(), e);
             throw e;
         }
     }

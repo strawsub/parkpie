@@ -1,15 +1,11 @@
 package com.parkpie.backend.api.service;
 
 import com.parkpie.backend.admin.service.SchedulerSettingsService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
 public class AvailabilityScheduler {
-
-    private static final Logger log = LoggerFactory.getLogger(AvailabilityScheduler.class);
 
     private final SchedulerSettingsService settings;
     private final AvailabilityJobRunner runner;

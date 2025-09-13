@@ -1,4 +1,4 @@
-package com.parkpie.backend.api.service;
+package com.parkpie.backend.api.entity;
 
 import jakarta.persistence.*;
 
