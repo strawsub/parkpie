@@ -80,19 +80,22 @@ class PinCubit extends Cubit<PinState> {
 
       final isFresh =
           lastMod != null && DateTime.now().difference(lastMod) <= ttl;
-      if (kDebugMode)
+      if (kDebugMode) {
         print('[PinCubit] Cache fresh (<= ${ttl.inMinutes}m): $isFresh');
+      }
 
       if (isFresh) {
         final cached = await _readCache();
         if (cached != null) {
-          if (kDebugMode)
+          if (kDebugMode) {
             print('[PinCubit] Loaded ${cached.length} pins from CACHE (fresh)');
+          }
           emit(PinLoaded(_pinsFromJsonList(cached)));
           return;
         } else {
-          if (kDebugMode)
+          if (kDebugMode) {
             print('[PinCubit] Cache marked fresh but unreadable.');
+          }
         }
       }
     } catch (e) {
@@ -114,15 +117,17 @@ class PinCubit extends Cubit<PinState> {
       final decoded = jsonDecode(res.body);
       if (decoded is! List) throw Exception('Unexpected JSON shape');
       final pins = _pinsFromJsonList(decoded.cast<Map<String, dynamic>>());
-      if (kDebugMode)
+      if (kDebugMode) {
         print('[PinCubit] Loaded ${pins.length} pins from NETWORK');
+      }
       emit(PinLoaded(pins));
     } catch (e) {
       if (kDebugMode) print('[PinCubit] Network failed: $e');
       final cached = await _readCache();
       if (cached != null) {
-        if (kDebugMode)
+        if (kDebugMode) {
           print('[PinCubit] Falling back to CACHE. Count=${cached.length}');
+        }
         emit(PinLoaded(_pinsFromJsonList(cached)));
       } else {
         if (kDebugMode) print('[PinCubit] No cache available → error');
