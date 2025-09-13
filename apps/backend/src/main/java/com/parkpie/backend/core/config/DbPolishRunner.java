@@ -66,7 +66,6 @@ public class DbPolishRunner implements ApplicationRunner {
         jdbc.execute("ALTER TABLE IF EXISTS public.parking_signs ADD COLUMN IF NOT EXISTS maximum_stay_minutes integer");
         jdbc.execute("ALTER TABLE IF EXISTS public.parking_signs ADD COLUMN IF NOT EXISTS occupancy_percent double precision");
         jdbc.execute("ALTER TABLE IF EXISTS public.parking_signs ADD COLUMN IF NOT EXISTS updated_at timestamp with time zone");
-        jdbc.execute("ALTER TABLE IF EXISTS public.parking_signs DROP COLUMN IF EXISTS created_at");
         jdbc.execute("ALTER TABLE IF EXISTS public.parking_signs DROP COLUMN IF EXISTS status_description");
         jdbc.execute("ALTER TABLE IF EXISTS public.parking_signs DROP COLUMN IF EXISTS lat");
         jdbc.execute("ALTER TABLE IF EXISTS public.parking_signs DROP COLUMN IF EXISTS lng");
@@ -74,7 +73,7 @@ public class DbPolishRunner implements ApplicationRunner {
         jdbc.execute("ALTER TABLE IF EXISTS public.parking_signs DROP COLUMN IF EXISTS bay_count");
 
         // Drop deprecated columns if present
-        jdbc.execute("ALTER TABLE IF EXISTS public.parking_signs DROP COLUMN IF EXISTS text");
+        // 'text' column removed from codebase; no longer referenced
         jdbc.execute("ALTER TABLE IF EXISTS public.parking_signs DROP COLUMN IF EXISTS minimum_stay_minutes");
         jdbc.execute("ALTER TABLE IF EXISTS public.parking_signs DROP COLUMN IF EXISTS day_of_week_name");
 
