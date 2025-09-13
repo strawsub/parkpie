@@ -7,6 +7,7 @@ class ParkingInfoSheet extends StatelessWidget {
   final String? startTime;
   final String? endTime;
   final int? maximumStayMinutes;
+  final String? description;
 
   const ParkingInfoSheet({
     super.key,
@@ -15,6 +16,7 @@ class ParkingInfoSheet extends StatelessWidget {
     this.startTime,
     this.endTime,
     this.maximumStayMinutes,
+    this.description,
   });
 
   @override
@@ -51,7 +53,8 @@ class ParkingInfoSheet extends StatelessWidget {
                 Card(
                   child: ListTile(
                     leading: const Icon(Icons.location_on),
-                    title: Text('${location.latitude}, ${location.longitude}'),
+                    // title: Text('${location.latitude}, ${location.longitude}'),
+                    title: Text('$description'),
                     subtitle: const Text('Location'),
                   ),
                 ),

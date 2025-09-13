@@ -120,24 +120,27 @@ public class APIDatabaseService {
         // Get DayOfWeek (MONDAY=1, ... SUNDAY=7)
         DayOfWeek dow = today.getDayOfWeek();
         int dowNo = dow.getValue();
-        System.out.println(dowNo);
-        System.out.println("_________________________________");
 
         String sql = """
                 SELECT
-                    ST_Y(location::geometry) AS lat,
-                    ST_X(location::geometry) AS lng,,
-                    day_of_week,
-                    occupancy_percent,
-                    start_time,
-                    end_time,
-                    maximum_stay_minutes
+                    ST_Y(ps.location::geometry) AS lat,
+                    ST_X(ps.location::geometry) AS lng,
+                    ps.day_of_week,
+                    ps.occupancy_percent,
+                    ps.start_time,
+                    ps.end_time,
+                    ps.maximum_stay_minutes,
+                    ps.zone_number,
+                    pr.zone_number,
+                    pr.kerbsideid,
+                    pb.kerbside_id,
+                    pb.description
                 FROM public.parking_signs AS ps
-                WHERE day_of_week = ?
+                LEFT JOIN parking_bay_realtime pr ON pr.zone_number=ps.zone_number
+                LEFT JOIN parking_bays pb ON pb.kerbside_id=pr.kerbsideid
+                WHERE ps.day_of_week = ?;
                         """;
-        System.out.println("SQL:\n" + sql);
-        System.out.println("Param dowNo = " + dowNo);
-        System.out.println("_________________________________");
+        
         allPin = jdbc.queryForList(sql, dowNo);
         return allPin;
     }

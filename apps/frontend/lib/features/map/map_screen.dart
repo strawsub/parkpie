@@ -16,12 +16,21 @@ class MapScreen extends StatelessWidget {
 
   final MapController _mapController = MapController();
 
-  void _showParkingInfo(BuildContext context, LatLng location) {
+  void _showParkingInfo(BuildContext context, Pin pin) {
+    final pos = LatLng(pin.lat!, pin.lng!);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => ParkingInfoSheet(location: location),
+      builder: (context) => ParkingInfoSheet(
+        location: pos,
+        occupancyPercent: pin.occupancyPercent,
+        startTime: pin.startTime,
+        endTime: pin.endTime,
+        maximumStayMinutes: pin.maximumStayMinutes,
+        description: pin.description,
+      ),
     );
   }
 
@@ -33,7 +42,7 @@ class MapScreen extends StatelessWidget {
         width: 40,
         height: 40,
         child: GestureDetector(
-          onTap: () => _showParkingInfo(context, pos),
+          onTap: () => _showParkingInfo(context, pin),
           child: SvgPicture.asset(
             'assets/park_sign.svg',
             width: 40,
