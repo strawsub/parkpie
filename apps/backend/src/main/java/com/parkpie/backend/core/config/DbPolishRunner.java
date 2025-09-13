@@ -71,6 +71,8 @@ public class DbPolishRunner implements ApplicationRunner {
         jdbc.execute("ALTER TABLE IF EXISTS public.parking_signs DROP COLUMN IF EXISTS lng");
         jdbc.execute("ALTER TABLE IF EXISTS public.parking_signs DROP COLUMN IF EXISTS cost_per_hour_cents");
         jdbc.execute("ALTER TABLE IF EXISTS public.parking_signs DROP COLUMN IF EXISTS bay_count");
+        // Ensure legacy audit column doesn't reappear
+        jdbc.execute("ALTER TABLE IF EXISTS public.parking_signs DROP COLUMN IF EXISTS created_at");
 
         // Drop deprecated columns if present
         // 'text' column removed from codebase; no longer referenced
