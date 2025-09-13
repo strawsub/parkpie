@@ -175,3 +175,4 @@ apps/frontend/ios/Flutter/Release.xcconfig
 apps/frontend/ios/Runner.xcodeproj/project.pbxproj
 apps/frontend/ios/Runner/Info.plist
 apps/frontend/.metadata
+apps/frontend/pubspec.lock

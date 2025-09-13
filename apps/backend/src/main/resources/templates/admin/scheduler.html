@@ -73,11 +73,6 @@
                     <h3 class="mb-3"><i class="fas fa-info-circle me-2"></i>Status</h3>
                     <ul class="list-unstyled mb-3">
                         <li><strong>Running:</strong> <span id="running" th:text="${running}">false</span></li>
-                        <li><strong>Last Start:</strong> <span id="lastRunStart" th:text="${lastRunStart}">-</span></li>
-                        <li><strong>Last End:</strong> <span id="lastRunEnd" th:text="${lastRunEnd}">-</span></li>
-                        <li><strong>Last Status:</strong> <span id="lastStatus" th:text="${lastStatus}">Never run</span></li>
-                        <li th:if="${lastError}"><strong>Last Error:</strong> <span class="text-danger" id="lastError" th:text="${lastError}"></span></li>
-                        <li><strong>Run Count:</strong> <span id="runCount" th:text="${runCount}">0</span></li>
                     </ul>
                     <form th:action="@{/admin/scheduler/trigger}" method="post" class="d-inline">
                         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
@@ -85,6 +80,42 @@
                             <i class="fas fa-play me-2"></i>Run Now
                         </button>
                     </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mt-2">
+            <div class="col-12">
+                <div class="info-card">
+                    <h3 class="mb-3"><i class="fas fa-list me-2"></i>Update History</h3>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped align-middle">
+                            <thead>
+                            <tr>
+                                <th>Started</th>
+                                <th>Ended</th>
+                                <th>Source</th>
+                                <th>Rows</th>
+                                <th>Signs</th>
+                                <th>Status</th>
+                                <th>Message</th>
+                                <th>Error</th>
+                            </tr>
+                            </thead>
+                            <tbody id="logsBody">
+                            <tr th:each="l : ${logs}">
+                                <td th:text="${l.startedAt}"></td>
+                                <td th:text="${l.endedAt}"></td>
+                                <td th:text="${l.source}"></td>
+                                <td th:text="${l.rowsFetched}"></td>
+                                <td th:text="${l.signsUpserted}"></td>
+                                <td th:text="${l.status}"></td>
+                                <td th:text="${l.message}"></td>
+                                <td><span class="text-danger" th:text="${l.error}"></span></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -106,14 +137,34 @@
             if (!res.ok) return;
             const s = await res.json();
             document.getElementById('running').textContent = s.running;
-            document.getElementById('lastRunStart').textContent = s.lastRunStart || '-';
-            document.getElementById('lastRunEnd').textContent = s.lastRunEnd || '-';
-            document.getElementById('lastStatus').textContent = s.lastStatus || '';
-            const err = document.getElementById('lastError');
-            if (err) err.textContent = s.lastError || '';
-            document.getElementById('runCount').textContent = s.runCount || 0;
         } catch (e) { /* ignore */ }
     }, 10000);
+
+    // Poll recent logs
+    setInterval(async () => {
+        try {
+            const res = await fetch('/admin/scheduler/logs');
+            if (!res.ok) return;
+            const arr = await res.json();
+            const tbody = document.getElementById('logsBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            for (const l of arr) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${l.startedAt ?? ''}</td>
+                    <td>${l.endedAt ?? ''}</td>
+                    <td>${l.source ?? ''}</td>
+                    <td>${l.rowsFetched ?? ''}</td>
+                    <td>${l.signsUpserted ?? ''}</td>
+                    <td>${l.status ?? ''}</td>
+                    <td>${l.message ?? ''}</td>
+                    <td><span class="text-danger">${l.error ?? ''}</span></td>
+                `;
+                tbody.appendChild(tr);
+            }
+        } catch (e) { /* ignore */ }
+    }, 15000);
 </script>
 </body>
 </html>

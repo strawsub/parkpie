@@ -33,7 +33,7 @@ dependencies:
 
   http: ^1.2.2
   flutter_riverpod: ^2.5.1
-  
+
   # for map
   flutter_map: ^8.2.1
   latlong2: ^0.9.1
@@ -55,6 +55,12 @@ dependencies:
 
   # for image recognition
   google_generative_ai: ^0.4.7
+
+  # for sensors
+  sensors_plus: ^6.1.2
+  
+  # for audio route detection
+  flutter_audio_output: ^0.0.4
 
 dev_dependencies:
   flutter_test:

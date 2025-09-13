@@ -48,6 +48,7 @@ public class AdminDatabaseService {
         c.put("parking_bays", safeCount("parking_bays"));
         c.put("pay_stay_zone_links", safeCount("pay_stay_zone_links"));
         c.put("pay_stay_restrictions", safeCount("pay_stay_restrictions"));
+        c.put("parking_bay_realtime", safeCount("parking_bay_realtime"));
         return c;
     }
 
