@@ -1,10 +1,5 @@
 import 'package:flutter/material.dart';
-<<<<<<< HEAD
-import 'package:flutter/foundation.dart'
-    show kIsWeb, defaultTargetPlatform, TargetPlatform;
-=======
 import 'package:flutter_bloc/flutter_bloc.dart';
->>>>>>> main
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:latlong2/latlong.dart';
@@ -21,56 +16,6 @@ class MapScreen extends StatelessWidget {
 
   final MapController _mapController = MapController();
 
-<<<<<<< HEAD
-  // Resolve API base per platform; override via --dart-define=API_BASE_URL
-  String _apiBase() {
-    const fromEnv = String.fromEnvironment('API_BASE_URL');
-    if (fromEnv.isNotEmpty) return fromEnv;
-    if (kIsWeb) return 'http://localhost:8081';
-    if (defaultTargetPlatform == TargetPlatform.android)
-      return 'http://10.0.2.2:8081';
-    return 'http://localhost:8081';
-  }
-
-  late final String _apiUrl = '${_apiBase()}/api/map/getsignforpin';
-
-  bool _loading = true;
-  String? _error;
-  List<Pin> _pins = const [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPins();
-  }
-
-  Future<void> _loadPins() async {
-    try {
-      final res = await http.get(Uri.parse(_apiUrl));
-      if (res.statusCode != 200) {
-        throw Exception('HTTP ${res.statusCode}: ${res.body}');
-      }
-
-      final decoded = jsonDecode(res.body);
-      if (decoded is! List) throw Exception('Unexpected JSON shape');
-
-      final pins = decoded
-          .map((e) => Pin.fromJson(e as Map<String, dynamic>))
-          .where((p) => p.lat != null && p.lng != null)
-          .toList();
-
-      setState(() {
-        _pins = pins;
-        _error = null;
-        _loading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
-    }
-=======
   void _showParkingInfo(BuildContext context, LatLng location) {
     showModalBottomSheet(
       context: context,
@@ -89,37 +34,6 @@ class MapScreen extends StatelessWidget {
         height: 40,
         child: GestureDetector(
           onTap: () => _showParkingInfo(context, pos),
-          child: SvgPicture.asset('assets/park_sign.svg', width: 40, height: 40),
-        ),
-      );
-    }).toList();
->>>>>>> main
-  }
-
-  @override
-  Widget build(BuildContext context) {
-<<<<<<< HEAD
-    final markers = _pins.map((p) {
-      final ll = LatLng(p.lat!, p.lng!);
-      return Marker(
-        point: ll,
-        width: 40,
-        height: 40,
-        child: GestureDetector(
-          onTap: () {
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (context) => ParkingInfoSheet(
-                location: ll,
-                occupancyPercent: p.occupancyPercent,
-                startTime: p.startTime,
-                endTime: p.endTime,
-                maximumStayMinutes: p.maximumStayMinutes,
-              ),
-            );
-          },
           child: SvgPicture.asset(
             'assets/park_sign.svg',
             width: 40,
@@ -128,9 +42,10 @@ class MapScreen extends StatelessWidget {
         ),
       );
     }).toList();
+  }
 
-=======
->>>>>>> main
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       body: BlocBuilder<PinCubit, PinState>(
         builder: (context, state) {
@@ -208,45 +123,6 @@ class MapScreen extends StatelessWidget {
           ),
         ],
       ),
-<<<<<<< HEAD
-    );
-  }
-}
-
-class Pin {
-  final double? lat;
-  final double? lng;
-  final double? occupancyPercent;
-  final String? startTime;
-  final String? endTime;
-  final int? maximumStayMinutes;
-
-  const Pin({
-    required this.lat,
-    required this.lng,
-    this.occupancyPercent,
-    this.startTime,
-    this.endTime,
-    this.maximumStayMinutes,
-  });
-
-  factory Pin.fromJson(Map<String, dynamic> json) {
-    double? toD(dynamic v) => v == null
-        ? null
-        : (v is num ? v.toDouble() : double.tryParse(v.toString()));
-
-    int? toI(dynamic v) =>
-        v == null ? null : (v is num ? v.toInt() : int.tryParse(v.toString()));
-
-    return Pin(
-      lat: toD(json['lat']),
-      lng: toD(json['lng']),
-      occupancyPercent: toD(json['occupancy_percent']),
-      startTime: json['start_time']?.toString(),
-      endTime: json['end_time']?.toString(),
-      maximumStayMinutes: toI(json['maximum_stay_minutes']),
-=======
->>>>>>> main
     );
   }
 }
