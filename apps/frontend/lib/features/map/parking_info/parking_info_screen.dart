@@ -54,8 +54,8 @@ class ParkingInfoSheet extends StatelessWidget {
                   child: ListTile(
                     leading: const Icon(Icons.location_on),
                     // title: Text('${location.latitude}, ${location.longitude}'),
-                    title: Text('$description'),
-                    subtitle: const Text('Location'),
+                    title: const Text('Location'),
+                    subtitle: Text('$description'),
                   ),
                 ),
                 const SizedBox(height: 16),
