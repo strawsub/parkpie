@@ -4,12 +4,17 @@ class CameraInitial extends CameraState {}
 
 class CameraLoading extends CameraState {}
 
+class CameraReady extends CameraState {}
+
 class PhotoCapturedSuccess extends CameraState { 
   final String imagePath;
   PhotoCapturedSuccess(this.imagePath);
 }
 
-class PhotoUploading extends CameraState {}
+class PhotoUploading extends CameraState {
+  final String imagePath;
+  PhotoUploading(this.imagePath);
+}
 
 class PhotoUploadSuccess extends CameraState {}
 

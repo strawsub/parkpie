@@ -39,14 +39,14 @@ class MapScreen extends StatelessWidget {
       final pos = LatLng(pin.lat!, pin.lng!);
       return Marker(
         point: pos,
-        width: 40,
-        height: 40,
+        width: 20,
+        height: 20,
         child: GestureDetector(
           onTap: () => _showParkingInfo(context, pin),
           child: SvgPicture.asset(
             'assets/park_sign.svg',
-            width: 40,
-            height: 40,
+            width: 20,
+            height: 20,
           ),
         ),
       );
