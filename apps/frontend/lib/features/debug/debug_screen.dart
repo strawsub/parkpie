@@ -7,10 +7,10 @@ import 'package:sensors_plus/sensors_plus.dart';
 import 'package:http/http.dart' as http;
 import 'package:frontend/features/map/pin/pin_cubit.dart';
 import 'package:frontend/features/map/pin/pin_state.dart';
-import 'package:frontend/features/parking_status_detected/parking_status_bloc.dart';
-import 'package:frontend/features/parking_status_detected/parking_status_event.dart';
-import 'package:frontend/features/parking_status_detected/parking_status_state.dart';
-import 'package:frontend/features/bluetooth_detection/audio_bluetooth_service.dart';
+import 'package:frontend/features/parking_status_detection/parking_status_bloc.dart';
+import 'package:frontend/features/parking_status_detection/parking_status_event.dart';
+import 'package:frontend/features/parking_status_detection/parking_status_state.dart';
+import 'package:frontend/features/parking_status_detection/audio_bluetooth_service.dart';
 
 // Helper: safely read a Provider/Bloc; returns null if not found (no exception)
 T? maybeReadBloc<T>(BuildContext context) {

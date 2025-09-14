@@ -33,6 +33,7 @@ dependencies:
 
   http: ^1.2.2
   flutter_riverpod: ^2.5.1
+  equatable: ^2.0.7
 
   # for map
   flutter_map: ^8.2.1

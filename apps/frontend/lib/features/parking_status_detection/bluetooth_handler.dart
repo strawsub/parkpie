@@ -1,13 +1,50 @@
+// bluetooth_handler.dart
 import 'dart:async';
 import 'package:flutter_audio_output/flutter_audio_output.dart';
+import 'parking_status_event.dart';
+import 'utils.dart';
 
-/// Audio Bluetooth service for detecting Bluetooth audio connections
-/// 
-/// This service provides audio route detection functionality:
-/// - Detect current audio output route (speaker, bluetooth, headphones, etc.)
-/// - Monitor audio route changes in real-time
-/// - Identify when user connects/disconnects from car or speaker Bluetooth
-/// - Uses audio routing instead of direct Bluetooth scanning for better reliability
+class BluetoothHandlerService {
+  final AudioBluetoothService _service = AudioBluetoothService();
+  final Map<String, SensorVote> votes;
+
+  BluetoothHandlerService({required this.votes});
+
+  StreamSubscription<BluetoothStatus>? _sub;
+
+  void initialize(void Function(BluetoothAudioChanged) onEvent) async {
+    await _service.initialize();
+    _sub = _service.statusStream.listen((status) {
+      final event = BluetoothAudioChanged(
+        isConnected: status.isBluetoothConnected,
+        deviceName: status.currentRouteName,
+      );
+      onEvent(event);
+    });
+  }
+
+  void handleEvent(BluetoothAudioChanged e, void Function() updateVotes) {
+    final hadBluetoothVote = votes.containsKey('bluetooth_audio');
+    final previouslyConnected = hadBluetoothVote
+        ? votes['bluetooth_audio'] == SensorVote.driving
+        : false;
+
+    if (e.isConnected) {
+      votes['bluetooth_audio'] = SensorVote.driving;
+    } else if (previouslyConnected) {
+      votes['bluetooth_audio'] = SensorVote.parked;
+    } else {
+      votes.remove('bluetooth_audio');
+    }
+    updateVotes();
+  }
+
+  Future<void> dispose() async {
+    await _sub?.cancel();
+    await _service.dispose();
+  }
+}
+
 class AudioBluetoothService {
   static final AudioBluetoothService _instance = AudioBluetoothService._internal();
   factory AudioBluetoothService() => _instance;

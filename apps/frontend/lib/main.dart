@@ -6,9 +6,9 @@ import 'features/camera/camera_screen.dart';
 import 'features/camera/camera_bloc.dart';
 import 'features/map/map_screen.dart';
 import 'features/navigation/navigation_cubit.dart';
-import 'features/parking_status_detected/parking_status_bloc.dart';
-import 'features/parking_status_detected/parking_status_state.dart';
-import 'features/parking_status_detected/parking_status_event.dart';
+import 'features/parking_status_detection/parking_status_bloc.dart';
+import 'features/parking_status_detection/parking_status_state.dart';
+import 'features/parking_status_detection/parking_status_event.dart';
 import 'l10n/app_localizations.dart';
 import 'widgets/nav_bar.dart';
 

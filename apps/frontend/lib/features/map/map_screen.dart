@@ -8,7 +8,7 @@ import 'package:frontend/features/map/parking_info/parking_info_screen.dart';
 import 'package:frontend/features/map/pin/pin_cubit.dart';
 import 'package:frontend/features/map/pin/pin_state.dart';
 import 'package:frontend/features/map/pin/pin_model.dart';
-import 'package:frontend/features/parking_status_detected/parking_status_bloc.dart'; // for ParkingBloc
+import 'package:frontend/features/parking_status_detection/parking_status_bloc.dart'; // for ParkingBloc
 import 'package:frontend/features/debug/debug_screen.dart';
 
 class MapScreen extends StatelessWidget {
