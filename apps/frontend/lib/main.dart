@@ -69,7 +69,8 @@ class HomeContainer extends StatelessWidget {
         builder: (context, selectedIndex) {
           return Scaffold(
             body: _getSelectedView(selectedIndex),
-            bottomNavigationBar: BottomNavBar(
+            // Hide bottom navigation bar when camera is active (index 1)
+            bottomNavigationBar: selectedIndex == 1 ? null : BottomNavBar(
               currentIndex: selectedIndex,
               onTap: (index) => context.read<NavigationCubit>().setIndex(index),
             ),

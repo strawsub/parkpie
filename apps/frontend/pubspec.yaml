@@ -44,6 +44,7 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   # for camera
+  camera: ^0.10.5+9
   image_picker: ^1.0.7
   permission_handler: ^11.3.0
   bloc: ^9.0.0
@@ -89,6 +90,18 @@ flutter:
 
   # for string
   generate: true
+
+  # fonts
+  fonts:
+    - family: Plus Jakarta Sans
+      fonts:
+        - asset: assets/fonts/PlusJakartaSans-Regular.ttf
+        - asset: assets/fonts/PlusJakartaSans-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/PlusJakartaSans-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/PlusJakartaSans-Bold.ttf
+          weight: 700
 
   # To add assets to your application, add an assets section, like this:
   # assets:
