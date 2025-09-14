@@ -7,10 +7,10 @@ import 'package:sensors_plus/sensors_plus.dart';
 import 'package:http/http.dart' as http;
 import 'package:frontend/features/map/pin/pin_cubit.dart';
 import 'package:frontend/features/map/pin/pin_state.dart';
-import 'package:frontend/features/parking_status_detected/parking_status_bloc.dart';
-import 'package:frontend/features/parking_status_detected/parking_status_event.dart';
-import 'package:frontend/features/parking_status_detected/parking_status_state.dart';
-import 'package:frontend/features/bluetooth_detection/audio_bluetooth_service.dart';
+import 'package:frontend/features/parking_status_detection/parking_status_bloc.dart';
+import 'package:frontend/features/parking_status_detection/parking_status_event.dart';
+import 'package:frontend/features/parking_status_detection/parking_status_state.dart';
+import 'package:frontend/features/parking_status_detection/bluetooth/audio_bluetooth_service.dart';
 
 // Helper: safely read a Provider/Bloc; returns null if not found (no exception)
 T? maybeReadBloc<T>(BuildContext context) {
@@ -125,10 +125,10 @@ class _DebugScreenState extends State<DebugScreen> {
               builder: (context, state) {
                 String label = state.runtimeType.toString();
                 Color c = Colors.blueGrey;
-                if (state is UnknownParkingState) c = Colors.blueGrey;
-                if (state is DrivingState) c = Colors.orange;
-                if (state is ParkingDetectedState) c = Colors.purple;
-                if (state is ParkedState) c = Colors.green;
+                if (state is ParkingUnknown) c = Colors.blueGrey;
+                if (state is Driving) c = Colors.orange;
+                if (state is ParkingDetected) c = Colors.purple;
+                if (state is Parked) c = Colors.green;
                 return ListTile(
                   title: const Text('ParkingBloc State'),
                   subtitle: Text(label),
@@ -157,6 +157,111 @@ class _DebugScreenState extends State<DebugScreen> {
               ),
             ],
           ),
+
+
+          const SizedBox(height: 16),
+
+          // Sensor readout
+          Card(
+            child: ListTile(
+              title: const Text('Accelerometer (user)'),
+              subtitle: Text(
+                'ax=${_ax.toStringAsFixed(3)}, ay=${_ay.toStringAsFixed(3)}, az=${_az.toStringAsFixed(3)}\n'
+                    'RMS≈${_rms.toStringAsFixed(3)} (window $_winN)',
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          // Bluetooth status
+          Card(
+            child: StreamBuilder<AudioRouteStatus>(
+              stream: _bluetoothService.statusStream,
+              initialData: _bluetoothService.getCurrentStatus(),
+              builder: (context, snapshot) {
+                final status = snapshot.data;
+                if (status == null) {
+                  return const ListTile(
+                    title: Text('Bluetooth Status'),
+                    subtitle: Text('Initializing...'),
+                  );
+                }
+
+                if (status.error != null) {
+                  return ListTile(
+                    title: const Text('Bluetooth Status'),
+                    subtitle: Text('❌ Error: ${status.error}'),
+                  );
+                }
+
+                final bluetoothIcon = status.isBluetoothConnected ? '🛜' : '📱';
+                final routeText = status.isBluetoothConnected ? 'Bluetooth Audio' : 'Phone Audio';
+                final currentRouteInfo = 'Current: ${status.currentRouteName} (${status.currentRouteType})';
+                final availableInfo = status.bluetoothDeviceNames.isNotEmpty 
+                    ? 'Available Bluetooth: ${status.bluetoothDeviceNames.join(', ')}'
+                    : 'No Bluetooth audio devices available';
+
+                return ListTile(
+                  title: Text('Audio Route $bluetoothIcon'),
+                  subtitle: Text('$routeText\n$currentRouteInfo\n$availableInfo'),
+                );
+              },
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          // Sensor Voting Display
+          Card(
+            child: (parkingBloc == null)
+                ? const ListTile(
+              title: Text('🗳️ Sensor Votes'),
+              subtitle: Text('⚠️ ParkingBloc provider not found'),
+            )
+                : BlocBuilder<ParkingBloc, ParkingState>(
+              bloc: parkingBloc,
+              builder: (context, state) {
+                final votes = state.sensorVotes;
+                final drivingVotes = votes.values.where((v) => v.toString().contains('driving')).length;
+                final parkedVotes = votes.values.where((v) => v.toString().contains('parked')).length;
+
+                // Build individual sensor vote display
+                List<String> sensorLines = [];
+                
+                // Check each possible sensor
+                if (votes.containsKey('accelerometer')) {
+                  final vote = votes['accelerometer'].toString().split('.').last;
+                  sensorLines.add('• accelerometer → $vote ${vote == 'driving' ? '✅' : '🅿️'}');
+                } else {
+                  sensorLines.add('• accelerometer → (no vote) ⚪');
+                }
+                
+                if (votes.containsKey('gyroscope')) {
+                  final vote = votes['gyroscope'].toString().split('.').last;
+                  sensorLines.add('• gyroscope → $vote ${vote == 'driving' ? '✅' : '🅿️'}');
+                } else {
+                  sensorLines.add('• gyroscope → (no vote) ⚪');
+                }
+                
+                if (votes.containsKey('bluetooth')) {
+                  final vote = votes['bluetooth'].toString().split('.').last;
+                  sensorLines.add('• bluetooth → $vote ${vote == 'driving' ? '✅' : '🅿️'}');
+                } else {
+                  sensorLines.add('• bluetooth → (no vote) ⚪');
+                }
+
+                final voteCountText = 'Driving: $drivingVotes | Parked: $parkedVotes';
+                final sensorText = sensorLines.join('\n');
+
+                return ListTile(
+                  title: const Text('🗳️ Sensor Votes'),
+                  subtitle: Text('$voteCountText\n$sensorText'),
+                );
+              },
+            ),
+          ),
+
 
           const SizedBox(height: 16),
 
@@ -215,109 +320,6 @@ class _DebugScreenState extends State<DebugScreen> {
                 return ListTile(
                   title: const Text('Pins (Loaded)'),
                   subtitle: Text('count = ${pins.length}'),
-                );
-              },
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Sensor readout
-          Card(
-            child: ListTile(
-              title: const Text('Accelerometer (user)'),
-              subtitle: Text(
-                'ax=${_ax.toStringAsFixed(3)}, ay=${_ay.toStringAsFixed(3)}, az=${_az.toStringAsFixed(3)}\n'
-                    'RMS≈${_rms.toStringAsFixed(3)} (window $_winN)',
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          // Bluetooth status
-          Card(
-            child: StreamBuilder<BluetoothStatus>(
-              stream: _bluetoothService.statusStream,
-              initialData: _bluetoothService.getCurrentStatus(),
-              builder: (context, snapshot) {
-                final status = snapshot.data;
-                if (status == null) {
-                  return const ListTile(
-                    title: Text('Bluetooth Status'),
-                    subtitle: Text('Initializing...'),
-                  );
-                }
-
-                if (status.error != null) {
-                  return ListTile(
-                    title: const Text('Bluetooth Status'),
-                    subtitle: Text('❌ Error: ${status.error}'),
-                  );
-                }
-
-                final bluetoothIcon = status.isBluetoothConnected ? '🛜' : '📱';
-                final routeText = status.isBluetoothConnected ? 'Bluetooth Audio' : 'Phone Audio';
-                final currentRouteInfo = 'Current: ${status.currentRouteName} (${status.currentRouteType})';
-                final availableInfo = status.bluetoothDeviceNames.isNotEmpty 
-                    ? 'Available Bluetooth: ${status.bluetoothDeviceNames.join(', ')}'
-                    : 'No Bluetooth audio devices available';
-
-                return ListTile(
-                  title: Text('Audio Route $bluetoothIcon'),
-                  subtitle: Text('$routeText\n$currentRouteInfo\n$availableInfo'),
-                );
-              },
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          // Sensor Voting Display
-          Card(
-            child: (parkingBloc == null)
-                ? const ListTile(
-              title: Text('🗳️ Sensor Votes'),
-              subtitle: Text('⚠️ ParkingBloc provider not found'),
-            )
-                : BlocBuilder<ParkingBloc, ParkingState>(
-              bloc: parkingBloc,
-              builder: (context, state) {
-                final votes = parkingBloc.currentVotes;
-                final drivingVotes = votes.values.where((v) => v.toString().contains('driving')).length;
-                final parkedVotes = votes.values.where((v) => v.toString().contains('parked')).length;
-
-                // Build individual sensor vote display
-                List<String> sensorLines = [];
-                
-                // Check each possible sensor
-                if (votes.containsKey('accelerometer')) {
-                  final vote = votes['accelerometer'].toString().split('.').last;
-                  sensorLines.add('• accelerometer → $vote ${vote == 'driving' ? '✅' : '🅿️'}');
-                } else {
-                  sensorLines.add('• accelerometer → (no vote) ⚪');
-                }
-                
-                if (votes.containsKey('gyroscope')) {
-                  final vote = votes['gyroscope'].toString().split('.').last;
-                  sensorLines.add('• gyroscope → $vote ${vote == 'driving' ? '✅' : '🅿️'}');
-                } else {
-                  sensorLines.add('• gyroscope → (no vote) ⚪');
-                }
-                
-                if (votes.containsKey('bluetooth_audio')) {
-                  final vote = votes['bluetooth_audio'].toString().split('.').last;
-                  sensorLines.add('• bluetooth_audio → $vote ${vote == 'driving' ? '✅' : '🅿️'}');
-                } else {
-                  sensorLines.add('• bluetooth_audio → (no vote) ⚪');
-                }
-
-                final voteCountText = 'Driving: $drivingVotes | Parked: $parkedVotes';
-                final sensorText = sensorLines.join('\n');
-
-                return ListTile(
-                  title: const Text('🗳️ Sensor Votes'),
-                  subtitle: Text('$voteCountText\n$sensorText'),
                 );
               },
             ),
