@@ -2,8 +2,7 @@ import 'dart:async';
 import 'package:flutter_audio_output/flutter_audio_output.dart';
 
 class AudioBluetoothService {
-  static final AudioBluetoothService _instance = 
-      AudioBluetoothService._internal();
+  static final AudioBluetoothService _instance = AudioBluetoothService._internal();
   factory AudioBluetoothService() => _instance;
   AudioBluetoothService._internal();
 
@@ -16,6 +15,18 @@ class AudioBluetoothService {
 
   Stream<AudioRouteStatus> get statusStream => _statusController.stream;
 
+  AudioRouteStatus getCurrentStatus() {
+    return AudioRouteStatus(
+      isBluetoothConnected: _currentRoute?.port == AudioPort.bluetooth,
+      currentRouteName: _currentRoute?.name ?? 'Unknown',
+      currentRouteType: _currentRoute?.port.toString() ?? 'Unknown',
+      bluetoothDeviceNames: _currentRoute?.name != null && _currentRoute!.port == AudioPort.bluetooth
+          ? [_currentRoute!.name!]
+          : [],
+      error: null,
+    );
+  }
+
   Future<void> initialize() async {
     if (_isInitialized) return;
 
@@ -24,7 +35,13 @@ class AudioBluetoothService {
       _startMonitoring();
       _isInitialized = true;
     } catch (e) {
-      rethrow;
+      _statusController.add(AudioRouteStatus(
+        isBluetoothConnected: false,
+        currentRouteName: 'Unknown',
+        currentRouteType: 'Unknown',
+        bluetoothDeviceNames: [],
+        error: e.toString(),
+      ));
     }
   }
 
@@ -45,19 +62,29 @@ class AudioBluetoothService {
         _emitStatus();
       }
     } catch (e) {
-      print('Error checking audio route: $e');
+      _statusController.add(AudioRouteStatus(
+        isBluetoothConnected: false,
+        currentRouteName: 'Unknown',
+        currentRouteType: 'Unknown',
+        bluetoothDeviceNames: [],
+        error: e.toString(),
+      ));
     }
   }
 
   bool _hasRouteChanged(AudioInput? previous, AudioInput? current) {
-    return previous?.port != current?.port ||
-           previous?.name != current?.name;
+    return previous?.port != current?.port || previous?.name != current?.name;
   }
 
   void _emitStatus() {
     _statusController.add(AudioRouteStatus(
       isBluetoothConnected: _currentRoute?.port == AudioPort.bluetooth,
       currentRouteName: _currentRoute?.name ?? 'Unknown',
+      currentRouteType: _currentRoute?.port.toString() ?? 'Unknown',
+      bluetoothDeviceNames: _currentRoute?.port == AudioPort.bluetooth && _currentRoute?.name != null
+          ? [_currentRoute!.name!]
+          : [],
+      error: null,
     ));
   }
 
@@ -71,9 +98,15 @@ class AudioBluetoothService {
 class AudioRouteStatus {
   final bool isBluetoothConnected;
   final String currentRouteName;
+  final String currentRouteType;
+  final List<String> bluetoothDeviceNames;
+  final String? error;
 
   const AudioRouteStatus({
     required this.isBluetoothConnected,
     required this.currentRouteName,
+    required this.currentRouteType,
+    required this.bluetoothDeviceNames,
+    this.error,
   });
 }

@@ -9,6 +9,9 @@ import 'features/navigation/navigation_cubit.dart';
 import 'features/parking_status_detection/parking_status_bloc.dart';
 import 'features/parking_status_detection/parking_status_state.dart';
 import 'features/parking_status_detection/parking_status_event.dart';
+import 'features/parking_status_detection/gyroscope/gyro_bloc.dart';
+import 'features/parking_status_detection/bluetooth/bluetooth_bloc.dart';
+import 'features/parking_status_detection/accelerometer/acc_bloc.dart';
 import 'l10n/app_localizations.dart';
 import 'widgets/nav_bar.dart';
 
@@ -21,6 +24,15 @@ class ParkPieApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final accBloc = AccBloc();
+    final gyroBloc = GyroBloc();
+    final bluetoothBloc = BluetoothBloc();
+    final parkingBloc = ParkingBloc(
+      accBloc: accBloc,
+      gyroBloc: gyroBloc,
+      bluetoothBloc: bluetoothBloc,
+    );
+    
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       localizationsDelegates: const [
@@ -35,7 +47,10 @@ class ParkPieApp extends StatelessWidget {
           BlocProvider(create: (_) => NavigationCubit()),
           BlocProvider(create: (_) => CameraBloc()),
           BlocProvider(create: (_) => PinCubit()..loadPins()),
-          BlocProvider(create: (_) => ParkingBloc()),
+          BlocProvider<AccBloc>.value(value: accBloc),
+          BlocProvider<GyroBloc>.value(value: gyroBloc),
+          BlocProvider<BluetoothBloc>.value(value: bluetoothBloc),
+          BlocProvider<ParkingBloc>.value(value: parkingBloc),
         ],
         child: const HomeContainer(),
       ),
@@ -61,7 +76,7 @@ class HomeContainer extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocListener<ParkingBloc, ParkingState>(
       listener: (context, state) {
-        if (state is ParkingDetectedState) {
+        if (state is ParkingDetected) {
           _showParkingDialog(context);
         }
       },
