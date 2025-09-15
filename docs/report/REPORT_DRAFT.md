@@ -15,7 +15,12 @@ Group 3, Tutorial 10
 
 ## Individual Contributions Plan
 
-
+More justification
+Expand more on the novelty of the solution
+Include a timeline
+Justify the behavioural / psychological
+Annotate the screenshot: consistent annotation, consistent size (display device) - not too many screenshots in one page
+Video production: 2 weeks, advertisement, entertaining
 
 ## Material
 

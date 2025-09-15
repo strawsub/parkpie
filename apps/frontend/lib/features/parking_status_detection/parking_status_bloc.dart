@@ -115,7 +115,7 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
     // UNKNOWN → DRIVING
     // ------------------------------
     if (state is ParkingUnknown) {
-      if (drivingVotes >= _numVotesDriving) { // at least one sensor votes driving
+      if (drivingVotes >= _numVotesDriving) { 
         return Driving(
           sensorVotes: sensorVotes,
           drivingVotes: drivingVotes,
@@ -142,7 +142,7 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
     // PARKED → DRIVING
     // ------------------------------
     if (state is Parked || state is ParkingDetected) {
-      if (drivingVotes >= _numVotesDriving) { // majority vote for driving
+      if (drivingVotes >= _numVotesDriving) {
         _cancelParkingDetectionTimer();
         return Driving(
           sensorVotes: sensorVotes,
