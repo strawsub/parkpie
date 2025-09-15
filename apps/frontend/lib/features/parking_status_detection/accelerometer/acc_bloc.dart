@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:math' as math;
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/foundation.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import '../utils.dart';
 import 'acc_event.dart';
@@ -46,7 +47,7 @@ class AccBloc extends Bloc<AccEvent, AccState> {
         ));
       },
       onError: (error) {
-        print('Acc sensor error: $error');
+        debugPrint('Acc sensor error: $error');
       },
     );
   }

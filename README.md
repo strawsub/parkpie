@@ -21,8 +21,10 @@ parkpie/ (root)
 │ ├── backend/ # Java Spring Boot API
 │ └── frontend/ # Flutter app
 ├── docs/
+│ ├── architecture/ # System Architecture
+│ ├── cicd/ # CI/CD Guides
 │ ├── deployment/ # Deployment Guides
-│ └── architecture/ # System Architecture
+│ └── report/ # Submission Reports
 └── README.md # This file
 ```
 

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:math' as math;
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/foundation.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'gyro_event.dart';
 import 'gyro_state.dart';
@@ -41,7 +42,7 @@ class GyroBloc extends Bloc<GyroEvent, GyroState> {
         ));
       },
       onError: (error) {
-        print('Gyroscope sensor error: $error');
+        debugPrint('Gyroscope sensor error: $error');
       },
     );
   }

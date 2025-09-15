@@ -20,9 +20,12 @@ class AudioBluetoothService {
       isBluetoothConnected: _currentRoute?.port == AudioPort.bluetooth,
       currentRouteName: _currentRoute?.name ?? 'Unknown',
       currentRouteType: _currentRoute?.port.toString() ?? 'Unknown',
-      bluetoothDeviceNames: _currentRoute?.name != null && _currentRoute!.port == AudioPort.bluetooth
-          ? [_currentRoute!.name!]
-          : [],
+      bluetoothDeviceNames: () {
+        final route = _currentRoute;
+        final isBt = route?.port == AudioPort.bluetooth;
+        final name = route?.name;
+        return isBt && name != null ? [name] : <String>[];
+      }(),
       error: null,
     );
   }
@@ -81,9 +84,12 @@ class AudioBluetoothService {
       isBluetoothConnected: _currentRoute?.port == AudioPort.bluetooth,
       currentRouteName: _currentRoute?.name ?? 'Unknown',
       currentRouteType: _currentRoute?.port.toString() ?? 'Unknown',
-      bluetoothDeviceNames: _currentRoute?.port == AudioPort.bluetooth && _currentRoute?.name != null
-          ? [_currentRoute!.name!]
-          : [],
+      bluetoothDeviceNames: () {
+        final route = _currentRoute;
+        final isBt = route?.port == AudioPort.bluetooth;
+        final name = route?.name;
+        return isBt && name != null ? [name] : <String>[];
+      }(),
       error: null,
     ));
   }

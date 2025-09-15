@@ -7,7 +7,8 @@ plugins {
 
 android {
     namespace = "com.parkpie.app"
-    compileSdk = flutter.compileSdkVersion
+    // Bump compileSdk to satisfy plugins requiring SDK 36 (e.g., camera_android)
+    compileSdk = 36
     ndkVersion = "27.0.12077973"
 
     compileOptions {

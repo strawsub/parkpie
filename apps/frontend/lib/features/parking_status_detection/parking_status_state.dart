@@ -18,14 +18,10 @@ abstract class ParkingState extends Equatable {
 
 class ParkingUnknown extends ParkingState {
   const ParkingUnknown({
-    Map<String, SensorVote> sensorVotes = const {},
-    int drivingVotes = 0,
-    int parkedVotes = 0,
-  }) : super(
-          sensorVotes: sensorVotes,
-          drivingVotes: drivingVotes,
-          parkedVotes: parkedVotes,
-        );
+    super.sensorVotes = const <String, SensorVote>{},
+    super.drivingVotes = 0,
+    super.parkedVotes = 0,
+  });
 }
 
 class Driving extends ParkingState {

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/foundation.dart';
 import 'bluetooth_event.dart';
 import 'bluetooth_state.dart';
 import '../utils.dart';
@@ -32,7 +33,7 @@ class BluetoothBloc extends Bloc<BluetoothEvent, BluetoothState> {
         ));
       });
     } catch (e) {
-      print('Failed to initialize Bluetooth monitoring: $e');
+      debugPrint('Failed to initialize Bluetooth monitoring: $e');
       // Continue with unknown state
     }
   }

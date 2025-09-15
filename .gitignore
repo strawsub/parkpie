@@ -177,3 +177,6 @@ apps/frontend/ios/Runner/Info.plist
 apps/frontend/.metadata
 apps/frontend/pubspec.lock
 apps/frontend/ios/Runner.xcodeproj/project.pbxproj
+
+# local properties
+apps/backend/local.properties
