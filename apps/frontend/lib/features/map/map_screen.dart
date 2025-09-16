@@ -1,20 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import 'package:frontend/features/map/parking_info/parking_info_screen.dart';
 import 'package:frontend/features/map/pin/pin_cubit.dart';
 import 'package:frontend/features/map/pin/pin_state.dart';
 import 'package:frontend/features/map/pin/pin_model.dart';
-import 'package:frontend/features/parking_status_detection/parking_status_bloc.dart'; // for ParkingBloc
+import 'package:frontend/features/parking_status_detection/parking_status_bloc.dart';
 import 'package:frontend/features/debug/debug_screen.dart';
 
-class MapScreen extends StatelessWidget {
-  MapScreen({super.key});
+class MapScreen extends StatefulWidget {
+  const MapScreen({super.key});
 
-  final MapController _mapController = MapController();
+  @override
+  State<MapScreen> createState() => _MapScreenState();
+}
+
+class _MapScreenState extends State<MapScreen> {
+  GoogleMapController? _mapController;
+  Set<Marker> _markers = {};
+
+  // Melbourne coordinates
+  static const LatLng _initialPosition = LatLng(-37.8035820, 144.9593280);
+
+  void _onMapCreated(GoogleMapController controller) {
+    _mapController = controller;
+  }
 
   void _showParkingInfo(BuildContext context, Pin pin) {
     final pos = LatLng(pin.lat!, pin.lng!);
@@ -34,23 +45,20 @@ class MapScreen extends StatelessWidget {
     );
   }
 
-  List<Marker> _buildMarkers(BuildContext context, List<Pin> pins) {
+  Set<Marker> _buildMarkers(BuildContext context, List<Pin> pins) {
     return pins.map((pin) {
       final pos = LatLng(pin.lat!, pin.lng!);
       return Marker(
-        point: pos,
-        width: 20,
-        height: 20,
-        child: GestureDetector(
-          onTap: () => _showParkingInfo(context, pin),
-          child: SvgPicture.asset(
-            'assets/park_sign.svg',
-            width: 20,
-            height: 20,
-          ),
+        markerId: MarkerId('pin_${pin.lat}_${pin.lng}'), // Unique ID for each marker
+        position: pos,
+        onTap: () => _showParkingInfo(context, pin),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+        infoWindow: InfoWindow(
+          title: 'Parking Spot',
+          snippet: pin.description ?? 'Tap for more info',
         ),
       );
-    }).toList();
+    }).toSet();
   }
 
   @override
@@ -79,25 +87,26 @@ class MapScreen extends StatelessWidget {
           }
 
           final pins = (state as PinLoaded).pins;
+          _markers = _buildMarkers(context, pins);
 
-          return FlutterMap(
-            mapController: _mapController,
-            options: const MapOptions(
-              initialCenter: LatLng(-37.8035820, 144.9593280),
-              initialZoom: 12,
-              minZoom: 2,
-              maxZoom: 20,
+          return GoogleMap(
+            onMapCreated: _onMapCreated,
+            initialCameraPosition: const CameraPosition(
+              target: _initialPosition,
+              zoom: 12.0,
             ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.parkpie.frontend',
-              ),
-              MarkerLayer(markers: _buildMarkers(context, pins)),
-            ],
+            markers: _markers,
+            mapType: MapType.normal,
+            myLocationEnabled: true,
+            myLocationButtonEnabled: true,
+            zoomControlsEnabled: true,
+            compassEnabled: true,
+            mapToolbarEnabled: false,
+            minMaxZoomPreference: const MinMaxZoomPreference(2.0, 20.0),
           );
         },
       ),
+      // Debug & Reload button
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -133,5 +142,11 @@ class MapScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _mapController?.dispose();
+    super.dispose();
   }
 }

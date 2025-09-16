@@ -39,6 +39,7 @@ dependencies:
   flutter_map: ^8.2.1
   latlong2: ^0.9.1
   path_provider: ^2.1.5
+  google_maps_flutter: ^2.13.1
 
   # for image
   flutter_svg: ^2.2.0
