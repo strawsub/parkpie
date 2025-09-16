@@ -77,6 +77,8 @@ class _MapScreenState extends State<MapScreen> {
       ),
     );
 
+    if (!mounted) return;
+    
     // Create search marker
     setState(() {
       _searchMarker = Marker(
