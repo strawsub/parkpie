@@ -357,20 +357,52 @@ class _CameraViewState extends State<CameraView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header
+                    // Header with back button
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.only(top: 60, bottom: 20),
+                      padding: const EdgeInsets.only(top: 60, bottom: 20, left: 20, right: 20),
                       color: Colors.grey.shade100,
-                      child: Text(
-                        'OCR RESULT',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black,
-                        ),
+                      child: Row(
+                        children: [
+                          // Back button
+                          GestureDetector(
+                            onTap: () {
+                              // Cleanup camera and navigate back to map
+                              context.read<CameraBloc>().add(CameraClosed());
+                              context.read<NavigationCubit>().setIndex(0);
+                            },
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.3),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Icon(
+                                Icons.arrow_back_ios_new,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+
+                          // Centered title
+                          Expanded(
+                            child: Text(
+                              'OCR RESULT',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontFamily: 'Plus Jakarta Sans',
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ),
+
+                          // Spacer to balance the back button
+                          const SizedBox(width: 40),
+                        ],
                       ),
                     ),
                     
