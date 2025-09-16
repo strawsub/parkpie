@@ -1,17 +1,17 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'accelerometer/acc_bloc.dart';
-import 'accelerometer/acc_state.dart';
-import 'accelerometer/acc_event.dart';
-import 'gyroscope/gyro_bloc.dart';
-import 'gyroscope/gyro_state.dart';
-import 'gyroscope/gyro_event.dart';
-import 'bluetooth/bluetooth_bloc.dart';
-import 'bluetooth/bluetooth_state.dart';
-import 'bluetooth/bluetooth_event.dart';
-import 'parking_status_event.dart';
-import 'parking_status_state.dart';
-import 'utils.dart';
+import 'package:frontend/features/parking_status_detection/accelerometer/acc_bloc.dart';
+import 'package:frontend/features/parking_status_detection/accelerometer/acc_state.dart';
+import 'package:frontend/features/parking_status_detection/accelerometer/acc_event.dart';
+import 'package:frontend/features/parking_status_detection/gyroscope/gyro_bloc.dart';
+import 'package:frontend/features/parking_status_detection/gyroscope/gyro_state.dart';
+import 'package:frontend/features/parking_status_detection/gyroscope/gyro_event.dart';
+import 'package:frontend/features/parking_status_detection/bluetooth/bluetooth_bloc.dart';
+import 'package:frontend/features/parking_status_detection/bluetooth/bluetooth_state.dart';
+import 'package:frontend/features/parking_status_detection/bluetooth/bluetooth_event.dart';
+import 'package:frontend/features/parking_status_detection/parking_status_event.dart';
+import 'package:frontend/features/parking_status_detection/parking_status_state.dart';
+import 'package:frontend/features/parking_status_detection/utils.dart';
 
 class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
   // Sensor blocs

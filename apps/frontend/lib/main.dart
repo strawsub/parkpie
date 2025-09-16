@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+
+import 'features/navigation/navigation_cubit.dart';
+
+import 'features/map/map_screen.dart';
 import 'package:frontend/features/map/pin/pin_cubit.dart';
+import 'package:frontend/features/map/search/search_cubit.dart';
+
 import 'features/camera/camera_screen.dart';
 import 'features/camera/camera_bloc.dart';
-import 'features/map/map_screen.dart';
-import 'features/navigation/navigation_cubit.dart';
+
 import 'features/parking_status_detection/parking_status_bloc.dart';
 import 'features/parking_status_detection/parking_status_state.dart';
 import 'features/parking_status_detection/parking_status_event.dart';
@@ -47,6 +52,7 @@ class ParkPieApp extends StatelessWidget {
           BlocProvider(create: (_) => NavigationCubit()),
           BlocProvider(create: (_) => CameraBloc()),
           BlocProvider(create: (_) => PinCubit()..loadPins()),
+          BlocProvider<SearchCubit>(create: (context) => SearchCubit()),
           BlocProvider<AccBloc>.value(value: accBloc),
           BlocProvider<GyroBloc>.value(value: gyroBloc),
           BlocProvider<BluetoothBloc>.value(value: bluetoothBloc),
