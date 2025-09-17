@@ -5,8 +5,9 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'features/navigation/navigation_cubit.dart';
 
 import 'features/map/map_screen.dart';
-import 'package:frontend/features/map/pin/pin_cubit.dart';
-import 'package:frontend/features/map/search/search_cubit.dart';
+import 'features/map/pin/pin_cubit.dart';
+import 'features/map/search/search_cubit.dart';
+import 'features/gps_correction/location_bloc.dart'; 
 
 import 'features/camera/camera_screen.dart';
 import 'features/camera/camera_bloc.dart';
@@ -17,6 +18,7 @@ import 'features/parking_status_detection/parking_status_event.dart';
 import 'features/parking_status_detection/gyroscope/gyro_bloc.dart';
 import 'features/parking_status_detection/bluetooth/bluetooth_bloc.dart';
 import 'features/parking_status_detection/accelerometer/acc_bloc.dart';
+
 import 'l10n/app_localizations.dart';
 import 'widgets/nav_bar.dart';
 
@@ -37,28 +39,30 @@ class ParkPieApp extends StatelessWidget {
       gyroBloc: gyroBloc,
       bluetoothBloc: bluetoothBloc,
     );
-    
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
+
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (_) => NavigationCubit()),
+        BlocProvider(create: (_) => CameraBloc()),
+        BlocProvider(create: (_) => PinCubit()..loadPins()),
+        BlocProvider<SearchCubit>(create: (context) => SearchCubit()),
+        BlocProvider<AccBloc>.value(value: accBloc),
+        BlocProvider<GyroBloc>.value(value: gyroBloc),
+        BlocProvider<BluetoothBloc>.value(value: bluetoothBloc),
+        BlocProvider<ParkingBloc>.value(value: parkingBloc),
+        BlocProvider(create: (_) => LocationCubit(),),
+
       ],
-      supportedLocales: const [Locale('en')],
-      home: MultiBlocProvider(
-        providers: [
-          BlocProvider(create: (_) => NavigationCubit()),
-          BlocProvider(create: (_) => CameraBloc()),
-          BlocProvider(create: (_) => PinCubit()..loadPins()),
-          BlocProvider<SearchCubit>(create: (context) => SearchCubit()),
-          BlocProvider<AccBloc>.value(value: accBloc),
-          BlocProvider<GyroBloc>.value(value: gyroBloc),
-          BlocProvider<BluetoothBloc>.value(value: bluetoothBloc),
-          BlocProvider<ParkingBloc>.value(value: parkingBloc),
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
         ],
-        child: const HomeContainer(),
+        supportedLocales: const [Locale('en')],
+        home: const HomeContainer(),
       ),
     );
   }
@@ -91,10 +95,13 @@ class HomeContainer extends StatelessWidget {
           return Scaffold(
             body: _getSelectedView(selectedIndex),
             // Hide bottom navigation bar when camera is active (index 1)
-            bottomNavigationBar: selectedIndex == 1 ? null : BottomNavBar(
-              currentIndex: selectedIndex,
-              onTap: (index) => context.read<NavigationCubit>().setIndex(index),
-            ),
+            bottomNavigationBar: selectedIndex == 1
+                ? null
+                : BottomNavBar(
+                    currentIndex: selectedIndex,
+                    onTap: (index) =>
+                        context.read<NavigationCubit>().setIndex(index),
+                  ),
           );
         },
       ),
@@ -102,7 +109,7 @@ class HomeContainer extends StatelessWidget {
   }
 
   void _showParkingDialog(BuildContext context) {
-    final parentContext = context; // <-- store parent context here
+    final parentContext = context;
 
     showDialog(
       context: context,
