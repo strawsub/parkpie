@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -24,10 +26,32 @@ class _MapScreenState extends State<MapScreen> {
   final TextEditingController _searchController = TextEditingController();
   Marker? _searchMarker;
 
-  // Zoom behavior
-  double _currentZoom = 12.0; // keep in sync with initialCameraPosition
-  static const double _pinZoomThreshold =
-      14; // >= 14 => show all pins; < 14 => show 1 average pin
+  bool _hasCenteredInitially = false;
+
+  // ---------- Zoom behavior ----------
+  double _liveZoom = 13.5; // follows camera during movement
+  double _renderZoom = 13.5; // the zoom we use to decide what to render
+  static const double _pinZoomThreshold = 14; // >= threshold => show all pins
+  static const double _hysteresis = 0.5; // buffer to prevent flicker
+  BitmapDescriptor? _avgCarIcon;
+
+  @override
+  void initState() {
+    super.initState();
+    _generateIcons();
+  }
+
+  Future<void> _generateIcons() async {
+    _avgCarIcon = await _iconFromAsset(
+      Icons.directions_car_filled,
+      color: Colors.redAccent,
+      size: 96,
+    );
+    if (mounted) setState(() {});
+  }
+
+  // Avoid redraws while animating the camera (e.g., zoomBy)
+  bool _isAnimating = false;
 
   // Melbourne coordinates
   static const LatLng _initialPosition = LatLng(-37.8035820, 144.9593280);
@@ -38,15 +62,30 @@ class _MapScreenState extends State<MapScreen> {
     _mapController = controller;
     final z = await _mapController?.getZoomLevel();
     if (z != null && mounted) {
-      setState(() => _currentZoom = z);
+      _liveZoom = z;
+      _renderZoom = z;
+      setState(() {}); // initial draw
     }
   }
 
-  // Update zoom continuously while moving
+  // Track live zoom without rebuilding every frame
   void _onCameraMove(CameraPosition pos) {
-    final newZoom = pos.zoom;
-    if ((newZoom - _currentZoom).abs() > 0.05) {
-      setState(() => _currentZoom = newZoom);
+    _liveZoom = pos.zoom;
+  }
+
+  // Rebuild only when crossing hysteresis bands
+  void _onCameraIdle() {
+    if (_isAnimating) return;
+
+    final wasShowingPins = _renderZoom >= _pinZoomThreshold;
+    final crossedToPins =
+        !wasShowingPins && _liveZoom >= (_pinZoomThreshold + _hysteresis / 2);
+    final crossedToAvg =
+        wasShowingPins && _liveZoom <= (_pinZoomThreshold - _hysteresis / 2);
+
+    if (crossedToPins || crossedToAvg) {
+      _renderZoom = _liveZoom;
+      setState(() {}); // swap avg <-> all pins
     }
   }
 
@@ -98,37 +137,28 @@ class _MapScreenState extends State<MapScreen> {
   Marker _buildAverageMarker(List<Pin> pins) {
     final center = _computeCentroid(pins);
     final count = pins.length;
+
     return Marker(
       markerId: const MarkerId('avg_pin'),
       position: center,
-      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+      icon:
+          _avgCarIcon ??
+          BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
       infoWindow: InfoWindow(
         title: '$count spots',
-        snippet: 'Zoom in to see details',
+        snippet: 'Tap to zoom in',
         onTap: () async {
-          // Trigger zoom only when info window is tapped
-          final current =
-              await _mapController?.getZoomLevel() ?? _pinZoomThreshold;
-          final targetZoom = current < _pinZoomThreshold
-              ? _pinZoomThreshold + 1
-              : current + 1;
-          _mapController?.animateCamera(
-            CameraUpdate.newCameraPosition(
-              CameraPosition(target: center, zoom: targetZoom),
-            ),
-          );
+          if (_isAnimating) return;
+          _isAnimating = true;
+          try {
+            // Lighter animation; keeps current center
+            await _mapController?.animateCamera(CameraUpdate.zoomBy(2.0));
+          } finally {
+            _isAnimating = false;
+          }
         },
       ),
-      // onTap: () async {
-      //   // Nudge into detail view
-      //   final current = await _mapController?.getZoomLevel() ?? _pinZoomThreshold;
-      //   final targetZoom = current < _pinZoomThreshold ? _pinZoomThreshold + 1 : current + 1;
-      //   _mapController?.animateCamera(
-      //     CameraUpdate.newCameraPosition(
-      //       CameraPosition(target: center, zoom: targetZoom),
-      //     ),
-      //   );
-      // },
+      // No onTap here -> only the infoWindow triggers zoom
     );
   }
 
@@ -157,6 +187,39 @@ class _MapScreenState extends State<MapScreen> {
 
     _searchController.clear();
     FocusScope.of(context).unfocus();
+  }
+
+  Future<BitmapDescriptor> _iconFromAsset(
+    IconData iconData, {
+    Color color = Colors.red,
+    double size = 96,
+  }) async {
+    final pictureRecorder = PictureRecorder();
+    final canvas = Canvas(pictureRecorder);
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
+
+    final icon = Icon(iconData, size: size, color: color);
+    final textSpan = TextSpan(
+      text: String.fromCharCode(iconData.codePoint),
+      style: TextStyle(
+        fontSize: size,
+        fontFamily: iconData.fontFamily,
+        package: iconData.fontPackage,
+        color: color,
+      ),
+    );
+
+    textPainter.text = textSpan;
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset((size - textPainter.width) / 2, (size - textPainter.height) / 2),
+    );
+
+    final picture = pictureRecorder.endRecording();
+    final img = await picture.toImage(size.toInt(), size.toInt());
+    final bytes = await img.toByteData(format: ImageByteFormat.png);
+    return BitmapDescriptor.fromBytes(bytes!.buffer.asUint8List());
   }
 
   void _handleSearchCleared() {
@@ -220,8 +283,24 @@ class _MapScreenState extends State<MapScreen> {
 
             final pins = (state as PinLoaded).pins;
 
-            // Decide what to render based on zoom
-            final bool showRealPins = _currentZoom >= _pinZoomThreshold;
+            if (!_hasCenteredInitially &&
+                pins.isNotEmpty &&
+                _mapController != null) {
+              final center = _computeCentroid(pins);
+              _hasCenteredInitially = true;
+
+              // Center camera just once, keeping your chosen initial zoom
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _mapController?.moveCamera(
+                  CameraUpdate.newCameraPosition(
+                    CameraPosition(target: center, zoom: _liveZoom),
+                  ),
+                );
+              });
+            }
+
+            // Decide what to render based on _renderZoom (debounced)
+            final bool showRealPins = _renderZoom >= _pinZoomThreshold;
 
             final Set<Marker> baseMarkers = showRealPins
                 ? _buildParkingMarkers(pins)
@@ -234,9 +313,10 @@ class _MapScreenState extends State<MapScreen> {
                 GoogleMap(
                   onMapCreated: _onMapCreated,
                   onCameraMove: _onCameraMove,
+                  onCameraIdle: _onCameraIdle,
                   initialCameraPosition: const CameraPosition(
                     target: _initialPosition,
-                    zoom: 12.0,
+                    zoom: 13.5,
                   ),
                   markers: _markers,
                   mapType: MapType.normal,
