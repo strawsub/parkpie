@@ -10,6 +10,7 @@ import 'package:frontend/features/map/search/search_cubit.dart';
 import 'package:frontend/features/map/search/search_state.dart';
 import 'package:frontend/features/parking_status_detection/parking_status_bloc.dart';
 import 'package:frontend/features/debug/debug_screen.dart';
+import 'package:frontend/features/raster_map/raster_map_screen.dart'; // 新增
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -24,7 +25,6 @@ class _MapScreenState extends State<MapScreen> {
   final TextEditingController _searchController = TextEditingController();
   Marker? _searchMarker;
 
-  // Melbourne coordinates
   static const LatLng _initialPosition = LatLng(-37.8035820, 144.9593280);
 
   void _onMapCreated(GoogleMapController controller) {
@@ -70,7 +70,6 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _handleSearchSuccess(SearchSuccess state) async {
-    // Animate camera to new position
     await _mapController?.animateCamera(
       CameraUpdate.newCameraPosition(
         CameraPosition(target: state.location, zoom: 15),
@@ -78,8 +77,7 @@ class _MapScreenState extends State<MapScreen> {
     );
 
     if (!mounted) return;
-    
-    // Create search marker
+
     setState(() {
       _searchMarker = Marker(
         markerId: MarkerId(state.markerId),
@@ -92,7 +90,6 @@ class _MapScreenState extends State<MapScreen> {
       );
     });
 
-    // Clear search field and hide keyboard
     _searchController.clear();
     FocusScope.of(context).unfocus();
   }
@@ -177,7 +174,6 @@ class _MapScreenState extends State<MapScreen> {
                   mapToolbarEnabled: false,
                   minMaxZoomPreference: const MinMaxZoomPreference(2.0, 20.0),
                 ),
-
                 // 🔍 Floating Search Bar
                 Positioned(
                   top: 40,
@@ -195,7 +191,8 @@ class _MapScreenState extends State<MapScreen> {
                             decoration: const InputDecoration(
                               hintText: 'Search location...',
                               border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                              contentPadding:
+                                  EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                             ),
                             onSubmitted: (query) =>
                                 context.read<SearchCubit>().searchLocation(query),
@@ -203,8 +200,9 @@ class _MapScreenState extends State<MapScreen> {
                         ),
                         IconButton(
                           icon: const Icon(Icons.search),
-                          onPressed: () =>
-                              context.read<SearchCubit>().searchLocation(_searchController.text),
+                          onPressed: () => context
+                              .read<SearchCubit>()
+                              .searchLocation(_searchController.text),
                         ),
                         IconButton(
                           icon: const Icon(Icons.clear),
@@ -219,6 +217,7 @@ class _MapScreenState extends State<MapScreen> {
           },
         ),
       ),
+      // 🟢 Floating Action Button Column
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -251,6 +250,24 @@ class _MapScreenState extends State<MapScreen> {
             tooltip: 'Debug',
             child: const Icon(Icons.bug_report),
           ),
+          const SizedBox(height: 12),
+          FloatingActionButton(
+            heroTag: 'rasterFab',
+            mini: true,
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const SegmentMapScreen(),
+                ),
+              );
+            },
+            tooltip: 'Raster Map',
+            child: Image.asset(
+              'assets/images/logo.png', // 替換成你專案 logo
+              width: 28,
+              height: 28,
+            ),
+          ),
         ],
       ),
     );
@@ -263,4 +280,3 @@ class _MapScreenState extends State<MapScreen> {
     super.dispose();
   }
 }
-

@@ -89,6 +89,8 @@ flutter:
   # for graphic
   assets:
     - assets/
+    - assets/road_segment.geojson
+
 
   uses-material-design: true
 
