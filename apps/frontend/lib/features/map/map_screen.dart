@@ -24,12 +24,33 @@ class _MapScreenState extends State<MapScreen> {
   final TextEditingController _searchController = TextEditingController();
   Marker? _searchMarker;
 
+  // Zoom behavior
+  double _currentZoom = 12.0; // keep in sync with initialCameraPosition
+  static const double _pinZoomThreshold =
+      14; // >= 14 => show all pins; < 14 => show 1 average pin
+
   // Melbourne coordinates
   static const LatLng _initialPosition = LatLng(-37.8035820, 144.9593280);
 
-  void _onMapCreated(GoogleMapController controller) {
+  // ---------- Map lifecycle ----------
+
+  void _onMapCreated(GoogleMapController controller) async {
     _mapController = controller;
+    final z = await _mapController?.getZoomLevel();
+    if (z != null && mounted) {
+      setState(() => _currentZoom = z);
+    }
   }
+
+  // Update zoom continuously while moving
+  void _onCameraMove(CameraPosition pos) {
+    final newZoom = pos.zoom;
+    if ((newZoom - _currentZoom).abs() > 0.05) {
+      setState(() => _currentZoom = newZoom);
+    }
+  }
+
+  // ---------- UI helpers ----------
 
   void _showParkingInfo(BuildContext context, Pin pin) {
     final pos = LatLng(pin.lat!, pin.lng!);
@@ -61,49 +82,90 @@ class _MapScreenState extends State<MapScreen> {
     }).toSet();
   }
 
-  Set<Marker> _getAllMarkers(Set<Marker> parkingMarkers) {
-    final allMarkers = Set<Marker>.from(parkingMarkers);
-    if (_searchMarker != null) {
-      allMarkers.add(_searchMarker!);
+  LatLng _computeCentroid(List<Pin> pins) {
+    double lat = 0, lng = 0;
+    int n = 0;
+    for (final p in pins) {
+      if (p.lat != null && p.lng != null) {
+        lat += p.lat!;
+        lng += p.lng!;
+        n++;
+      }
     }
-    return allMarkers;
+    return n == 0 ? _initialPosition : LatLng(lat / n, lng / n);
   }
 
-  void _handleSearchSuccess(SearchSuccess state) async {
-    // Animate camera to new position
+  Marker _buildAverageMarker(List<Pin> pins) {
+    final center = _computeCentroid(pins);
+    final count = pins.length;
+    return Marker(
+      markerId: const MarkerId('avg_pin'),
+      position: center,
+      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+      infoWindow: InfoWindow(
+        title: '$count spots',
+        snippet: 'Zoom in to see details',
+        onTap: () async {
+          // Trigger zoom only when info window is tapped
+          final current =
+              await _mapController?.getZoomLevel() ?? _pinZoomThreshold;
+          final targetZoom = current < _pinZoomThreshold
+              ? _pinZoomThreshold + 1
+              : current + 1;
+          _mapController?.animateCamera(
+            CameraUpdate.newCameraPosition(
+              CameraPosition(target: center, zoom: targetZoom),
+            ),
+          );
+        },
+      ),
+      // onTap: () async {
+      //   // Nudge into detail view
+      //   final current = await _mapController?.getZoomLevel() ?? _pinZoomThreshold;
+      //   final targetZoom = current < _pinZoomThreshold ? _pinZoomThreshold + 1 : current + 1;
+      //   _mapController?.animateCamera(
+      //     CameraUpdate.newCameraPosition(
+      //       CameraPosition(target: center, zoom: targetZoom),
+      //     ),
+      //   );
+      // },
+    );
+  }
+
+  Set<Marker> _mergeWithSearch(Set<Marker> base) {
+    final all = Set<Marker>.from(base);
+    if (_searchMarker != null) all.add(_searchMarker!);
+    return all;
+  }
+
+  Future<void> _handleSearchSuccess(SearchSuccess state) async {
     await _mapController?.animateCamera(
       CameraUpdate.newCameraPosition(
         CameraPosition(target: state.location, zoom: 15),
       ),
     );
-
     if (!mounted) return;
-    
-    // Create search marker
+
     setState(() {
       _searchMarker = Marker(
         markerId: MarkerId(state.markerId),
         position: state.location,
-        infoWindow: InfoWindow(
-          title: 'Search Result',
-          snippet: state.query,
-        ),
+        infoWindow: InfoWindow(title: 'Search Result', snippet: state.query),
         icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
       );
     });
 
-    // Clear search field and hide keyboard
     _searchController.clear();
     FocusScope.of(context).unfocus();
   }
 
   void _handleSearchCleared() {
-    setState(() {
-      _searchMarker = null;
-    });
+    setState(() => _searchMarker = null);
     _searchController.clear();
     FocusScope.of(context).unfocus();
   }
+
+  // ---------- Widget ----------
 
   @override
   Widget build(BuildContext context) {
@@ -125,9 +187,9 @@ class _MapScreenState extends State<MapScreen> {
                   SnackBar(content: Text('Found: ${state.query}')),
                 );
               } else if (state is SearchError) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(state.message)),
-                );
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text(state.message)));
               } else if (state is SearchCleared) {
                 _handleSearchCleared();
               }
@@ -157,13 +219,21 @@ class _MapScreenState extends State<MapScreen> {
             }
 
             final pins = (state as PinLoaded).pins;
-            final parkingMarkers = _buildParkingMarkers(pins);
-            _markers = _getAllMarkers(parkingMarkers);
+
+            // Decide what to render based on zoom
+            final bool showRealPins = _currentZoom >= _pinZoomThreshold;
+
+            final Set<Marker> baseMarkers = showRealPins
+                ? _buildParkingMarkers(pins)
+                : {_buildAverageMarker(pins)};
+
+            _markers = _mergeWithSearch(baseMarkers);
 
             return Stack(
               children: [
                 GoogleMap(
                   onMapCreated: _onMapCreated,
+                  onCameraMove: _onCameraMove,
                   initialCameraPosition: const CameraPosition(
                     target: _initialPosition,
                     zoom: 12.0,
@@ -195,20 +265,26 @@ class _MapScreenState extends State<MapScreen> {
                             decoration: const InputDecoration(
                               hintText: 'Search location...',
                               border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 14,
+                              ),
                             ),
-                            onSubmitted: (query) =>
-                                context.read<SearchCubit>().searchLocation(query),
+                            onSubmitted: (query) => context
+                                .read<SearchCubit>()
+                                .searchLocation(query),
                           ),
                         ),
                         IconButton(
                           icon: const Icon(Icons.search),
-                          onPressed: () =>
-                              context.read<SearchCubit>().searchLocation(_searchController.text),
+                          onPressed: () => context
+                              .read<SearchCubit>()
+                              .searchLocation(_searchController.text),
                         ),
                         IconButton(
                           icon: const Icon(Icons.clear),
-                          onPressed: () => context.read<SearchCubit>().clearSearch(),
+                          onPressed: () =>
+                              context.read<SearchCubit>().clearSearch(),
                         ),
                       ],
                     ),
@@ -263,4 +339,3 @@ class _MapScreenState extends State<MapScreen> {
     super.dispose();
   }
 }
-
