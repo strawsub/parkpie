@@ -72,7 +72,7 @@ class ParkingInfoSheet extends StatelessWidget {
                         const SizedBox(height: 8),
                         if (occupancyPercent != null)
                           Text(
-                            'Occupancy: ${occupancyPercent!.toStringAsFixed(1)}%',
+                            'Occupancy: ${(occupancyPercent! * 100).toStringAsFixed(occupancyPercent! % 0.01 == 0 ? 0 : 1)}%',
                           ),
                         if (startTime != null && endTime != null)
                           Text('Hours: $startTime - $endTime'),

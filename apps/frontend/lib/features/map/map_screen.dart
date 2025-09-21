@@ -10,7 +10,7 @@ import 'package:frontend/features/map/search/search_cubit.dart';
 import 'package:frontend/features/map/search/search_state.dart';
 import 'package:frontend/features/parking_status_detection/parking_status_bloc.dart';
 import 'package:frontend/features/debug/debug_screen.dart';
-import 'package:frontend/features/raster_map/raster_map_screen.dart'; // 新增
+import 'package:frontend/features/heatmap/segment_map_screen.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
