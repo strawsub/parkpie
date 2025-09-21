@@ -123,6 +123,7 @@ public class APIDatabaseService {
 
         String sql = """
                 SELECT
+                    ps.id,
                     ST_Y(ps.location::geometry) AS lat,
                     ST_X(ps.location::geometry) AS lng,
                     ps.day_of_week,
@@ -143,6 +144,71 @@ public class APIDatabaseService {
         
         allPin = jdbc.queryForList(sql, dowNo);
         return allPin;
+    }
+
+    public List<Map<String, Object>> queryByPoint(double lat, double lng) {
+        String sql = """
+                SELECT
+                    *,
+                    ST_Distance(
+                        location::geography,
+                        ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography
+                    ) AS distance
+                FROM public.parking_signs
+                ORDER BY distance ASC
+                LIMIT 1
+                """;
+        return jdbc.queryForList(sql, lng, lat); 
+    }
+
+
+    public List<Map<String, Object>> queryByFilter(
+        double lat, double lng, double radius,
+        Integer duration, String restrictionTime // "HH:mm:ss"
+    ) {
+        StringBuilder sql = new StringBuilder("""
+            SELECT
+                ps.*,
+                ST_Distance(
+                    ps.location::geography,
+                    ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography
+                ) AS distance
+            FROM public.parking_signs ps
+            WHERE ST_DWithin(
+                ps.location::geography,
+                ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography,
+                ?
+            )
+            """);
+
+        List<Object> params = new ArrayList<>();
+        // PostGIS: ST_MakePoint(lng, lat)
+        params.add(lng); params.add(lat);
+        params.add(lng); params.add(lat);
+        params.add(radius);
+
+        if (duration != null) {
+            sql.append(" AND ps.maximum_stay_minutes >= ? ");
+            params.add(duration);
+        }
+
+        if (restrictionTime != null && !restrictionTime.isBlank()) {
+            // handle both normal windows and overnight windows (end < start)
+            sql.append("""
+                AND (
+                    (ps.end_time >= ps.start_time AND ?::time BETWEEN ps.start_time AND ps.end_time)
+                    OR
+                    (ps.end_time < ps.start_time AND (?::time >= ps.start_time OR ?::time <= ps.end_time))
+                )
+                """);
+            params.add(restrictionTime);
+            params.add(restrictionTime);
+            params.add(restrictionTime);
+        }
+
+        sql.append(" ORDER BY distance ASC ");
+
+        return jdbc.queryForList(sql.toString(), params.toArray());
     }
 
 }

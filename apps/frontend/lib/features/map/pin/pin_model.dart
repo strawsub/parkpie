@@ -1,4 +1,5 @@
 class Pin {
+  final int? id;
   final double? lat;
   final double? lng;
   final double? occupancyPercent;
@@ -10,6 +11,7 @@ class Pin {
   const Pin({
     required this.lat,
     required this.lng,
+    this.id,
     this.occupancyPercent,
     this.startTime,
     this.endTime,
@@ -25,6 +27,7 @@ class Pin {
     }
 
     return Pin(
+      id: json['id'],
       lat: parseDouble(json['lat']),
       lng: parseDouble(json['lng']),
       occupancyPercent: parseDouble(json['occupancy_percent']),

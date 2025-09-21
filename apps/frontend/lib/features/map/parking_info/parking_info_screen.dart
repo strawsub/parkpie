@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class ParkingInfoSheet extends StatelessWidget {
+  final int? id;
   final LatLng location;
   final double? occupancyPercent;
   final String? startTime;
@@ -12,11 +13,12 @@ class ParkingInfoSheet extends StatelessWidget {
   const ParkingInfoSheet({
     super.key,
     required this.location,
+    this.id,
     this.occupancyPercent,
     this.startTime,
     this.endTime,
     this.maximumStayMinutes,
-    this.description,
+    this.description,// int? id,
   });
 
   @override
@@ -54,7 +56,8 @@ class ParkingInfoSheet extends StatelessWidget {
                   child: ListTile(
                     leading: const Icon(Icons.location_on),
                     // title: Text('${location.latitude}, ${location.longitude}'),
-                    title: const Text('Location'),
+                    // title: const Text('Location'),
+                    title: Text('$id'),
                     subtitle: Text('$description'),
                   ),
                 ),

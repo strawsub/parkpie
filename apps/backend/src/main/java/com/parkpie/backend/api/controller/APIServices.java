@@ -6,6 +6,7 @@ import java.util.Map;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.parkpie.backend.api.service.APIDatabaseService;
@@ -32,5 +33,27 @@ public class APIServices {
     @GetMapping("/api/map/getsignforpin")
     public List<Map<String, Object>> getLocForPin() {
         return dbService.getSignForPin();
+    }
+
+
+    // Lat, Long -> Nearby Parking Bays
+    @ResponseBody
+    @GetMapping("/api/map/querybylocation")
+    public List<Map<String, Object>> queryByLocation(
+            @RequestParam("lat") double lat,
+            @RequestParam("lng") double lng) {
+        return dbService.queryByPoint(lat, lng); 
+    }
+
+    @ResponseBody
+    @GetMapping("/api/map/querybyradius")
+    public List<Map<String, Object>> queryByRadius(
+            @RequestParam double lat,
+            @RequestParam double lng,
+            @RequestParam double radius,
+            @RequestParam(required = false) Integer duration,
+            @RequestParam(required = false) String restrictionTime
+    ) {
+        return dbService.queryByFilter(lat, lng, radius, duration, restrictionTime);
     }
 }

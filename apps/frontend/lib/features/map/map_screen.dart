@@ -40,6 +40,7 @@ class _MapScreenState extends State<MapScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) => ParkingInfoSheet(
         location: pos,
+        id: pin.id,
         occupancyPercent: pin.occupancyPercent,
         startTime: pin.startTime,
         endTime: pin.endTime,
