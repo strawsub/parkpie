@@ -12,6 +12,7 @@ import 'package:frontend/features/map/search/search_cubit.dart';
 import 'package:frontend/features/map/search/search_state.dart';
 import 'package:frontend/features/parking_status_detection/parking_status_bloc.dart';
 import 'package:frontend/features/debug/debug_screen.dart';
+import 'package:frontend/features/heatmap/segment_map_screen.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -327,7 +328,6 @@ class _MapScreenState extends State<MapScreen> {
                   mapToolbarEnabled: false,
                   minMaxZoomPreference: const MinMaxZoomPreference(2.0, 20.0),
                 ),
-
                 // 🔍 Floating Search Bar
                 Positioned(
                   top: 40,
@@ -375,6 +375,7 @@ class _MapScreenState extends State<MapScreen> {
           },
         ),
       ),
+      // 🟢 Floating Action Button Column
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -406,6 +407,24 @@ class _MapScreenState extends State<MapScreen> {
             },
             tooltip: 'Debug',
             child: const Icon(Icons.bug_report),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton(
+            heroTag: 'rasterFab',
+            mini: true,
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const SegmentMapScreen(),
+                ),
+              );
+            },
+            tooltip: 'Raster Map',
+            child: Image.asset(
+              'assets/images/logo.png', // 替換成你專案 logo
+              width: 28,
+              height: 28,
+            ),
           ),
         ],
       ),

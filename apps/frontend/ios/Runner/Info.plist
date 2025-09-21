@@ -28,6 +28,10 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>This app needs camera access to capture parking sign photos</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app needs continuous access to your location to track your GPS position.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app requires your location to show maps and provide navigation.</string>
 	<key>NSMotionUsageDescription</key>
 	<string>This app requires access to the barometer to provide altitude information.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
