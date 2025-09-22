@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -25,11 +27,70 @@ class _MapScreenState extends State<MapScreen> {
   final TextEditingController _searchController = TextEditingController();
   Marker? _searchMarker;
 
+  bool _hasCenteredInitially = false;
+
+  // ---------- Zoom behavior ----------
+  double _liveZoom = 13.5; // follows camera during movement
+  double _renderZoom = 13.5; // the zoom we use to decide what to render
+  static const double _pinZoomThreshold = 14; // >= threshold => show all pins
+  static const double _hysteresis = 0.5; // buffer to prevent flicker
+  BitmapDescriptor? _avgCarIcon;
+
+  @override
+  void initState() {
+    super.initState();
+    _generateIcons();
+  }
+
+  Future<void> _generateIcons() async {
+    _avgCarIcon = await _iconFromAsset(
+      Icons.directions_car_filled,
+      color: Colors.redAccent,
+      size: 96,
+    );
+    if (mounted) setState(() {});
+  }
+
+  // Avoid redraws while animating the camera (e.g., zoomBy)
+  bool _isAnimating = false;
+
+  // Melbourne coordinates
   static const LatLng _initialPosition = LatLng(-37.8035820, 144.9593280);
 
-  void _onMapCreated(GoogleMapController controller) {
+  // ---------- Map lifecycle ----------
+
+  void _onMapCreated(GoogleMapController controller) async {
     _mapController = controller;
+    final z = await _mapController?.getZoomLevel();
+    if (z != null && mounted) {
+      _liveZoom = z;
+      _renderZoom = z;
+      setState(() {}); // initial draw
+    }
   }
+
+  // Track live zoom without rebuilding every frame
+  void _onCameraMove(CameraPosition pos) {
+    _liveZoom = pos.zoom;
+  }
+
+  // Rebuild only when crossing hysteresis bands
+  void _onCameraIdle() {
+    if (_isAnimating) return;
+
+    final wasShowingPins = _renderZoom >= _pinZoomThreshold;
+    final crossedToPins =
+        !wasShowingPins && _liveZoom >= (_pinZoomThreshold + _hysteresis / 2);
+    final crossedToAvg =
+        wasShowingPins && _liveZoom <= (_pinZoomThreshold - _hysteresis / 2);
+
+    if (crossedToPins || crossedToAvg) {
+      _renderZoom = _liveZoom;
+      setState(() {}); // swap avg <-> all pins
+    }
+  }
+
+  // ---------- UI helpers ----------
 
   void _showParkingInfo(BuildContext context, Pin pin) {
     final pos = LatLng(pin.lat!, pin.lng!);
@@ -61,31 +122,66 @@ class _MapScreenState extends State<MapScreen> {
     }).toSet();
   }
 
-  Set<Marker> _getAllMarkers(Set<Marker> parkingMarkers) {
-    final allMarkers = Set<Marker>.from(parkingMarkers);
-    if (_searchMarker != null) {
-      allMarkers.add(_searchMarker!);
+  LatLng _computeCentroid(List<Pin> pins) {
+    double lat = 0, lng = 0;
+    int n = 0;
+    for (final p in pins) {
+      if (p.lat != null && p.lng != null) {
+        lat += p.lat!;
+        lng += p.lng!;
+        n++;
+      }
     }
-    return allMarkers;
+    return n == 0 ? _initialPosition : LatLng(lat / n, lng / n);
   }
 
-  void _handleSearchSuccess(SearchSuccess state) async {
+  Marker _buildAverageMarker(List<Pin> pins) {
+    final center = _computeCentroid(pins);
+    final count = pins.length;
+
+    return Marker(
+      markerId: const MarkerId('avg_pin'),
+      position: center,
+      icon:
+          _avgCarIcon ??
+          BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+      infoWindow: InfoWindow(
+        title: '$count spots',
+        snippet: 'Tap to zoom in',
+        onTap: () async {
+          if (_isAnimating) return;
+          _isAnimating = true;
+          try {
+            // Lighter animation; keeps current center
+            await _mapController?.animateCamera(CameraUpdate.zoomBy(2.0));
+          } finally {
+            _isAnimating = false;
+          }
+        },
+      ),
+      // No onTap here -> only the infoWindow triggers zoom
+    );
+  }
+
+  Set<Marker> _mergeWithSearch(Set<Marker> base) {
+    final all = Set<Marker>.from(base);
+    if (_searchMarker != null) all.add(_searchMarker!);
+    return all;
+  }
+
+  Future<void> _handleSearchSuccess(SearchSuccess state) async {
     await _mapController?.animateCamera(
       CameraUpdate.newCameraPosition(
         CameraPosition(target: state.location, zoom: 15),
       ),
     );
-
     if (!mounted) return;
 
     setState(() {
       _searchMarker = Marker(
         markerId: MarkerId(state.markerId),
         position: state.location,
-        infoWindow: InfoWindow(
-          title: 'Search Result',
-          snippet: state.query,
-        ),
+        infoWindow: InfoWindow(title: 'Search Result', snippet: state.query),
         icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
       );
     });
@@ -94,13 +190,46 @@ class _MapScreenState extends State<MapScreen> {
     FocusScope.of(context).unfocus();
   }
 
+  Future<BitmapDescriptor> _iconFromAsset(
+    IconData iconData, {
+    Color color = Colors.red,
+    double size = 96,
+  }) async {
+    final pictureRecorder = PictureRecorder();
+    final canvas = Canvas(pictureRecorder);
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
+
+    final icon = Icon(iconData, size: size, color: color);
+    final textSpan = TextSpan(
+      text: String.fromCharCode(iconData.codePoint),
+      style: TextStyle(
+        fontSize: size,
+        fontFamily: iconData.fontFamily,
+        package: iconData.fontPackage,
+        color: color,
+      ),
+    );
+
+    textPainter.text = textSpan;
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset((size - textPainter.width) / 2, (size - textPainter.height) / 2),
+    );
+
+    final picture = pictureRecorder.endRecording();
+    final img = await picture.toImage(size.toInt(), size.toInt());
+    final bytes = await img.toByteData(format: ImageByteFormat.png);
+    return BitmapDescriptor.fromBytes(bytes!.buffer.asUint8List());
+  }
+
   void _handleSearchCleared() {
-    setState(() {
-      _searchMarker = null;
-    });
+    setState(() => _searchMarker = null);
     _searchController.clear();
     FocusScope.of(context).unfocus();
   }
+
+  // ---------- Widget ----------
 
   @override
   Widget build(BuildContext context) {
@@ -122,9 +251,9 @@ class _MapScreenState extends State<MapScreen> {
                   SnackBar(content: Text('Found: ${state.query}')),
                 );
               } else if (state is SearchError) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(state.message)),
-                );
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text(state.message)));
               } else if (state is SearchCleared) {
                 _handleSearchCleared();
               }
@@ -154,16 +283,41 @@ class _MapScreenState extends State<MapScreen> {
             }
 
             final pins = (state as PinLoaded).pins;
-            final parkingMarkers = _buildParkingMarkers(pins);
-            _markers = _getAllMarkers(parkingMarkers);
+
+            if (!_hasCenteredInitially &&
+                pins.isNotEmpty &&
+                _mapController != null) {
+              final center = _computeCentroid(pins);
+              _hasCenteredInitially = true;
+
+              // Center camera just once, keeping your chosen initial zoom
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _mapController?.moveCamera(
+                  CameraUpdate.newCameraPosition(
+                    CameraPosition(target: center, zoom: _liveZoom),
+                  ),
+                );
+              });
+            }
+
+            // Decide what to render based on _renderZoom (debounced)
+            final bool showRealPins = _renderZoom >= _pinZoomThreshold;
+
+            final Set<Marker> baseMarkers = showRealPins
+                ? _buildParkingMarkers(pins)
+                : {_buildAverageMarker(pins)};
+
+            _markers = _mergeWithSearch(baseMarkers);
 
             return Stack(
               children: [
                 GoogleMap(
                   onMapCreated: _onMapCreated,
+                  onCameraMove: _onCameraMove,
+                  onCameraIdle: _onCameraIdle,
                   initialCameraPosition: const CameraPosition(
                     target: _initialPosition,
-                    zoom: 12.0,
+                    zoom: 13.5,
                   ),
                   markers: _markers,
                   mapType: MapType.normal,
@@ -191,11 +345,14 @@ class _MapScreenState extends State<MapScreen> {
                             decoration: const InputDecoration(
                               hintText: 'Search location...',
                               border: InputBorder.none,
-                              contentPadding:
-                                  EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 14,
+                              ),
                             ),
-                            onSubmitted: (query) =>
-                                context.read<SearchCubit>().searchLocation(query),
+                            onSubmitted: (query) => context
+                                .read<SearchCubit>()
+                                .searchLocation(query),
                           ),
                         ),
                         IconButton(
@@ -206,7 +363,8 @@ class _MapScreenState extends State<MapScreen> {
                         ),
                         IconButton(
                           icon: const Icon(Icons.clear),
-                          onPressed: () => context.read<SearchCubit>().clearSearch(),
+                          onPressed: () =>
+                              context.read<SearchCubit>().clearSearch(),
                         ),
                       ],
                     ),
