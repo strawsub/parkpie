@@ -56,4 +56,23 @@ public class APIServices {
     ) {
         return dbService.queryByFilter(lat, lng, radius, duration, restrictionTime);
     }
+
+    @ResponseBody
+    @GetMapping("/api/map/createsession")
+    public Map<String, Object> createSessionViaGet(
+            @RequestParam double lat,
+            @RequestParam double lng,
+            @RequestParam(required = false) String startTime
+    ) {
+        return dbService.createParkingSession(lat, lng, startTime);
+    }
+
+
+    @ResponseBody
+    @GetMapping("/api/map/deletesession")
+    public Map<String, Object> deleteSessionViaGet(
+        @RequestParam String sessionID
+    ){
+        return dbService.deleteParkingSession(sessionID);
+    }
 }

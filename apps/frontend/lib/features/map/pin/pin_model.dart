@@ -1,5 +1,5 @@
 class Pin {
-  final int? id;
+  final String? id;
   final double? lat;
   final double? lng;
   final double? occupancyPercent;
@@ -27,7 +27,7 @@ class Pin {
     }
 
     return Pin(
-      id: json['id'],
+      id: json['id']?.toString(),
       lat: parseDouble(json['lat']),
       lng: parseDouble(json['lng']),
       occupancyPercent: parseDouble(json['occupancy_percent']),
