@@ -320,4 +320,15 @@ public class APIDatabaseService {
     }
 
 
+    public List<Map<String, Object>> getAllSegments() {
+
+        String sql = """
+            SELECT
+                *
+            FROM public.parking_segments
+            """;
+
+        List<Map<String, Object>> rows = jdbc.queryForList(sql);
+        return rows;
+    }
 }

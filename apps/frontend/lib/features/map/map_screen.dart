@@ -13,6 +13,10 @@ import 'package:frontend/features/map/search/search_state.dart';
 import 'package:frontend/features/parking_status_detection/parking_status_bloc.dart';
 import 'package:frontend/features/debug/debug_screen.dart';
 
+import 'dart:typed_data';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
 
@@ -48,24 +52,19 @@ class _MapScreenState extends State<MapScreen> {
   final bool _showAreasDebug = false; // toggle to show/hide coverage
   Set<Polygon> _areaPolygons = {};
 
+  List<AreaRect> _areas = [];
+
   void _rebuildAreaPolygons() {
     if (!_showAreasDebug) {
       _areaPolygons = {};
       return;
     }
 
-    final colors = <Color>[
-      const Color(0x661E88E5),
-      const Color(0x66D81B60),
-      const Color(0x66FDD835),
-      const Color(0x66FB8C00),
-      const Color(0x668E24AA),
-      const Color(0x66E53935),
-    ];
+    final stroke = const Color(0xFFFF5252).withOpacity(0.9); // light red stroke
+    final fill = const Color(0x33FF5252); // light red fill, ~20% opacity
 
     final polys = <Polygon>{};
-    for (var i = 0; i < _areas.length; i++) {
-      final a = _areas[i];
+    for (final a in _areas) {
       final sw = a.bounds.southwest;
       final ne = a.bounds.northeast;
       final nw = LatLng(ne.latitude, sw.longitude);
@@ -75,12 +74,11 @@ class _MapScreenState extends State<MapScreen> {
         Polygon(
           polygonId: PolygonId('area_poly_${a.id}'),
           points: [sw, se, ne, nw],
-          strokeColor: colors[i % colors.length].withValues(alpha: 0.9),
+          strokeColor: stroke,
           strokeWidth: 2,
-          fillColor: colors[i % colors.length], // already semi-transparent
+          fillColor: fill,
           consumeTapEvents: true,
           onTap: () {
-            // Optional: tap to toast the area name
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(a.label),
@@ -108,68 +106,91 @@ class _MapScreenState extends State<MapScreen> {
   // Melbourne coordinates
   static const LatLng _initialPosition = LatLng(-37.8035820, 144.9593280);
 
-  // -------- Define up to 6 areas  --------
-  final List<AreaRect> _areas = [
-    AreaRect(
-      id: 'area_1',
-      label: 'CBD',
-      bounds: LatLngBounds(
-        southwest: LatLng(-37.821975, 144.952404),
-        northeast: LatLng(-37.806830, 144.965086),
-      ),
-      center: LatLng(-37.814687, 144.957764),
-    ),
-    AreaRect(
-      id: 'area_2',
-      label: 'Exhibition',
-      bounds: LatLngBounds(
-        southwest: LatLng(-37.819280, 144.965107),
-        northeast: LatLng(-37.806907, 144.974784),
-      ),
-      center: LatLng(-37.812419, 144.969385),
-    ),
-    AreaRect(
-      id: 'area_3',
-      label: 'East Melbourne',
-      bounds: LatLngBounds(
-        southwest: LatLng(-37.815430, 144.974707),
-        northeast: LatLng(-37.808655, 144.991408),
-      ),
-      center: LatLng(-37.812566, 144.982362),
-    ),
-    AreaRect(
-      id: 'area_4',
-      label: 'Docklands Yarra Side',
-      bounds: LatLngBounds(
-        southwest: LatLng(-37.823307, 144.940629),
-        northeast: LatLng(-37.815116, 144.952317),
-      ),
-      center: LatLng(-37.820141, 144.946072),
-    ),
-    AreaRect(
-      id: 'area_5',
-      label: 'Docklands Waterfront',
-      bounds: LatLngBounds(
-        southwest: LatLng(-37.815496, 144.933781),
-        northeast: LatLng(-37.809201, 144.952300),
-      ),
-      center: LatLng(-37.813609, 144.939131),
-    ),
-    AreaRect(
-      id: 'area_6',
-      label: 'North Melbourne',
-      bounds: LatLngBounds(
-        southwest: LatLng(-37.807090, 144.946975),
-        northeast: LatLng(-37.797487, 144.970498),
-      ),
-      center: LatLng(-37.800017, 144.957455),
-    ),
-  ];
+  // GETTING SEGMENTS FROM DB ___________________________________________________________________
+  LatLng _ewkbPointToLatLng(String hex) {
+    final bytes = Uint8List(hex.length ~/ 2);
+    for (var i = 0; i < bytes.length; i++) {
+      bytes[i] = int.parse(hex.substring(i * 2, i * 2 + 2), radix: 16);
+    }
+    final b = ByteData.sublistView(bytes);
+
+    if (bytes[0] != 1) {
+      throw ArgumentError('Only little-endian EWKB supported');
+    }
+
+    final type = b.getUint32(1, Endian.little);
+    final hasSrid = (type & 0x20000000) != 0;
+    final baseType = (type & 0x0FFFFFFF);
+    if (baseType != 1) throw ArgumentError('Expected Point geometry');
+
+    var off = 5;
+    if (hasSrid) {
+      final srid = b.getUint32(off, Endian.little);
+      if (srid != 4326) throw ArgumentError('Expected SRID 4326, got $srid');
+      off += 4;
+    }
+
+    final lon = b.getFloat64(off, Endian.little);
+    final lat = b.getFloat64(off + 8, Endian.little);
+    return LatLng(lat, lon);
+  }
+
+  Future<void> _loadAreasFromApi() async {
+    final uri = Uri.parse('http://192.168.18.12:8081/api/map/getallsegments');
+    final resp = await http.get(uri);
+    if (resp.statusCode != 200) {
+      throw Exception('getallsegments failed: ${resp.statusCode}');
+    }
+
+    final List data = json.decode(resp.body) as List;
+
+    final loaded = <AreaRect>[];
+    for (final raw in data) {
+      final m = raw as Map<String, dynamic>;
+      final id = m['id'].toString();
+      final label = m['label']?.toString() ?? 'Segment $id';
+
+      final sw = _ewkbPointToLatLng(m['location_sw']['value'] as String);
+      final ne = _ewkbPointToLatLng(m['location_ne']['value'] as String);
+      final center = _ewkbPointToLatLng(
+        m['location_center']['value'] as String,
+      );
+
+      loaded.add(
+        AreaRect(
+          id: 'area_$id',
+          label: label,
+          bounds: LatLngBounds(southwest: sw, northeast: ne),
+          center: center,
+        ),
+      );
+    }
+
+    // debugPrint(
+    //   '______________________________________________________________',
+    // );
+    // for (final a in loaded) {
+    //   debugPrint(
+    //     'Loaded area: ${a.id} - ${a.label} '
+    //     '[SW=${a.bounds.southwest}, NE=${a.bounds.northeast}, Center=${a.center}]',
+    //   );
+    // }
+    // debugPrint('Total areas loaded: ${loaded.length}');
+    // debugPrint(
+    //   '______________________________________________________________',
+    // );
+
+    setState(() {
+      _areas = loaded;
+    });
+  }
+  // _________________________________________________________________________________________
 
   @override
   void initState() {
     super.initState();
     _generateIcons();
+    _loadAreasFromApi();
     if (_showAreasDebug) {
       _rebuildAreaPolygons();
     }
@@ -178,7 +199,7 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _generateIcons() async {
     _avgCarIcon = await _iconFromAsset(
       Icons.directions_car_filled,
-      color: Colors.redAccent,
+      color: Color.fromARGB(255, 18, 9, 146),
       size: 35,
     );
     if (mounted) setState(() {});
