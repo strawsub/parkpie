@@ -45,7 +45,7 @@ class _MapScreenState extends State<MapScreen> {
   bool _hasCenteredInitially = false;
 
   // TUNNING PURPOSE ______________________________________________________________________
-  final bool _showAreasDebug = true; // toggle to show/hide coverage
+  final bool _showAreasDebug = false; // toggle to show/hide coverage
   Set<Polygon> _areaPolygons = {};
 
   void _rebuildAreaPolygons() {
@@ -179,7 +179,7 @@ class _MapScreenState extends State<MapScreen> {
     _avgCarIcon = await _iconFromAsset(
       Icons.directions_car_filled,
       color: Colors.redAccent,
-      size: 96,
+      size: 35,
     );
     if (mounted) setState(() {});
   }
@@ -625,5 +625,3 @@ class _MapScreenState extends State<MapScreen> {
     super.dispose();
   }
 }
-
-
