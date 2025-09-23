@@ -14,12 +14,14 @@ import java.nio.charset.StandardCharsets;
 import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.sql.Time;
 
 @Service
 public class APIDatabaseService {
@@ -33,6 +35,13 @@ public class APIDatabaseService {
     }
 
     private List<Map<String, Object>> rows = new ArrayList<>();
+
+    // Get current date
+    LocalDate today = LocalDate.now();
+
+    // Get DayOfWeek (MONDAY=1, ... SUNDAY=7)
+    DayOfWeek dow = today.getDayOfWeek();
+    int dowNo = dow.getValue();
 
     public void downloadCSV() {
         rows = new ArrayList<>();
@@ -114,35 +123,201 @@ public class APIDatabaseService {
 
     public List<Map<String, Object>> getSignForPin() {
 
-        // Get current date
-        LocalDate today = LocalDate.now();
-
-        // Get DayOfWeek (MONDAY=1, ... SUNDAY=7)
-        DayOfWeek dow = today.getDayOfWeek();
-        int dowNo = dow.getValue();
 
         String sql = """
                 SELECT
-                    ST_Y(ps.location::geometry) AS lat,
-                    ST_X(ps.location::geometry) AS lng,
+                    ps.id                         AS id,
+                    ST_Y(ps.location::geometry)   AS lat,
+                    ST_X(ps.location::geometry)   AS lng,
                     ps.day_of_week,
                     ps.occupancy_percent,
                     ps.start_time,
                     ps.end_time,
                     ps.maximum_stay_minutes,
                     ps.zone_number,
-                    pr.zone_number,
-                    pr.kerbsideid,
-                    pb.kerbside_id,
-                    pb.description
-                FROM public.parking_signs AS ps
-                LEFT JOIN parking_bay_realtime pr ON pr.zone_number=ps.zone_number
-                LEFT JOIN parking_bays pb ON pb.kerbside_id=pr.kerbsideid
-                WHERE ps.day_of_week = ?;
+                    nb.description                AS description,
+                    nb.kerbside_id                AS kerbside_id,
+                    nb.distance_m                 AS distance_m
+                FROM public.parking_signs ps
+                LEFT JOIN LATERAL (
+                        SELECT
+                        pb.description,
+                        pb.kerbside_id,
+                        ST_Distance(ps.location::geography, pb.location::geography) AS distance_m
+                        FROM public.parking_bays pb
+                        ORDER BY ps.location <-> pb.location
+                        LIMIT 1
+                ) nb ON TRUE
+                WHERE ps.day_of_week = ?
+                ORDER BY ps.id;
                         """;
         
         allPin = jdbc.queryForList(sql, dowNo);
         return allPin;
     }
+
+    public List<Map<String, Object>> queryByPoint(double lat, double lng) {
+
+        double radiusMeters = 100;
+
+        String sql = """
+            SELECT
+                *,
+                ST_Distance(
+                    location::geography,
+                    ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography
+                ) AS distance
+            FROM public.parking_signs
+            WHERE ST_DWithin(
+                location::geography,
+                ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography,
+                ?
+            )
+            ORDER BY distance ASC
+            LIMIT 1
+            """;
+
+        List<Map<String, Object>> rows = jdbc.queryForList(sql, lng, lat, lng, lat, radiusMeters);
+        return rows;
+    }
+
+
+    public List<Map<String, Object>> queryByFilter(
+        double lat, double lng, double radius,
+        Integer duration, String restrictionTime // "HH:mm:ss"
+    ) {
+        StringBuilder sql = new StringBuilder("""
+                    SELECT
+                        ps.*,
+                        ST_Distance(
+                            ps.location::geography,
+                            ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography
+                        ) AS distance
+                    FROM public.parking_signs ps
+                    WHERE ST_DWithin(
+                        ps.location::geography,
+                        ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography,
+                        ?
+                    )
+                    AND ps.day_of_week = ?
+                """);
+
+        List<Object> params = new ArrayList<>();
+        // PostGIS: ST_MakePoint(lng, lat)
+        params.add(lng); params.add(lat);
+        params.add(lng); params.add(lat);
+        params.add(radius);
+        params.add(dowNo);
+
+        if (duration != null) {
+            sql.append(" AND ps.maximum_stay_minutes >= ? ");
+            params.add(duration);
+        }
+
+        if (restrictionTime != null && !restrictionTime.isBlank()) {
+            // handle both normal windows and overnight windows (end < start)
+            sql.append("""
+                AND (
+                    (ps.end_time >= ps.start_time AND ?::time BETWEEN ps.start_time AND ps.end_time)
+                    OR
+                    (ps.end_time < ps.start_time AND (?::time >= ps.start_time OR ?::time <= ps.end_time))
+                )
+                """);
+            params.add(restrictionTime);
+            params.add(restrictionTime);
+            params.add(restrictionTime);
+        }
+
+        sql.append(" ORDER BY distance ASC ");
+
+        return jdbc.queryForList(sql.toString(), params.toArray());
+    }
+
+
+    public Map<String, Object> createParkingSession(double lat, double lng, String startTime) {
+        try {
+            List<Map<String, Object>> nearest = queryByPoint(lat, lng);
+            if (nearest.isEmpty()) {
+                return Map.of(
+                    "created", false,
+                    "reason", "NO_SIGN_FOUND"
+                );
+            }
+
+            Map<String, Object> row = nearest.get(0);
+            int signId = ((Number) row.get("id")).intValue();
+
+            LocalTime lt = (startTime == null || startTime.isBlank())
+                    ? LocalTime.now()
+                    : LocalTime.parse(startTime); // expects "HH:mm:ss"
+
+            String insertSql = """
+                INSERT INTO public.parking_session (location, start_parking_time, parking_signs_id)
+                VALUES (ST_SetSRID(ST_MakePoint(?, ?), 4326), ?, ?)
+                RETURNING id
+                """;
+
+            Integer sessionId = jdbc.queryForObject(
+                    insertSql,
+                    Integer.class,
+                    lng, lat,
+                    Time.valueOf(lt),
+                    signId
+            );
+
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("created", true);
+            resp.put("session_id", sessionId);
+            resp.put("parking_sign_id", signId);
+            resp.put("lat", lat);
+            resp.put("lng", lng);
+            resp.put("start_time", lt.toString());
+            return resp;
+
+        } catch (Exception e) {
+            // Log full stack trace for debugging
+            e.printStackTrace();
+
+            // Return a clean response to the client
+            Map<String, Object> errorResp = new HashMap<>();
+            errorResp.put("created", false);
+            errorResp.put("reason", "DB_INSERT_FAILED");
+            errorResp.put("error", e.getMessage());
+            errorResp.put("lat", lat);
+            errorResp.put("lng", lng);
+            return errorResp;
+        }
+    }
+
+
+    public Map<String, Object> deleteParkingSession(String sessionID) {
+        Map<String, Object> resp = new HashMap<>();
+
+        try {
+            int id = Integer.parseInt(sessionID);
+
+            String sql = "DELETE FROM public.parking_session WHERE id = ?";
+            int rows = jdbc.update(sql, id);
+
+            resp.put("deleted", rows > 0);
+            resp.put("session_id", id);
+            if (rows == 0) {
+                resp.put("reason", "NOT_FOUND");
+            }
+
+        } catch (NumberFormatException nfe) {
+            resp.put("deleted", false);
+            resp.put("reason", "INVALID_ID");
+            resp.put("session_id", sessionID);
+        } catch (Exception e) {
+            e.printStackTrace();
+            resp.put("deleted", false);
+            resp.put("reason", "DB_ERROR");
+            resp.put("error", e.getMessage());
+        }
+
+        return resp;
+    }
+
 
 }
