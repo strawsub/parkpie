@@ -19,8 +19,9 @@ class PinCubit extends Cubit<PinState> {
     );
     if (fromEnv.isNotEmpty) return fromEnv;
     if (kIsWeb) return 'http://localhost:8081';
-    if (defaultTargetPlatform == TargetPlatform.android)
+    if (defaultTargetPlatform == TargetPlatform.android) {
       return 'http://10.0.2.2:8081';
+    }
     return 'https://parkpie-90018.azurewebsites.net';
   }
   // String _apiBase() {
