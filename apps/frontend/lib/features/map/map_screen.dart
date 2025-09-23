@@ -12,7 +12,6 @@ import 'package:frontend/features/map/search/search_cubit.dart';
 import 'package:frontend/features/map/search/search_state.dart';
 import 'package:frontend/features/parking_status_detection/parking_status_bloc.dart';
 import 'package:frontend/features/debug/debug_screen.dart';
-import 'package:frontend/features/heatmap/segment_map_screen.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -76,7 +75,7 @@ class _MapScreenState extends State<MapScreen> {
         Polygon(
           polygonId: PolygonId('area_poly_${a.id}'),
           points: [sw, se, ne, nw],
-          strokeColor: colors[i % colors.length].withOpacity(0.9),
+          strokeColor: colors[i % colors.length].withValues(alpha: 0.9),
           strokeWidth: 2,
           fillColor: colors[i % colors.length], // already semi-transparent
           consumeTapEvents: true,
@@ -171,7 +170,9 @@ class _MapScreenState extends State<MapScreen> {
   void initState() {
     super.initState();
     _generateIcons();
-    //_rebuildAreaPolygons(); // FOR TUNNING PURPOSE
+    if (_showAreasDebug) {
+      _rebuildAreaPolygons();
+    }
   }
 
   Future<void> _generateIcons() async {
@@ -278,12 +279,9 @@ class _MapScreenState extends State<MapScreen> {
     for (final p in pins) {
       if (p.lat == null || p.lng == null) continue;
       final pos = LatLng(p.lat!, p.lng!);
-
-      bool matched = false;
       for (final a in _areas) {
         if (_boundsContain(a.bounds, pos)) {
           map[a]!.add(p);
-          matched = true;
           break;
         }
       }
@@ -410,7 +408,7 @@ class _MapScreenState extends State<MapScreen> {
     final picture = pictureRecorder.endRecording();
     final img = await picture.toImage(size.toInt(), size.toInt());
     final bytes = await img.toByteData(format: ImageByteFormat.png);
-    return BitmapDescriptor.fromBytes(bytes!.buffer.asUint8List());
+    return BitmapDescriptor.bytes(bytes!.buffer.asUint8List());
   }
 
   void _handleSearchCleared() {
@@ -627,3 +625,5 @@ class _MapScreenState extends State<MapScreen> {
     super.dispose();
   }
 }
+
+

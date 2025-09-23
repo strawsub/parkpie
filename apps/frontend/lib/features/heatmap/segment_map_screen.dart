@@ -12,9 +12,8 @@ class SegmentMapScreen extends StatefulWidget {
 }
 
 class _SegmentMapScreenState extends State<SegmentMapScreen> {
-  GoogleMapController? _mapController;
   List<List<LatLng>> _segments = [];
-  List<LatLng> _parkingPoints = [];
+  final List<LatLng> _parkingPoints = [];
   Set<Polygon> _polygons = {};
   static const LatLng _initialPosition = LatLng(-37.8136, 144.9631);
 
@@ -100,7 +99,7 @@ class _SegmentMapScreenState extends State<SegmentMapScreen> {
       _polygons = _segments.map((seg) {
         int count = segmentCounts[seg] ?? 0;
         double t = max(0.05, count / maxCount); // 確保 count = 0 也有淡色
-        Color color = Color.lerp(Colors.blue.withOpacity(0.2), Colors.red, t)!;
+        Color color = Color.lerp(Colors.blue.withValues(alpha: 0.2), Colors.red, t)!;
         return Polygon(
           polygonId: PolygonId(seg.hashCode.toString()),
           points: seg,
@@ -112,16 +111,11 @@ class _SegmentMapScreenState extends State<SegmentMapScreen> {
     });
   }
 
-  void _onMapCreated(GoogleMapController controller) {
-    _mapController = controller;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Segment Map Heat')),
       body: GoogleMap(
-        onMapCreated: _onMapCreated,
         initialCameraPosition: const CameraPosition(
           target: _initialPosition,
           zoom: 15,
@@ -135,3 +129,5 @@ class _SegmentMapScreenState extends State<SegmentMapScreen> {
     );
   }
 }
+
+

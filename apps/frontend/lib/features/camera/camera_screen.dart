@@ -71,7 +71,7 @@ class _CameraViewState extends State<CameraView> {
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.3),
+                          color: Colors.black.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: const Icon(
@@ -94,7 +94,7 @@ class _CameraViewState extends State<CameraView> {
                             Shadow(
                               offset: const Offset(0, 1),
                               blurRadius: 3,
-                              color: Colors.black.withOpacity(0.5),
+                              color: Colors.black.withValues(alpha: 0.5),
                             ),
                           ],
                         ),
@@ -112,7 +112,7 @@ class _CameraViewState extends State<CameraView> {
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.3),
+                          color: Colors.black.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: const Icon(
@@ -197,7 +197,7 @@ class _CameraViewState extends State<CameraView> {
                             BoxShadow(
                               offset: const Offset(0, 2),
                               blurRadius: 8,
-                              color: Colors.black.withOpacity(0.3),
+                              color: Colors.black.withValues(alpha: 0.3),
                             ),
                           ],
                         ),
@@ -217,7 +217,7 @@ class _CameraViewState extends State<CameraView> {
     return Stack(
       children: [
         SizedBox.expand(child: Image.file(File(imagePath), fit: BoxFit.cover)),
-        Container(color: Colors.black.withOpacity(0.3)),
+        Container(color: Colors.black.withValues(alpha: 0.3)),
         Positioned(
           top: 60,
           left: 20,
@@ -230,7 +230,7 @@ class _CameraViewState extends State<CameraView> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const Icon(
@@ -252,7 +252,7 @@ class _CameraViewState extends State<CameraView> {
                 BoxShadow(
                   offset: const Offset(0, 4),
                   blurRadius: 12,
-                  color: Colors.black.withOpacity(0.3),
+                  color: Colors.black.withValues(alpha: 0.3),
                 ),
               ],
             ),

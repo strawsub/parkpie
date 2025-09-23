@@ -65,7 +65,7 @@ dependencies:
   flutter_audio_output: ^0.0.4
 
   # for gps
-  geolocator: ^13.0.2
+  geolocator: ^14.0.2
 
 dev_dependencies:
   flutter_test:
