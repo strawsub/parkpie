@@ -115,3 +115,30 @@ _The backend is always running on Azure (24/7)._
 
 _No need to restart it manually unless you change the code._
 
+---
+
+Windows PowerShell 7 Deploy Guide
+```
+# Login
+az login
+
+# Set targets
+$rg  = 'parkpie-rg'
+$app = 'parkpie-90018'
+
+# Build the JAR
+Set-Location apps\backend
+.\gradlew.bat clean bootJar
+Get-ChildItem build\libs | Format-Table Name,LastWriteTime
+
+# Pick the newest JAR automatically
+$jar = (Get-ChildItem build\libs\*.jar | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
+Write-Host "Deploying: $jar"
+
+# Deploy
+az webapp deploy `
+  --resource-group $rg `
+  --name $app `
+  --src-path "$jar" `
+  --type jar
+```
