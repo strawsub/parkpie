@@ -75,4 +75,11 @@ public class APIServices {
     ){
         return dbService.deleteParkingSession(sessionID);
     }
+
+
+    @ResponseBody
+    @GetMapping("/api/map/getallsegments")
+    public List<Map<String, Object>> getAllSegments() {
+        return dbService.getAllSegments();
+    }
 }
