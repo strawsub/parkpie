@@ -49,7 +49,7 @@ class _MapScreenState extends State<MapScreen> {
   bool _hasCenteredInitially = false;
 
   // TUNNING PURPOSE ______________________________________________________________________
-  final bool _showAreasDebug = true; // toggle to show/hide coverage
+  final bool _showAreasDebug = false; // toggle to show/hide coverage
   Set<Polygon> _areaPolygons = {};
 
   List<AreaRect> _areas = [];
@@ -136,7 +136,9 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _loadAreasFromApi() async {
-    final uri = Uri.parse('https://parkpie-90018.azurewebsites.net/api/map/getallsegments');
+    final uri = Uri.parse(
+      'https://parkpie-90018.azurewebsites.net/api/map/getallsegments',
+    );
     final resp = await http.get(uri);
     if (resp.statusCode != 200) {
       throw Exception('getallsegments failed: ${resp.statusCode}');
