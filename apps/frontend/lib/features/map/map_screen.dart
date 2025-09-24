@@ -136,7 +136,7 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _loadAreasFromApi() async {
-    final uri = Uri.parse('http://192.168.18.12:8081/api/map/getallsegments');
+    final uri = Uri.parse('https://parkpie-90018.azurewebsites.net/api/map/getallsegments');
     final resp = await http.get(uri);
     if (resp.statusCode != 200) {
       throw Exception('getallsegments failed: ${resp.statusCode}');
