@@ -49,7 +49,7 @@ class _MapScreenState extends State<MapScreen> {
   bool _hasCenteredInitially = false;
 
   // TUNNING PURPOSE ______________________________________________________________________
-  final bool _showAreasDebug = false; // toggle to show/hide coverage
+  final bool _showAreasDebug = true; // toggle to show/hide coverage
   Set<Polygon> _areaPolygons = {};
 
   List<AreaRect> _areas = [];
@@ -60,7 +60,7 @@ class _MapScreenState extends State<MapScreen> {
       return;
     }
 
-    final stroke = const Color(0xFFFF5252).withOpacity(0.9); // light red stroke
+    final stroke = const Color(0xFFFF5252).withValues(); // light red stroke
     final fill = const Color(0x33FF5252); // light red fill, ~20% opacity
 
     final polys = <Polygon>{};
@@ -182,6 +182,9 @@ class _MapScreenState extends State<MapScreen> {
 
     setState(() {
       _areas = loaded;
+      if (_showAreasDebug) {
+        _rebuildAreaPolygons();
+      }
     });
   }
   // _________________________________________________________________________________________
@@ -191,9 +194,6 @@ class _MapScreenState extends State<MapScreen> {
     super.initState();
     _generateIcons();
     _loadAreasFromApi();
-    if (_showAreasDebug) {
-      _rebuildAreaPolygons();
-    }
   }
 
   Future<void> _generateIcons() async {
