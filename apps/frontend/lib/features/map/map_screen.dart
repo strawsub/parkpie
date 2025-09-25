@@ -279,6 +279,8 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _applyFilter(FilterConfig config) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final mapCtrl = _mapController;
     setState(() {
       _markers = {};
     });
@@ -294,21 +296,21 @@ class _MapScreenState extends State<MapScreen> {
         durationMinutes: config.durationMinutes,
         startTime: config.startTime,
       );
+      if (!mounted) return;
 
       final filteredMarkers = _buildParkingMarkers(pins);
 
       setState(() {
-        // _markers = _mergeWithSearch(filteredMarkers);
         _filterActive = true;
         _filteredRawMarkers = filteredMarkers;
       });
 
-      await _mapController?.animateCamera(CameraUpdate.newLatLng(center));
+      await mapCtrl?.animateCamera(CameraUpdate.newLatLng(center));
     } catch (e) {
-      debugPrint('Filter failed: $e');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Failed to filter pins')));
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Failed to filter pins')),
+      );
     }
   }
 
@@ -327,7 +329,7 @@ class _MapScreenState extends State<MapScreen> {
 
     // Get current position
     final pos = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
     );
 
     return LatLng(pos.latitude, pos.longitude);
