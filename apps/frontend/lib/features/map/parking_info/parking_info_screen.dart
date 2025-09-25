@@ -62,6 +62,59 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
       );
       parkingLocation = ParkingLocation.fromPin(pin);
     }
+
+    // CRITICAL FIX: Set currentRestrictionIndex to the currently active restriction
+    _setInitialRestrictionIndex();
+  }
+
+  // Find and set the index of the currently active restriction
+  void _setInitialRestrictionIndex() {
+    final currentDayRestrictions = parkingLocation.getRestrictionsForDay(selectedDay);
+    if (currentDayRestrictions.isEmpty) return;
+
+    // Find the currently active restriction
+    final now = DateTime.now();
+    final currentTime = DateTime(now.year, now.month, now.day, now.hour, now.minute);
+
+    for (int i = 0; i < currentDayRestrictions.length; i++) {
+      final restriction = currentDayRestrictions[i];
+
+      // Parse restriction times
+      final startParts = restriction.startTime.split(':');
+      final endParts = restriction.endTime.split(':');
+
+      var startTime = DateTime(now.year, now.month, now.day,
+                               int.parse(startParts[0]), int.parse(startParts[1]));
+      var endTime = DateTime(now.year, now.month, now.day,
+                            int.parse(endParts[0]), int.parse(endParts[1]));
+
+      // Handle overnight restrictions (end time next day)
+      if (endTime.isBefore(startTime)) {
+        endTime = endTime.add(const Duration(days: 1));
+      }
+
+      // Check if current time falls within this restriction
+      if (currentTime.isAfter(startTime) && currentTime.isBefore(endTime)) {
+        currentRestrictionIndex = i;
+        return; // Found the active restriction!
+      }
+    }
+
+    // If no restriction is currently active, find the next upcoming one
+    for (int i = 0; i < currentDayRestrictions.length; i++) {
+      final restriction = currentDayRestrictions[i];
+      final startParts = restriction.startTime.split(':');
+      final startTime = DateTime(now.year, now.month, now.day,
+                                int.parse(startParts[0]), int.parse(startParts[1]));
+
+      if (currentTime.isBefore(startTime)) {
+        currentRestrictionIndex = i;
+        return; // Found the next restriction
+      }
+    }
+
+    // Fallback: stay at index 0 if no logic above applies
+    currentRestrictionIndex = 0;
   }
 
   // Get day abbreviations
