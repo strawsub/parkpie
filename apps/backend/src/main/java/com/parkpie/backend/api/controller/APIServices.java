@@ -82,4 +82,22 @@ public class APIServices {
     public List<Map<String, Object>> getAllSegments() {
         return dbService.getAllSegments();
     }
+
+    // TODO: Remove these debug endpoints after API enhancement is complete
+    // DEBUG: Temporary endpoint to investigate database structure
+    @ResponseBody
+    @GetMapping("/api/debug/getallrestrictions")
+    public List<Map<String, Object>> getAllRestrictionsDebug() {
+        return dbService.getAllRestrictionsForInvestigation();
+    }
+
+    // DEBUG: Get all restrictions for a specific location
+    @ResponseBody
+    @GetMapping("/api/debug/getlocationrestrictions")
+    public List<Map<String, Object>> getLocationRestrictionsDebug(
+            @RequestParam("lat") double lat,
+            @RequestParam("lng") double lng,
+            @RequestParam(defaultValue = "100") double radius) {
+        return dbService.getAllRestrictionsForLocation(lat, lng, radius);
+    }
 }
