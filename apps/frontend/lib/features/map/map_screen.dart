@@ -1,7 +1,31 @@
+/*  
+ *   ############################################################################################
+ *   ######################################### INDICES ##########################################
+ *   ____________________________________________________________________________________________
+ *  |      |                            |                                                        |
+ *  | #NO  |   Name                     |   Description                                          |
+ *  |------|----------------------------|--------------------------------------------------------|
+ *  | #1   |   SEGMENT DEBUGGER         |   Just In case for show segments                       |
+ *  | #2   |   SEGMENT GENERATION       |   Generate segments from API and create average pins   |
+ *  | #3   |   FILTER HANDLER           |   Open filter panel, apply filter, pick on map         |
+ *  | #4   |   MAP OPERATIONS           |   Map creation, camera movement, zoom handling         |
+ *  | #5   |   PINNING                  |   Create markers from pin data, custom icons           |
+ *  | #6   |   INFO PANEL HANDLER       |   Show parking info bottom sheet                       |
+ *  | #7   |   SEARCHING OPERATION      |   Search location, handle search states                |
+ *  | #8   |   APP INITIATOR & DISPOSER |   Init and dispose resources                           |
+ *  | #9   |   CUSTOMIZED WIDGET ITEMS  |   Customized widgets in build()                        |
+ *  |______|____________________________|________________________________________________________|
+ * 
+ */
+
 import 'dart:ui';
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:geolocator/geolocator.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
@@ -16,11 +40,6 @@ import 'package:frontend/features/debug/debug_screen.dart';
 import 'package:frontend/features/map/filter/filter_config.dart';
 import 'package:frontend/features/map/filter/filter_panel.dart';
 
-import 'dart:typed_data';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:geolocator/geolocator.dart';
-
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
 
@@ -34,7 +53,7 @@ class AreaRect {
   final String id;
   final String label;
   final LatLngBounds bounds;
-  final LatLng center; // convenient caching for zoom-to
+  final LatLng center;
 
   const AreaRect({
     required this.id,
@@ -43,29 +62,42 @@ class AreaRect {
     required this.center,
   });
 }
+// -----------------------------------------
 
 class _MapScreenState extends State<MapScreen> {
   GoogleMapController? _mapController;
+
   Set<Marker> _markers = {};
+  Set<Marker> _filteredRawMarkers = {};
+  Set<Polygon> _areaPolygons = {};
+  List<AreaRect> _areas = [];
+  Completer<LatLng?>? _pickCompleter;
+
   final TextEditingController _searchController = TextEditingController();
+
   Marker? _searchMarker;
+  Marker? _pickerMarker;
+
+  LatLng? _selectedPoint;
 
   bool _hasCenteredInitially = false;
-
-  // TUNNING PURPOSE ______________________________________________________________________
-  final bool _showAreasDebug = false; // toggle to show/hide coverage
   bool _isFilterOpen = false;
-  Set<Polygon> _areaPolygons = {};
-
-  List<AreaRect> _areas = [];
-
-  Completer<LatLng?>? _pickCompleter;
   bool _isPickingLocation = false;
-  LatLng? _selectedPoint;
-  Marker? _pickerMarker;
   bool _filterActive = false;
+  bool _isAnimating = false;
 
-  Set<Marker> _filteredRawMarkers = {};
+  double _liveZoom = 13.5;
+  double _renderZoom = 13.5;
+
+  static const double _pinZoomThreshold = 15;
+  static const double _hysteresis = 0.5;
+  static const LatLng _initialPosition = LatLng(-37.8035820, 144.9593280);
+
+  BitmapDescriptor? _avgCarIcon;
+
+  // ###########################################################################
+  // #1 SEGMENT DEBUGGER _______________________________________________________
+  final bool _showAreasDebug = false; // toggle to show/hide coverage
 
   void _rebuildAreaPolygons() {
     if (!_showAreasDebug) {
@@ -104,22 +136,10 @@ class _MapScreenState extends State<MapScreen> {
     }
     _areaPolygons = polys;
   }
-  // _________________________________________________________________________________________
 
-  // ---------- Zoom behavior ----------
-  double _liveZoom = 13.5; // follows camera during movement
-  double _renderZoom = 13.5; // the zoom we use to decide what to render
-  static const double _pinZoomThreshold = 15; // >= threshold => show all pins
-  static const double _hysteresis = 0.5; // buffer to prevent flicker
-  bool _isAnimating = false;
-
-  // Custom icon for the single/area markers
-  BitmapDescriptor? _avgCarIcon;
-
-  // Melbourne coordinates
-  static const LatLng _initialPosition = LatLng(-37.8035820, 144.9593280);
-
-  // GETTING SEGMENTS FROM DB ___________________________________________________________________
+  // ___________________________________________________________________________
+  // ###########################################################################
+  // #2 SEGMENT OPERATION _____________________________________________________
   LatLng _ewkbPointToLatLng(String hex) {
     final bytes = Uint8List(hex.length ~/ 2);
     for (var i = 0; i < bytes.length; i++) {
@@ -181,20 +201,6 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
 
-    // debugPrint(
-    //   '______________________________________________________________',
-    // );
-    // for (final a in loaded) {
-    //   debugPrint(
-    //     'Loaded area: ${a.id} - ${a.label} '
-    //     '[SW=${a.bounds.southwest}, NE=${a.bounds.northeast}, Center=${a.center}]',
-    //   );
-    // }
-    // debugPrint('Total areas loaded: ${loaded.length}');
-    // debugPrint(
-    //   '______________________________________________________________',
-    // );
-
     setState(() {
       _areas = loaded;
       if (_showAreasDebug) {
@@ -202,15 +208,106 @@ class _MapScreenState extends State<MapScreen> {
       }
     });
   }
-  // _________________________________________________________________________________________
 
-  @override
-  void initState() {
-    super.initState();
-    _generateIcons();
-    _loadAreasFromApi();
+  LatLng _computeCentroid(List<Pin> pins) {
+    double lat = 0, lng = 0;
+    int n = 0;
+    for (final p in pins) {
+      if (p.lat != null && p.lng != null) {
+        lat += p.lat!;
+        lng += p.lng!;
+        n++;
+      }
+    }
+    return n == 0 ? _initialPosition : LatLng(lat / n, lng / n);
   }
 
+  bool _boundsContain(LatLngBounds b, LatLng p) {
+    final sw = b.southwest;
+    final ne = b.northeast;
+    return p.latitude >= sw.latitude &&
+        p.latitude <= ne.latitude &&
+        p.longitude >= sw.longitude &&
+        p.longitude <= ne.longitude;
+  }
+
+  Map<AreaRect, List<Pin>> _groupPinsByArea(List<Pin> pins) {
+    final Map<AreaRect, List<Pin>> map = {for (final a in _areas) a: <Pin>[]};
+    for (final p in pins) {
+      if (p.lat == null || p.lng == null) continue;
+      final pos = LatLng(p.lat!, p.lng!);
+      for (final a in _areas) {
+        if (_boundsContain(a.bounds, pos)) {
+          map[a]!.add(p);
+          break;
+        }
+      }
+    }
+    return map;
+  }
+
+  Marker _buildAreaMarker(AreaRect area, int count) {
+    final icon =
+        _avgCarIcon ??
+        BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
+
+    return Marker(
+      markerId: MarkerId('area_${area.id}'),
+      position: area.center,
+      icon: icon,
+      infoWindow: InfoWindow(
+        title: '${area.label} — $count',
+        snippet: 'Tap to zoom in',
+        onTap: () async {
+          if (_isAnimating) return;
+          _isAnimating = true;
+          try {
+            // Zoom toward the area center (a little tighter than threshold)
+            await _mapController?.animateCamera(
+              CameraUpdate.newCameraPosition(
+                CameraPosition(
+                  target: area.center,
+                  zoom: _pinZoomThreshold + 1,
+                ),
+              ),
+            );
+          } finally {
+            _isAnimating = false;
+          }
+        },
+      ),
+    );
+  }
+
+  Marker _buildAverageMarker(List<Pin> pins) {
+    final center = _computeCentroid(pins);
+    final count = pins.length;
+
+    return Marker(
+      markerId: const MarkerId('avg_pin'),
+      position: center,
+      icon:
+          _avgCarIcon ??
+          BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+      infoWindow: InfoWindow(
+        title: '$count spots',
+        snippet: 'Tap to zoom in',
+        onTap: () async {
+          if (_isAnimating) return;
+          _isAnimating = true;
+          try {
+            await _mapController?.animateCamera(CameraUpdate.zoomBy(2.0));
+          } finally {
+            _isAnimating = false;
+          }
+        },
+      ),
+    );
+  }
+
+  // ___________________________________________________________________________
+  // ###########################################################################
+  // #3 FILTER HANDLER__________________________________________________________
   Future<void> _openFilterSheet({FilterConfig? seed}) async {
     _isFilterOpen = true;
     try {
@@ -446,6 +543,9 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  // ___________________________________________________________________________
+  // ###########################################################################
+  // #4 MAP OPERATIONS _________________________________________________________
   Future<void> _generateIcons() async {
     _avgCarIcon = await _iconFromAsset(
       Icons.directions_car_filled,
@@ -454,8 +554,6 @@ class _MapScreenState extends State<MapScreen> {
     );
     if (mounted) setState(() {});
   }
-
-  // ---------- Map lifecycle ----------
 
   void _onMapCreated(GoogleMapController controller) async {
     _mapController = controller;
@@ -467,12 +565,10 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  // Track live zoom without rebuilding every frame
   void _onCameraMove(CameraPosition pos) {
     _liveZoom = pos.zoom;
   }
 
-  // Rebuild only when crossing hysteresis bands
   void _onCameraIdle() {
     if (_isAnimating) return;
 
@@ -484,32 +580,13 @@ class _MapScreenState extends State<MapScreen> {
 
     if (crossedToPins || crossedToAvg) {
       _renderZoom = _liveZoom;
-      setState(() {}); // swap avg/areas <-> all pins
+      setState(() {});
     }
   }
 
-  // ---------- UI helpers ----------
-
-  void _showParkingInfo(BuildContext context, Pin pin) {
-    final pos = LatLng(pin.lat!, pin.lng!);
-
-    showModalBottomSheet(
-      context: context,
-      useRootNavigator: true,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => ParkingInfoSheet(
-        location: pos,
-        id: pin.id,
-        occupancyPercent: pin.occupancyPercent,
-        startTime: pin.startTime,
-        endTime: pin.endTime,
-        maximumStayMinutes: pin.maximumStayMinutes,
-        description: pin.description,
-      ),
-    );
-  }
-
+  // ___________________________________________________________________________
+  // ###########################################################################
+  // #5 PINNING ________________________________________________________________
   Set<Marker> _buildParkingMarkers(List<Pin> pins) {
     return pins.where((p) => p.lat != null && p.lng != null).map((pin) {
       final pos = LatLng(pin.lat!, pin.lng!);
@@ -521,140 +598,6 @@ class _MapScreenState extends State<MapScreen> {
         icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
       );
     }).toSet();
-  }
-
-  LatLng _computeCentroid(List<Pin> pins) {
-    double lat = 0, lng = 0;
-    int n = 0;
-    for (final p in pins) {
-      if (p.lat != null && p.lng != null) {
-        lat += p.lat!;
-        lng += p.lng!;
-        n++;
-      }
-    }
-    return n == 0 ? _initialPosition : LatLng(lat / n, lng / n);
-  }
-
-  // -------- Area cluster helpers --------
-
-  bool _boundsContain(LatLngBounds b, LatLng p) {
-    final sw = b.southwest;
-    final ne = b.northeast;
-    return p.latitude >= sw.latitude &&
-        p.latitude <= ne.latitude &&
-        p.longitude >= sw.longitude &&
-        p.longitude <= ne.longitude;
-  }
-
-  Map<AreaRect, List<Pin>> _groupPinsByArea(List<Pin> pins) {
-    final Map<AreaRect, List<Pin>> map = {for (final a in _areas) a: <Pin>[]};
-    for (final p in pins) {
-      if (p.lat == null || p.lng == null) continue;
-      final pos = LatLng(p.lat!, p.lng!);
-      for (final a in _areas) {
-        if (_boundsContain(a.bounds, pos)) {
-          map[a]!.add(p);
-          break;
-        }
-      }
-      // If a pin doesn’t fall into any area, you could choose to:
-      // - ignore it in zoomed-out mode, OR
-      // - collect into a “Misc” area. Keeping it simple: ignore.
-    }
-    return map;
-  }
-
-  Marker _buildAreaMarker(AreaRect area, int count) {
-    final icon =
-        _avgCarIcon ??
-        BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
-
-    return Marker(
-      markerId: MarkerId('area_${area.id}'),
-      position: area.center,
-      icon: icon,
-      infoWindow: InfoWindow(
-        title: '${area.label} — $count',
-        snippet: 'Tap to zoom in',
-        onTap: () async {
-          if (_isAnimating) return;
-          _isAnimating = true;
-          try {
-            // Zoom toward the area center (a little tighter than threshold)
-            await _mapController?.animateCamera(
-              CameraUpdate.newCameraPosition(
-                CameraPosition(
-                  target: area.center,
-                  zoom: _pinZoomThreshold + 1,
-                ),
-              ),
-            );
-          } finally {
-            _isAnimating = false;
-          }
-        },
-      ),
-    );
-  }
-
-  // Fallback single “average” marker if you haven’t defined areas yet
-  Marker _buildAverageMarker(List<Pin> pins) {
-    final center = _computeCentroid(pins);
-    final count = pins.length;
-
-    return Marker(
-      markerId: const MarkerId('avg_pin'),
-      position: center,
-      icon:
-          _avgCarIcon ??
-          BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-      infoWindow: InfoWindow(
-        title: '$count spots',
-        snippet: 'Tap to zoom in',
-        onTap: () async {
-          if (_isAnimating) return;
-          _isAnimating = true;
-          try {
-            await _mapController?.animateCamera(CameraUpdate.zoomBy(2.0));
-          } finally {
-            _isAnimating = false;
-          }
-        },
-      ),
-    );
-  }
-
-  Set<Marker> _mergeWithSearch(Set<Marker> base) {
-    final all = Set<Marker>.from(base);
-    if (_searchMarker != null) all.add(_searchMarker!);
-    if (_pickerMarker != null) all.add(_pickerMarker!);
-
-    if (_isPickingLocation) {
-      return _pickerMarker != null ? {_pickerMarker!} : {};
-    }
-    return all;
-  }
-
-  Future<void> _handleSearchSuccess(SearchSuccess state) async {
-    await _mapController?.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(target: state.location, zoom: 15),
-      ),
-    );
-    if (!mounted) return;
-
-    setState(() {
-      _searchMarker = Marker(
-        markerId: MarkerId(state.markerId),
-        position: state.location,
-        infoWindow: InfoWindow(title: 'Search Result', snippet: state.query),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-      );
-    });
-
-    _searchController.clear();
-    FocusScope.of(context).unfocus();
   }
 
   Future<BitmapDescriptor> _iconFromAsset(
@@ -689,14 +632,90 @@ class _MapScreenState extends State<MapScreen> {
     return BitmapDescriptor.bytes(bytes!.buffer.asUint8List());
   }
 
+  // ___________________________________________________________________________
+  // ###########################################################################
+  // #6 INFO PANEL HANDLER _____________________________________________________
+  void _showParkingInfo(BuildContext context, Pin pin) {
+    final pos = LatLng(pin.lat!, pin.lng!);
+
+    showModalBottomSheet(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ParkingInfoSheet(
+        location: pos,
+        id: pin.id,
+        occupancyPercent: pin.occupancyPercent,
+        startTime: pin.startTime,
+        endTime: pin.endTime,
+        maximumStayMinutes: pin.maximumStayMinutes,
+        description: pin.description,
+      ),
+    );
+  }
+
+  // ___________________________________________________________________________
+  // ###########################################################################
+  // #7 SEARCHING OPERATION ____________________________________________________
+  Set<Marker> _mergeWithSearch(Set<Marker> base) {
+    final all = Set<Marker>.from(base);
+    if (_searchMarker != null) all.add(_searchMarker!);
+    if (_pickerMarker != null) all.add(_pickerMarker!);
+
+    if (_isPickingLocation) {
+      return _pickerMarker != null ? {_pickerMarker!} : {};
+    }
+    return all;
+  }
+
+  Future<void> _handleSearchSuccess(SearchSuccess state) async {
+    await _mapController?.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(target: state.location, zoom: 15),
+      ),
+    );
+    if (!mounted) return;
+
+    setState(() {
+      _searchMarker = Marker(
+        markerId: MarkerId(state.markerId),
+        position: state.location,
+        infoWindow: InfoWindow(title: 'Search Result', snippet: state.query),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+      );
+    });
+
+    _searchController.clear();
+    FocusScope.of(context).unfocus();
+  }
+
   void _handleSearchCleared() {
     setState(() => _searchMarker = null);
     _searchController.clear();
     FocusScope.of(context).unfocus();
   }
 
-  // ---------- Widget ----------
+  // ___________________________________________________________________________
+  // ###########################################################################
+  // #8 APP INITIATOR & DISPOSER _______________________________________________
+  @override
+  void initState() {
+    super.initState();
+    _generateIcons();
+    _loadAreasFromApi();
+  }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _mapController?.dispose();
+    super.dispose();
+  }
+
+  // ___________________________________________________________________________
+  // ###########################################################################
+  // #9 CUSTOMIZED WIDGET ITEMS ________________________________________________
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -907,10 +926,6 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    _mapController?.dispose();
-    super.dispose();
-  }
+  // ___________________________________________________________________________
+  // ###########################################################################
 }
