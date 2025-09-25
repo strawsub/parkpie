@@ -1,6 +1,31 @@
+/*  
+ *   ############################################################################################
+ *   ######################################### INDICES ##########################################
+ *   ____________________________________________________________________________________________
+ *  |      |                            |                                                        |
+ *  | #NO  |   Name                     |   Description                                          |
+ *  |------|----------------------------|--------------------------------------------------------|
+ *  | #1   |   SEGMENT DEBUGGER         |   Just In case for show segments                       |
+ *  | #2   |   SEGMENT GENERATION       |   Generate segments from API and create average pins   |
+ *  | #3   |   FILTER HANDLER           |   Open filter panel, apply filter, pick on map         |
+ *  | #4   |   MAP OPERATIONS           |   Map creation, camera movement, zoom handling         |
+ *  | #5   |   PINNING                  |   Create markers from pin data, custom icons           |
+ *  | #6   |   INFO PANEL HANDLER       |   Show parking info bottom sheet                       |
+ *  | #7   |   SEARCHING OPERATION      |   Search location, handle search states                |
+ *  | #8   |   APP INITIATOR & DISPOSER |   Init and dispose resources                           |
+ *  | #9   |   CUSTOMIZED WIDGET ITEMS  |   Customized widgets in build()                        |
+ *  |______|____________________________|________________________________________________________|
+ * 
+ */
+
 import 'dart:ui';
+import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:geolocator/geolocator.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
@@ -12,10 +37,8 @@ import 'package:frontend/features/map/search/search_cubit.dart';
 import 'package:frontend/features/map/search/search_state.dart';
 import 'package:frontend/features/parking_status_detection/parking_status_bloc.dart';
 import 'package:frontend/features/debug/debug_screen.dart';
-
-import 'dart:typed_data';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:frontend/features/map/filter/filter_config.dart';
+import 'package:frontend/features/map/filter/filter_panel.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -30,7 +53,7 @@ class AreaRect {
   final String id;
   final String label;
   final LatLngBounds bounds;
-  final LatLng center; // convenient caching for zoom-to
+  final LatLng center;
 
   const AreaRect({
     required this.id,
@@ -39,20 +62,42 @@ class AreaRect {
     required this.center,
   });
 }
+// -----------------------------------------
 
 class _MapScreenState extends State<MapScreen> {
   GoogleMapController? _mapController;
+
   Set<Marker> _markers = {};
+  Set<Marker> _filteredRawMarkers = {};
+  Set<Polygon> _areaPolygons = {};
+  List<AreaRect> _areas = [];
+  Completer<LatLng?>? _pickCompleter;
+
   final TextEditingController _searchController = TextEditingController();
+
   Marker? _searchMarker;
+  Marker? _pickerMarker;
+
+  LatLng? _selectedPoint;
 
   bool _hasCenteredInitially = false;
+  bool _isFilterOpen = false;
+  bool _isPickingLocation = false;
+  bool _filterActive = false;
+  bool _isAnimating = false;
 
-  // TUNNING PURPOSE ______________________________________________________________________
+  double _liveZoom = 13.5;
+  double _renderZoom = 13.5;
+
+  static const double _pinZoomThreshold = 15;
+  static const double _hysteresis = 0.5;
+  static const LatLng _initialPosition = LatLng(-37.8035820, 144.9593280);
+
+  BitmapDescriptor? _avgCarIcon;
+
+  // ###########################################################################
+  // #1 SEGMENT DEBUGGER _______________________________________________________
   final bool _showAreasDebug = false; // toggle to show/hide coverage
-  Set<Polygon> _areaPolygons = {};
-
-  List<AreaRect> _areas = [];
 
   void _rebuildAreaPolygons() {
     if (!_showAreasDebug) {
@@ -91,22 +136,10 @@ class _MapScreenState extends State<MapScreen> {
     }
     _areaPolygons = polys;
   }
-  // _________________________________________________________________________________________
 
-  // ---------- Zoom behavior ----------
-  double _liveZoom = 13.5; // follows camera during movement
-  double _renderZoom = 13.5; // the zoom we use to decide what to render
-  static const double _pinZoomThreshold = 15; // >= threshold => show all pins
-  static const double _hysteresis = 0.5; // buffer to prevent flicker
-  bool _isAnimating = false;
-
-  // Custom icon for the single/area markers
-  BitmapDescriptor? _avgCarIcon;
-
-  // Melbourne coordinates
-  static const LatLng _initialPosition = LatLng(-37.8035820, 144.9593280);
-
-  // GETTING SEGMENTS FROM DB ___________________________________________________________________
+  // ___________________________________________________________________________
+  // ###########################################################################
+  // #2 SEGMENT OPERATION _____________________________________________________
   LatLng _ewkbPointToLatLng(String hex) {
     final bytes = Uint8List(hex.length ~/ 2);
     for (var i = 0; i < bytes.length; i++) {
@@ -168,109 +201,12 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
 
-    // debugPrint(
-    //   '______________________________________________________________',
-    // );
-    // for (final a in loaded) {
-    //   debugPrint(
-    //     'Loaded area: ${a.id} - ${a.label} '
-    //     '[SW=${a.bounds.southwest}, NE=${a.bounds.northeast}, Center=${a.center}]',
-    //   );
-    // }
-    // debugPrint('Total areas loaded: ${loaded.length}');
-    // debugPrint(
-    //   '______________________________________________________________',
-    // );
-
     setState(() {
       _areas = loaded;
       if (_showAreasDebug) {
         _rebuildAreaPolygons();
       }
     });
-  }
-  // _________________________________________________________________________________________
-
-  @override
-  void initState() {
-    super.initState();
-    _generateIcons();
-    _loadAreasFromApi();
-  }
-
-  Future<void> _generateIcons() async {
-    _avgCarIcon = await _iconFromAsset(
-      Icons.directions_car_filled,
-      color: Color.fromARGB(255, 18, 9, 146),
-      size: 35,
-    );
-    if (mounted) setState(() {});
-  }
-
-  // ---------- Map lifecycle ----------
-
-  void _onMapCreated(GoogleMapController controller) async {
-    _mapController = controller;
-    final z = await _mapController?.getZoomLevel();
-    if (z != null && mounted) {
-      _liveZoom = z;
-      _renderZoom = z;
-      setState(() {}); // initial draw
-    }
-  }
-
-  // Track live zoom without rebuilding every frame
-  void _onCameraMove(CameraPosition pos) {
-    _liveZoom = pos.zoom;
-  }
-
-  // Rebuild only when crossing hysteresis bands
-  void _onCameraIdle() {
-    if (_isAnimating) return;
-
-    final wasShowingPins = _renderZoom >= _pinZoomThreshold;
-    final crossedToPins =
-        !wasShowingPins && _liveZoom >= (_pinZoomThreshold + _hysteresis / 2);
-    final crossedToAvg =
-        wasShowingPins && _liveZoom <= (_pinZoomThreshold - _hysteresis / 2);
-
-    if (crossedToPins || crossedToAvg) {
-      _renderZoom = _liveZoom;
-      setState(() {}); // swap avg/areas <-> all pins
-    }
-  }
-
-  // ---------- UI helpers ----------
-
-  void _showParkingInfo(BuildContext context, Pin pin) {
-    final pos = LatLng(pin.lat!, pin.lng!);
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => ParkingInfoSheet(
-        location: pos,
-        id: pin.id,
-        occupancyPercent: pin.occupancyPercent,
-        startTime: pin.startTime,
-        endTime: pin.endTime,
-        maximumStayMinutes: pin.maximumStayMinutes,
-        description: pin.description,
-      ),
-    );
-  }
-
-  Set<Marker> _buildParkingMarkers(List<Pin> pins) {
-    return pins.map((pin) {
-      final pos = LatLng(pin.lat!, pin.lng!);
-      return Marker(
-        markerId: MarkerId('pin_${pin.lat}_${pin.lng}'),
-        position: pos,
-        onTap: () => _showParkingInfo(context, pin),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-      );
-    }).toSet();
   }
 
   LatLng _computeCentroid(List<Pin> pins) {
@@ -285,8 +221,6 @@ class _MapScreenState extends State<MapScreen> {
     }
     return n == 0 ? _initialPosition : LatLng(lat / n, lng / n);
   }
-
-  // -------- Area cluster helpers --------
 
   bool _boundsContain(LatLngBounds b, LatLng p) {
     final sw = b.southwest;
@@ -308,9 +242,6 @@ class _MapScreenState extends State<MapScreen> {
           break;
         }
       }
-      // If a pin doesn’t fall into any area, you could choose to:
-      // - ignore it in zoomed-out mode, OR
-      // - collect into a “Misc” area. Keeping it simple: ignore.
     }
     return map;
   }
@@ -348,7 +279,6 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  // Fallback single “average” marker if you haven’t defined areas yet
   Marker _buildAverageMarker(List<Pin> pins) {
     final center = _computeCentroid(pins);
     final count = pins.length;
@@ -375,31 +305,299 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  Set<Marker> _mergeWithSearch(Set<Marker> base) {
-    final all = Set<Marker>.from(base);
-    if (_searchMarker != null) all.add(_searchMarker!);
-    return all;
+  // ___________________________________________________________________________
+  // ###########################################################################
+  // #3 FILTER HANDLER__________________________________________________________
+  Future<void> _openFilterSheet({FilterConfig? seed}) async {
+    _isFilterOpen = true;
+    try {
+      final result = await showFilterSheet(
+        context,
+        initial:
+            seed ??
+            FilterConfig(
+              mode: _selectedPoint == null
+                  ? LocationMode.current
+                  : LocationMode.selected,
+              selectedPoint: _selectedPoint,
+              radiusMeters: 100,
+              durationMinutes: 60,
+              startTime: TimeOfDay.now(),
+            ),
+      );
+
+      if (!mounted) return;
+
+      if (result == kFilterRequestPickOnMap) {
+        final picked = await _startPickOnMap();
+        if (!mounted || picked == null) return;
+
+        final base =
+            seed ??
+            FilterConfig(
+              mode: LocationMode.selected,
+              selectedPoint: picked,
+              radiusMeters: 100,
+              durationMinutes: 60,
+              startTime: TimeOfDay.now(),
+            );
+
+        await _openFilterSheet(
+          seed: base.copyWith(
+            mode: LocationMode.selected,
+            selectedPoint: picked,
+          ),
+        );
+        return;
+      }
+
+      if (result is FilterConfig) {
+        if (result.mode == LocationMode.selected) {
+          _selectedPoint = result.selectedPoint;
+        }
+
+        _applyFilter(result);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result.mode == LocationMode.current
+                  ? 'Using current location'
+                  : 'Using point: '
+                        '${result.selectedPoint?.latitude.toStringAsFixed(5)}, '
+                        '${result.selectedPoint?.longitude.toStringAsFixed(5)}',
+            ),
+          ),
+        );
+      }
+    } finally {
+      _isFilterOpen = false;
+    }
   }
 
-  Future<void> _handleSearchSuccess(SearchSuccess state) async {
-    await _mapController?.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(target: state.location, zoom: 15),
-      ),
-    );
-    if (!mounted) return;
-
+  Future<void> _applyFilter(FilterConfig config) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final mapCtrl = _mapController;
     setState(() {
-      _searchMarker = Marker(
-        markerId: MarkerId(state.markerId),
-        position: state.location,
-        infoWindow: InfoWindow(title: 'Search Result', snippet: state.query),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-      );
+      _markers = {};
     });
 
-    _searchController.clear();
-    FocusScope.of(context).unfocus();
+    try {
+      final LatLng center = config.mode == LocationMode.selected
+          ? config.selectedPoint!
+          : await _getCurrentLocation();
+
+      final pins = await _fetchPinsWithinRange(
+        center: center,
+        radius: config.radiusMeters,
+        durationMinutes: config.durationMinutes,
+        startTime: config.startTime,
+      );
+      if (!mounted) return;
+
+      final filteredMarkers = _buildParkingMarkers(pins);
+
+      setState(() {
+        _filterActive = true;
+        _filteredRawMarkers = filteredMarkers;
+      });
+
+      await mapCtrl?.animateCamera(CameraUpdate.newLatLng(center));
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Failed to filter pins')),
+      );
+    }
+  }
+
+  Future<LatLng> _getCurrentLocation() async {
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        throw Exception('Location permission denied');
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      throw Exception('Location permission permanently denied');
+    }
+
+    // Get current position
+    final pos = await Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+    );
+
+    return LatLng(pos.latitude, pos.longitude);
+  }
+
+  Future<List<Pin>> _fetchPinsWithinRange({
+    required LatLng center,
+    required double radius,
+    required int durationMinutes,
+    required TimeOfDay startTime,
+  }) async {
+    // Format time as HH:mm:ss
+    String two(int n) => n.toString().padLeft(2, '0');
+    final restrictionTime =
+        '${two(startTime.hour)}:${two(startTime.minute)}:00';
+
+    final uri =
+        Uri.parse(
+          'https://parkpie-90018.azurewebsites.net/api/map/querybyradius',
+        ).replace(
+          queryParameters: {
+            'lat': center.latitude.toString(),
+            'lng': center.longitude.toString(),
+            'radius': radius.round().toString(),
+            'duration': durationMinutes.toString(),
+            'restrictionTime': restrictionTime,
+          },
+        );
+
+    final resp = await http.get(uri);
+    if (resp.statusCode != 200) {
+      throw Exception(
+        'querybyradius failed: ${resp.statusCode} — ${resp.body}',
+      );
+    }
+
+    final List data = json.decode(resp.body) as List;
+
+    final pins = <Pin>[];
+    for (final raw in data) {
+      final m = raw as Map<String, dynamic>;
+      final idStr = (m['id'] as num?)?.toInt().toString();
+      final ewkb = (m['location'] as Map<String, dynamic>)['value'] as String;
+      final pos = _ewkbPointToLatLng(ewkb);
+
+      final pin = Pin(
+        id: idStr,
+        lat: pos.latitude,
+        lng: pos.longitude,
+        occupancyPercent: (m['occupancy_percent'] as num?)?.toDouble(),
+        maximumStayMinutes: m['maximum_stay_minutes'] as int?,
+        startTime: m['start_time'] as String?,
+        endTime: m['end_time'] as String?,
+        description:
+            'Zone ${m['zone_number']} • ${m['distance']?.toStringAsFixed(1)}m away',
+      );
+
+      pins.add(pin);
+    }
+
+    return pins;
+  }
+
+  Future<LatLng?> _startPickOnMap() async {
+    _isPickingLocation = true;
+    _pickCompleter = Completer<LatLng?>();
+    setState(() {});
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Tap on the map to choose a point')),
+    );
+
+    return _pickCompleter!.future;
+  }
+
+  void _handleMapTap(LatLng pos) {
+    if (_isPickingLocation) {
+      _isPickingLocation = false;
+      _selectedPoint = pos;
+      _pickerMarker = Marker(
+        markerId: const MarkerId('picker'),
+        position: pos,
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+        infoWindow: const InfoWindow(title: 'Selected point'),
+      );
+      _pickCompleter?.complete(pos);
+      _pickCompleter = null;
+      setState(() {});
+      return;
+    }
+
+    _dismissFilterIfOpen();
+  }
+
+  void _dismissFilterIfOpen() {
+    if (_isFilterOpen) {
+      Navigator.of(context).maybePop();
+    }
+  }
+
+  void _clearFilterAndReload() {
+    setState(() {
+      _filterActive = false;
+      _filteredRawMarkers = {};
+
+      _pickerMarker = null;
+      _selectedPoint = null;
+    });
+
+    context.read<PinCubit>().loadPins();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Filter cleared. Reloaded pins.')),
+    );
+  }
+
+  // ___________________________________________________________________________
+  // ###########################################################################
+  // #4 MAP OPERATIONS _________________________________________________________
+  Future<void> _generateIcons() async {
+    _avgCarIcon = await _iconFromAsset(
+      Icons.directions_car_filled,
+      color: Color.fromARGB(255, 18, 9, 146),
+      size: 35,
+    );
+    if (mounted) setState(() {});
+  }
+
+  void _onMapCreated(GoogleMapController controller) async {
+    _mapController = controller;
+    final z = await _mapController?.getZoomLevel();
+    if (z != null && mounted) {
+      _liveZoom = z;
+      _renderZoom = z;
+      setState(() {}); // initial draw
+    }
+  }
+
+  void _onCameraMove(CameraPosition pos) {
+    _liveZoom = pos.zoom;
+  }
+
+  void _onCameraIdle() {
+    if (_isAnimating) return;
+
+    final wasShowingPins = _renderZoom >= _pinZoomThreshold;
+    final crossedToPins =
+        !wasShowingPins && _liveZoom >= (_pinZoomThreshold + _hysteresis / 2);
+    final crossedToAvg =
+        wasShowingPins && _liveZoom <= (_pinZoomThreshold - _hysteresis / 2);
+
+    if (crossedToPins || crossedToAvg) {
+      _renderZoom = _liveZoom;
+      setState(() {});
+    }
+  }
+
+  // ___________________________________________________________________________
+  // ###########################################################################
+  // #5 PINNING ________________________________________________________________
+  Set<Marker> _buildParkingMarkers(List<Pin> pins) {
+    return pins.where((p) => p.lat != null && p.lng != null).map((pin) {
+      final pos = LatLng(pin.lat!, pin.lng!);
+      final markerId = 'pin_${(pin.id ?? '${pin.lat}_${pin.lng}').toString()}';
+      return Marker(
+        markerId: MarkerId(markerId),
+        position: pos,
+        onTap: () => _showParkingInfo(context, pin),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+      );
+    }).toSet();
   }
 
   Future<BitmapDescriptor> _iconFromAsset(
@@ -434,14 +632,90 @@ class _MapScreenState extends State<MapScreen> {
     return BitmapDescriptor.bytes(bytes!.buffer.asUint8List());
   }
 
+  // ___________________________________________________________________________
+  // ###########################################################################
+  // #6 INFO PANEL HANDLER _____________________________________________________
+  void _showParkingInfo(BuildContext context, Pin pin) {
+    final pos = LatLng(pin.lat!, pin.lng!);
+
+    showModalBottomSheet(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ParkingInfoSheet(
+        location: pos,
+        id: pin.id,
+        occupancyPercent: pin.occupancyPercent,
+        startTime: pin.startTime,
+        endTime: pin.endTime,
+        maximumStayMinutes: pin.maximumStayMinutes,
+        description: pin.description,
+      ),
+    );
+  }
+
+  // ___________________________________________________________________________
+  // ###########################################################################
+  // #7 SEARCHING OPERATION ____________________________________________________
+  Set<Marker> _mergeWithSearch(Set<Marker> base) {
+    final all = Set<Marker>.from(base);
+    if (_searchMarker != null) all.add(_searchMarker!);
+    if (_pickerMarker != null) all.add(_pickerMarker!);
+
+    if (_isPickingLocation) {
+      return _pickerMarker != null ? {_pickerMarker!} : {};
+    }
+    return all;
+  }
+
+  Future<void> _handleSearchSuccess(SearchSuccess state) async {
+    await _mapController?.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(target: state.location, zoom: 15),
+      ),
+    );
+    if (!mounted) return;
+
+    setState(() {
+      _searchMarker = Marker(
+        markerId: MarkerId(state.markerId),
+        position: state.location,
+        infoWindow: InfoWindow(title: 'Search Result', snippet: state.query),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+      );
+    });
+
+    _searchController.clear();
+    FocusScope.of(context).unfocus();
+  }
+
   void _handleSearchCleared() {
     setState(() => _searchMarker = null);
     _searchController.clear();
     FocusScope.of(context).unfocus();
   }
 
-  // ---------- Widget ----------
+  // ___________________________________________________________________________
+  // ###########################################################################
+  // #8 APP INITIATOR & DISPOSER _______________________________________________
+  @override
+  void initState() {
+    super.initState();
+    _generateIcons();
+    _loadAreasFromApi();
+  }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _mapController?.dispose();
+    super.dispose();
+  }
+
+  // ___________________________________________________________________________
+  // ###########################################################################
+  // #9 CUSTOMIZED WIDGET ITEMS ________________________________________________
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -510,27 +784,29 @@ class _MapScreenState extends State<MapScreen> {
               });
             }
 
-            // Decide what to render based on _renderZoom (debounced)
-            final bool showRealPins = _renderZoom >= _pinZoomThreshold;
-
             Set<Marker> baseMarkers;
-            if (showRealPins) {
-              baseMarkers = _buildParkingMarkers(pins);
+
+            if (_filterActive) {
+              baseMarkers = _filteredRawMarkers;
             } else {
-              // Area clusters when zoomed out
-              if (_areas.isNotEmpty) {
-                final grouped = _groupPinsByArea(pins);
-                final markers = <Marker>{};
-                grouped.forEach((area, ps) {
-                  if (ps.isEmpty) return; // only show areas with pins
-                  markers.add(_buildAreaMarker(area, ps.length));
-                });
-                // If none matched any area (or areas empty), fall back to single avg
-                baseMarkers = markers.isNotEmpty
-                    ? markers
-                    : {_buildAverageMarker(pins)};
+              final bool showRealPins = _renderZoom >= _pinZoomThreshold;
+
+              if (showRealPins) {
+                baseMarkers = _buildParkingMarkers(pins);
               } else {
-                baseMarkers = {_buildAverageMarker(pins)};
+                if (_areas.isNotEmpty) {
+                  final grouped = _groupPinsByArea(pins);
+                  final markers = <Marker>{};
+                  grouped.forEach((area, ps) {
+                    if (ps.isEmpty) return;
+                    markers.add(_buildAreaMarker(area, ps.length));
+                  });
+                  baseMarkers = markers.isNotEmpty
+                      ? markers
+                      : {_buildAverageMarker(pins)};
+                } else {
+                  baseMarkers = {_buildAverageMarker(pins)};
+                }
               }
             }
 
@@ -542,6 +818,7 @@ class _MapScreenState extends State<MapScreen> {
                   onMapCreated: _onMapCreated,
                   onCameraMove: _onCameraMove,
                   onCameraIdle: _onCameraIdle,
+                  onTap: _handleMapTap,
                   initialCameraPosition: const CameraPosition(
                     target: _initialPosition,
                     zoom: 13.5,
@@ -610,7 +887,8 @@ class _MapScreenState extends State<MapScreen> {
         children: [
           FloatingActionButton.extended(
             heroTag: 'reloadFab',
-            onPressed: () => context.read<PinCubit>().loadPins(),
+            // onPressed: () => context.read<PinCubit>().loadPins(),
+            onPressed: _clearFilterAndReload,
             icon: const Icon(Icons.refresh),
             label: const Text('Reload'),
           ),
@@ -636,15 +914,18 @@ class _MapScreenState extends State<MapScreen> {
             tooltip: 'Debug',
             child: const Icon(Icons.bug_report),
           ),
+          FloatingActionButton.extended(
+            heroTag: 'filterFab',
+            onPressed: () => _openFilterSheet(),
+            icon: const Icon(Icons.filter_list),
+            label: const Text('Filter'),
+          ),
+          const SizedBox(height: 12),
         ],
       ),
     );
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    _mapController?.dispose();
-    super.dispose();
-  }
+  // ___________________________________________________________________________
+  // ###########################################################################
 }
