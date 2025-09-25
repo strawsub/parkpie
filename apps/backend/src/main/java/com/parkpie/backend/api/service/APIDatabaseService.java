@@ -331,4 +331,74 @@ public class APIDatabaseService {
         List<Map<String, Object>> rows = jdbc.queryForList(sql);
         return rows;
     }
+
+    // DEBUG: Get all parking signs to investigate database structure
+    public List<Map<String, Object>> getAllRestrictionsForInvestigation() {
+        String sql = """
+            SELECT
+                ps.id,
+                ST_Y(ps.location::geometry) AS lat,
+                ST_X(ps.location::geometry) AS lng,
+                ps.day_of_week,
+                ps.occupancy_percent,
+                ps.start_time,
+                ps.end_time,
+                ps.maximum_stay_minutes,
+                ps.zone_number,
+                nb.description,
+                nb.kerbside_id
+            FROM public.parking_signs ps
+            LEFT JOIN LATERAL (
+                SELECT
+                pb.description,
+                pb.kerbside_id
+                FROM public.parking_bays pb
+                ORDER BY ps.location <-> pb.location
+                LIMIT 1
+            ) nb ON TRUE
+            ORDER BY ST_Y(ps.location::geometry), ST_X(ps.location::geometry), ps.day_of_week
+            LIMIT 100
+            """;
+
+        return jdbc.queryForList(sql);
+    }
+
+    // DEBUG: Get all restrictions for a specific location across all days
+    public List<Map<String, Object>> getAllRestrictionsForLocation(double lat, double lng, double radius) {
+        String sql = """
+            SELECT
+                ps.id,
+                ST_Y(ps.location::geometry) AS lat,
+                ST_X(ps.location::geometry) AS lng,
+                ps.day_of_week,
+                ps.occupancy_percent,
+                ps.start_time,
+                ps.end_time,
+                ps.maximum_stay_minutes,
+                ps.zone_number,
+                nb.description,
+                nb.kerbside_id,
+                ST_Distance(
+                    ps.location::geography,
+                    ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography
+                ) AS distance_m
+            FROM public.parking_signs ps
+            LEFT JOIN LATERAL (
+                SELECT
+                pb.description,
+                pb.kerbside_id
+                FROM public.parking_bays pb
+                ORDER BY ps.location <-> pb.location
+                LIMIT 1
+            ) nb ON TRUE
+            WHERE ST_DWithin(
+                ps.location::geography,
+                ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography,
+                ?
+            )
+            ORDER BY distance_m ASC, ps.day_of_week ASC
+            """;
+
+        return jdbc.queryForList(sql, lng, lat, lng, lat, radius);
+    }
 }
