@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -12,10 +13,13 @@ import 'package:frontend/features/map/search/search_cubit.dart';
 import 'package:frontend/features/map/search/search_state.dart';
 import 'package:frontend/features/parking_status_detection/parking_status_bloc.dart';
 import 'package:frontend/features/debug/debug_screen.dart';
+import 'package:frontend/features/map/filter/filter_config.dart';
+import 'package:frontend/features/map/filter/filter_panel.dart';
 
 import 'dart:typed_data';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:geolocator/geolocator.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -50,9 +54,18 @@ class _MapScreenState extends State<MapScreen> {
 
   // TUNNING PURPOSE ______________________________________________________________________
   final bool _showAreasDebug = false; // toggle to show/hide coverage
+  bool _isFilterOpen = false;
   Set<Polygon> _areaPolygons = {};
 
   List<AreaRect> _areas = [];
+
+  Completer<LatLng?>? _pickCompleter;
+  bool _isPickingLocation = false;
+  LatLng? _selectedPoint;
+  Marker? _pickerMarker;
+  bool _filterActive = false;
+
+  Set<Marker> _filteredRawMarkers = {};
 
   void _rebuildAreaPolygons() {
     if (!_showAreasDebug) {
@@ -198,6 +211,239 @@ class _MapScreenState extends State<MapScreen> {
     _loadAreasFromApi();
   }
 
+  Future<void> _openFilterSheet({FilterConfig? seed}) async {
+    _isFilterOpen = true;
+    try {
+      final result = await showFilterSheet(
+        context,
+        initial:
+            seed ??
+            FilterConfig(
+              mode: _selectedPoint == null
+                  ? LocationMode.current
+                  : LocationMode.selected,
+              selectedPoint: _selectedPoint,
+              radiusMeters: 100,
+              durationMinutes: 60,
+              startTime: TimeOfDay.now(),
+            ),
+      );
+
+      if (!mounted) return;
+
+      if (result == kFilterRequestPickOnMap) {
+        final picked = await _startPickOnMap();
+        if (!mounted || picked == null) return;
+
+        final base =
+            seed ??
+            FilterConfig(
+              mode: LocationMode.selected,
+              selectedPoint: picked,
+              radiusMeters: 100,
+              durationMinutes: 60,
+              startTime: TimeOfDay.now(),
+            );
+
+        await _openFilterSheet(
+          seed: base.copyWith(
+            mode: LocationMode.selected,
+            selectedPoint: picked,
+          ),
+        );
+        return;
+      }
+
+      if (result is FilterConfig) {
+        if (result.mode == LocationMode.selected) {
+          _selectedPoint = result.selectedPoint;
+        }
+
+        _applyFilter(result);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result.mode == LocationMode.current
+                  ? 'Using current location'
+                  : 'Using point: '
+                        '${result.selectedPoint?.latitude.toStringAsFixed(5)}, '
+                        '${result.selectedPoint?.longitude.toStringAsFixed(5)}',
+            ),
+          ),
+        );
+      }
+    } finally {
+      _isFilterOpen = false;
+    }
+  }
+
+  Future<void> _applyFilter(FilterConfig config) async {
+    setState(() {
+      _markers = {};
+    });
+
+    try {
+      final LatLng center = config.mode == LocationMode.selected
+          ? config.selectedPoint!
+          : await _getCurrentLocation();
+
+      final pins = await _fetchPinsWithinRange(
+        center: center,
+        radius: config.radiusMeters,
+        durationMinutes: config.durationMinutes,
+        startTime: config.startTime,
+      );
+
+      final filteredMarkers = _buildParkingMarkers(pins);
+
+      setState(() {
+        // _markers = _mergeWithSearch(filteredMarkers);
+        _filterActive = true;
+        _filteredRawMarkers = filteredMarkers;
+      });
+
+      await _mapController?.animateCamera(CameraUpdate.newLatLng(center));
+    } catch (e) {
+      debugPrint('Filter failed: $e');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Failed to filter pins')));
+    }
+  }
+
+  Future<LatLng> _getCurrentLocation() async {
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        throw Exception('Location permission denied');
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      throw Exception('Location permission permanently denied');
+    }
+
+    // Get current position
+    final pos = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
+
+    return LatLng(pos.latitude, pos.longitude);
+  }
+
+  Future<List<Pin>> _fetchPinsWithinRange({
+    required LatLng center,
+    required double radius,
+    required int durationMinutes,
+    required TimeOfDay startTime,
+  }) async {
+    // Format time as HH:mm:ss
+    String two(int n) => n.toString().padLeft(2, '0');
+    final restrictionTime =
+        '${two(startTime.hour)}:${two(startTime.minute)}:00';
+
+    final uri =
+        Uri.parse(
+          'https://parkpie-90018.azurewebsites.net/api/map/querybyradius',
+        ).replace(
+          queryParameters: {
+            'lat': center.latitude.toString(),
+            'lng': center.longitude.toString(),
+            'radius': radius.round().toString(),
+            'duration': durationMinutes.toString(),
+            'restrictionTime': restrictionTime,
+          },
+        );
+
+    final resp = await http.get(uri);
+    if (resp.statusCode != 200) {
+      throw Exception(
+        'querybyradius failed: ${resp.statusCode} — ${resp.body}',
+      );
+    }
+
+    final List data = json.decode(resp.body) as List;
+
+    final pins = <Pin>[];
+    for (final raw in data) {
+      final m = raw as Map<String, dynamic>;
+      final idStr = (m['id'] as num?)?.toInt().toString();
+      final ewkb = (m['location'] as Map<String, dynamic>)['value'] as String;
+      final pos = _ewkbPointToLatLng(ewkb);
+
+      final pin = Pin(
+        id: idStr,
+        lat: pos.latitude,
+        lng: pos.longitude,
+        occupancyPercent: (m['occupancy_percent'] as num?)?.toDouble(),
+        maximumStayMinutes: m['maximum_stay_minutes'] as int?,
+        startTime: m['start_time'] as String?,
+        endTime: m['end_time'] as String?,
+        description:
+            'Zone ${m['zone_number']} • ${m['distance']?.toStringAsFixed(1)}m away',
+      );
+
+      pins.add(pin);
+    }
+
+    return pins;
+  }
+
+  Future<LatLng?> _startPickOnMap() async {
+    _isPickingLocation = true;
+    _pickCompleter = Completer<LatLng?>();
+    setState(() {});
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Tap on the map to choose a point')),
+    );
+
+    return _pickCompleter!.future;
+  }
+
+  void _handleMapTap(LatLng pos) {
+    if (_isPickingLocation) {
+      _isPickingLocation = false;
+      _selectedPoint = pos;
+      _pickerMarker = Marker(
+        markerId: const MarkerId('picker'),
+        position: pos,
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+        infoWindow: const InfoWindow(title: 'Selected point'),
+      );
+      _pickCompleter?.complete(pos);
+      _pickCompleter = null;
+      setState(() {});
+      return;
+    }
+
+    _dismissFilterIfOpen();
+  }
+
+  void _dismissFilterIfOpen() {
+    if (_isFilterOpen) {
+      Navigator.of(context).maybePop();
+    }
+  }
+
+  void _clearFilterAndReload() {
+    setState(() {
+      _filterActive = false;
+      _filteredRawMarkers = {};
+
+      _pickerMarker = null;
+      _selectedPoint = null;
+    });
+
+    context.read<PinCubit>().loadPins();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Filter cleared. Reloaded pins.')),
+    );
+  }
+
   Future<void> _generateIcons() async {
     _avgCarIcon = await _iconFromAsset(
       Icons.directions_car_filled,
@@ -247,6 +493,7 @@ class _MapScreenState extends State<MapScreen> {
 
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => ParkingInfoSheet(
@@ -262,10 +509,11 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Set<Marker> _buildParkingMarkers(List<Pin> pins) {
-    return pins.map((pin) {
+    return pins.where((p) => p.lat != null && p.lng != null).map((pin) {
       final pos = LatLng(pin.lat!, pin.lng!);
+      final markerId = 'pin_${(pin.id ?? '${pin.lat}_${pin.lng}').toString()}';
       return Marker(
-        markerId: MarkerId('pin_${pin.lat}_${pin.lng}'),
+        markerId: MarkerId(markerId),
         position: pos,
         onTap: () => _showParkingInfo(context, pin),
         icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
@@ -378,6 +626,11 @@ class _MapScreenState extends State<MapScreen> {
   Set<Marker> _mergeWithSearch(Set<Marker> base) {
     final all = Set<Marker>.from(base);
     if (_searchMarker != null) all.add(_searchMarker!);
+    if (_pickerMarker != null) all.add(_pickerMarker!);
+
+    if (_isPickingLocation) {
+      return _pickerMarker != null ? {_pickerMarker!} : {};
+    }
     return all;
   }
 
@@ -510,27 +763,29 @@ class _MapScreenState extends State<MapScreen> {
               });
             }
 
-            // Decide what to render based on _renderZoom (debounced)
-            final bool showRealPins = _renderZoom >= _pinZoomThreshold;
-
             Set<Marker> baseMarkers;
-            if (showRealPins) {
-              baseMarkers = _buildParkingMarkers(pins);
+
+            if (_filterActive) {
+              baseMarkers = _filteredRawMarkers;
             } else {
-              // Area clusters when zoomed out
-              if (_areas.isNotEmpty) {
-                final grouped = _groupPinsByArea(pins);
-                final markers = <Marker>{};
-                grouped.forEach((area, ps) {
-                  if (ps.isEmpty) return; // only show areas with pins
-                  markers.add(_buildAreaMarker(area, ps.length));
-                });
-                // If none matched any area (or areas empty), fall back to single avg
-                baseMarkers = markers.isNotEmpty
-                    ? markers
-                    : {_buildAverageMarker(pins)};
+              final bool showRealPins = _renderZoom >= _pinZoomThreshold;
+
+              if (showRealPins) {
+                baseMarkers = _buildParkingMarkers(pins);
               } else {
-                baseMarkers = {_buildAverageMarker(pins)};
+                if (_areas.isNotEmpty) {
+                  final grouped = _groupPinsByArea(pins);
+                  final markers = <Marker>{};
+                  grouped.forEach((area, ps) {
+                    if (ps.isEmpty) return;
+                    markers.add(_buildAreaMarker(area, ps.length));
+                  });
+                  baseMarkers = markers.isNotEmpty
+                      ? markers
+                      : {_buildAverageMarker(pins)};
+                } else {
+                  baseMarkers = {_buildAverageMarker(pins)};
+                }
               }
             }
 
@@ -542,6 +797,7 @@ class _MapScreenState extends State<MapScreen> {
                   onMapCreated: _onMapCreated,
                   onCameraMove: _onCameraMove,
                   onCameraIdle: _onCameraIdle,
+                  onTap: _handleMapTap,
                   initialCameraPosition: const CameraPosition(
                     target: _initialPosition,
                     zoom: 13.5,
@@ -610,7 +866,8 @@ class _MapScreenState extends State<MapScreen> {
         children: [
           FloatingActionButton.extended(
             heroTag: 'reloadFab',
-            onPressed: () => context.read<PinCubit>().loadPins(),
+            // onPressed: () => context.read<PinCubit>().loadPins(),
+            onPressed: _clearFilterAndReload,
             icon: const Icon(Icons.refresh),
             label: const Text('Reload'),
           ),
@@ -636,6 +893,13 @@ class _MapScreenState extends State<MapScreen> {
             tooltip: 'Debug',
             child: const Icon(Icons.bug_report),
           ),
+          FloatingActionButton.extended(
+            heroTag: 'filterFab',
+            onPressed: () => _openFilterSheet(),
+            icon: const Icon(Icons.filter_list),
+            label: const Text('Filter'),
+          ),
+          const SizedBox(height: 12),
         ],
       ),
     );
