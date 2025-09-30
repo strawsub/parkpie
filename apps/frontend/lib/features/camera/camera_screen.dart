@@ -267,6 +267,162 @@ class _CameraViewState extends State<CameraView> {
     );
   }
 
+  Widget _buildOCRResultsView(String imagePath, String ocrText, Map<String, dynamic> databaseEntry) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black),
+          onPressed: () {
+            context.read<CameraBloc>().add(CameraClosed());
+            context.read<NavigationCubit>().setIndex(0);
+          },
+        ),
+        title: const Text(
+          'OCR Results',
+          style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image preview
+            Container(
+              width: double.infinity,
+              height: 200,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                image: DecorationImage(
+                  image: FileImage(File(imagePath)),
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // OCR Text section
+            const Text(
+              'Extracted Text:',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(15),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Text(
+                ocrText.isNotEmpty ? ocrText : 'No text extracted',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Parsed fields section
+            const Text(
+              'Parsed Information:',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ...databaseEntry.entries.map((entry) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 120,
+                    child: Text(
+                      '${entry.key.replaceAll('_', ' ').toUpperCase()}:',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      entry.value.toString().isNotEmpty ? entry.value.toString() : 'Not found',
+                      style: TextStyle(
+                        color: entry.value.toString().isNotEmpty ? Colors.black : Colors.grey,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )),
+            const SizedBox(height: 30),
+
+            // Action buttons
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      context.read<CameraBloc>().add(PhotoRetaken());
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey.shade300,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text('Retake Photo'),
+                  ),
+                ),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      // Save or submit results
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Results saved successfully!')),
+                      );
+                      context.read<CameraBloc>().add(CameraClosed());
+                      context.read<NavigationCubit>().setIndex(0);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF7FAC58),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text('Save Results'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -298,6 +454,8 @@ class _CameraViewState extends State<CameraView> {
             return _buildCameraPreview(context, context.read<CameraBloc>());
           } else if (state is PhotoUploading) {
             return _buildProcessingView(state.imagePath);
+          } else if (state is PhotoOCRSuccess) {
+            return _buildOCRResultsView(state.imagePath, state.ocrText, state.databaseEntry);
           }
 
           return const Center(

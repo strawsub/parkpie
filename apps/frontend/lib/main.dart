@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'features/navigation/navigation_cubit.dart';
+import 'features/navigation/filter_trigger_cubit.dart';
 
 import 'features/map/map_screen.dart';
 import 'features/map/pin/pin_cubit.dart';
@@ -43,6 +44,7 @@ class ParkPieApp extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider(create: (_) => NavigationCubit()),
+        BlocProvider(create: (_) => FilterTriggerCubit()),
         BlocProvider(create: (_) => CameraBloc()),
         BlocProvider(create: (_) => PinCubit()..loadPins()),
         BlocProvider<SearchCubit>(create: (context) => SearchCubit()),
@@ -68,8 +70,28 @@ class ParkPieApp extends StatelessWidget {
   }
 }
 
-class HomeContainer extends StatelessWidget {
+class HomeContainer extends StatefulWidget {
   const HomeContainer({super.key});
+
+  @override
+  State<HomeContainer> createState() => _HomeContainerState();
+}
+
+class _HomeContainerState extends State<HomeContainer> {
+
+  void _handleNavTap(BuildContext context, int index, int currentIndex) {
+    if (index == 2) {
+      // Filter tapped - stay on parking screen (index 0) and trigger filter
+      if (currentIndex != 0) {
+        context.read<NavigationCubit>().setIndex(0);
+      }
+      // Trigger the filter sheet
+      context.read<FilterTriggerCubit>().triggerFilter();
+    } else {
+      // Regular navigation
+      context.read<NavigationCubit>().setIndex(index);
+    }
+  }
 
   Widget _getSelectedView(int index) {
     switch (index) {
@@ -77,6 +99,8 @@ class HomeContainer extends StatelessWidget {
         return MapScreen();
       case 1:
         return const CameraScreen();
+      case 2:
+        return MapScreen(); // Filter shows MapScreen but triggers filter sheet
       default:
         return MapScreen(); // fallback
     }
@@ -93,15 +117,23 @@ class HomeContainer extends StatelessWidget {
       child: BlocBuilder<NavigationCubit, int>(
         builder: (context, selectedIndex) {
           return Scaffold(
-            body: _getSelectedView(selectedIndex),
-            // Hide bottom navigation bar when camera is active (index 1)
-            bottomNavigationBar: selectedIndex == 1
-                ? null
-                : BottomNavBar(
-                    currentIndex: selectedIndex,
-                    onTap: (index) =>
-                        context.read<NavigationCubit>().setIndex(index),
+            body: Stack(
+              children: [
+                // Full-screen content
+                _getSelectedView(selectedIndex),
+                // Floating navigation bar (hidden when camera is active)
+                if (selectedIndex != 1)
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: BottomNavBar(
+                      currentIndex: selectedIndex,
+                      onTap: (index) => _handleNavTap(context, index, selectedIndex),
+                    ),
                   ),
+              ],
+            ),
           );
         },
       ),
