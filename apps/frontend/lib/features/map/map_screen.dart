@@ -39,6 +39,7 @@ import 'package:frontend/features/parking_status_detection/parking_status_bloc.d
 import 'package:frontend/features/debug/debug_screen.dart';
 import 'package:frontend/features/map/filter/filter_config.dart';
 import 'package:frontend/features/map/filter/filter_panel.dart';
+import 'package:frontend/features/navigation/filter_trigger_cubit.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -93,7 +94,8 @@ class _MapScreenState extends State<MapScreen> {
   static const double _hysteresis = 0.5;
   static const LatLng _initialPosition = LatLng(-37.8035820, 144.9593280);
 
-  BitmapDescriptor? _avgCarIcon;
+  final Map<int, BitmapDescriptor> _clusterIconCache = {};
+  bool _iconsLoaded = false;
 
   // ###########################################################################
   // #1 SEGMENT DEBUGGER _______________________________________________________
@@ -247,9 +249,7 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Marker _buildAreaMarker(AreaRect area, int count) {
-    final icon =
-        _avgCarIcon ??
-        BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
+    final icon = _getClusterIcon(count);
 
     return Marker(
       markerId: MarkerId('area_${area.id}'),
@@ -282,13 +282,12 @@ class _MapScreenState extends State<MapScreen> {
   Marker _buildAverageMarker(List<Pin> pins) {
     final center = _computeCentroid(pins);
     final count = pins.length;
+    final icon = _getClusterIcon(count);
 
     return Marker(
       markerId: const MarkerId('avg_pin'),
       position: center,
-      icon:
-          _avgCarIcon ??
-          BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+      icon: icon,
       infoWindow: InfoWindow(
         title: '$count spots',
         snippet: 'Tap to zoom in',
@@ -546,13 +545,88 @@ class _MapScreenState extends State<MapScreen> {
   // ___________________________________________________________________________
   // ###########################################################################
   // #4 MAP OPERATIONS _________________________________________________________
-  Future<void> _generateIcons() async {
-    _avgCarIcon = await _iconFromAsset(
-      Icons.directions_car_filled,
-      color: Color.fromARGB(255, 18, 9, 146),
-      size: 35,
+  Future<BitmapDescriptor> _createClusterIcon(int count) async {
+    final pictureRecorder = PictureRecorder();
+    final canvas = Canvas(pictureRecorder);
+
+    // Determine display size based on count (what user sees)
+    double displaySize = 40.0;
+    if (count >= 100) {
+      displaySize = 45.0;
+    } else if (count >= 10) {
+      displaySize = 35.0;
+    }
+
+    const double pixelRatio = 1;
+    final double renderSize = displaySize * pixelRatio;
+
+    // Draw circular background
+    final paint = Paint()
+      ..color = const Color(0xFF7FAC58)
+      ..style = PaintingStyle.fill;
+
+    final center = Offset(renderSize / 2, renderSize / 2);
+    final radius = renderSize / 2;
+    canvas.drawCircle(center, radius, paint);
+
+    // Draw white border (scaled)
+    final borderPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0 * pixelRatio;
+    canvas.drawCircle(center, radius - (1 * pixelRatio), borderPaint);
+
+    // Draw count text (scaled)
+    final textSpan = TextSpan(
+      text: count.toString(),
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: (displaySize * 0.4) * pixelRatio, 
+        fontWeight: FontWeight.bold,
+        fontFamily: 'Roboto',
+      ),
     );
-    if (mounted) setState(() {});
+
+    final textPainter = TextPainter(
+      text: textSpan,
+      textDirection: TextDirection.ltr,
+      textAlign: TextAlign.center,
+    );
+
+    textPainter.layout();
+    final textOffset = Offset(
+      (renderSize - textPainter.width) / 2,
+      (renderSize - textPainter.height) / 2,
+    );
+    textPainter.paint(canvas, textOffset);
+
+    final picture = pictureRecorder.endRecording();
+    // Render at high resolution but return at display size for crisp rendering
+    final img = await picture.toImage(renderSize.toInt(), renderSize.toInt());
+    final bytes = await img.toByteData(format: ImageByteFormat.png);
+    return BitmapDescriptor.bytes(bytes!.buffer.asUint8List());
+  }
+
+  BitmapDescriptor _getClusterIcon(int count) {
+    // Find the closest pre-generated icon
+    if (_clusterIconCache.containsKey(count)) {
+      return _clusterIconCache[count]!;
+    }
+
+    // Find the closest smaller count that we have cached
+    int closestCount = 1;
+    for (final cachedCount in _clusterIconCache.keys) {
+      if (cachedCount <= count && cachedCount > closestCount) {
+        closestCount = cachedCount;
+      }
+    }
+
+    // If count is larger than our largest cached icon, use the largest
+    if (count > 999) {
+      return _clusterIconCache[999] ?? _clusterIconCache[1]!;
+    }
+
+    return _clusterIconCache[closestCount] ?? _clusterIconCache[1]!;
   }
 
   void _onMapCreated(GoogleMapController controller) async {
@@ -595,41 +669,9 @@ class _MapScreenState extends State<MapScreen> {
         markerId: MarkerId(markerId),
         position: pos,
         onTap: () => _showParkingInfo(context, pin),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet),
       );
     }).toSet();
-  }
-
-  Future<BitmapDescriptor> _iconFromAsset(
-    IconData iconData, {
-    Color color = Colors.red,
-    double size = 96,
-  }) async {
-    final pictureRecorder = PictureRecorder();
-    final canvas = Canvas(pictureRecorder);
-    final textPainter = TextPainter(textDirection: TextDirection.ltr);
-
-    final textSpan = TextSpan(
-      text: String.fromCharCode(iconData.codePoint),
-      style: TextStyle(
-        fontSize: size,
-        fontFamily: iconData.fontFamily,
-        package: iconData.fontPackage,
-        color: color,
-      ),
-    );
-
-    textPainter.text = textSpan;
-    textPainter.layout();
-    textPainter.paint(
-      canvas,
-      Offset((size - textPainter.width) / 2, (size - textPainter.height) / 2),
-    );
-
-    final picture = pictureRecorder.endRecording();
-    final img = await picture.toImage(size.toInt(), size.toInt());
-    final bytes = await img.toByteData(format: ImageByteFormat.png);
-    return BitmapDescriptor.bytes(bytes!.buffer.asUint8List());
   }
 
   // ___________________________________________________________________________
@@ -702,8 +744,26 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
-    _generateIcons();
+    _preloadClusterIcons();
     _loadAreasFromApi();
+  }
+
+  Future<void> _preloadClusterIcons() async {
+    // Pre-generate common cluster icon sizes (1-50, then some larger ones)
+    final counts = [
+      ...List.generate(50, (i) => i + 1), // 1-50
+      60, 70, 80, 90, 100, 150, 200, 300, 500, 999
+    ];
+
+    for (final count in counts) {
+      _clusterIconCache[count] = await _createClusterIcon(count);
+    }
+
+    if (mounted) {
+      setState(() {
+        _iconsLoaded = true;
+      });
+    }
   }
 
   @override
@@ -721,6 +781,12 @@ class _MapScreenState extends State<MapScreen> {
     return Scaffold(
       body: MultiBlocListener(
         listeners: [
+          BlocListener<FilterTriggerCubit, int>(
+            listener: (context, state) {
+              // Trigger filter sheet when navigation filter is tapped
+              _openFilterSheet();
+            },
+          ),
           BlocListener<SearchCubit, SearchState>(
             listener: (context, state) {
               if (state is SearchLoading) {
@@ -793,20 +859,26 @@ class _MapScreenState extends State<MapScreen> {
 
               if (showRealPins) {
                 baseMarkers = _buildParkingMarkers(pins);
-              } else {
+              } else if (_iconsLoaded) {
                 if (_areas.isNotEmpty) {
                   final grouped = _groupPinsByArea(pins);
                   final markers = <Marker>{};
-                  grouped.forEach((area, ps) {
-                    if (ps.isEmpty) return;
-                    markers.add(_buildAreaMarker(area, ps.length));
-                  });
+                  for (final entry in grouped.entries) {
+                    final area = entry.key;
+                    final ps = entry.value;
+                    if (ps.isEmpty) continue;
+                    final marker = _buildAreaMarker(area, ps.length);
+                    markers.add(marker);
+                  }
                   baseMarkers = markers.isNotEmpty
                       ? markers
                       : {_buildAverageMarker(pins)};
                 } else {
                   baseMarkers = {_buildAverageMarker(pins)};
                 }
+              } else {
+                // Show loading or simplified markers while icons are being generated
+                baseMarkers = {};
               }
             }
 
@@ -832,6 +904,9 @@ class _MapScreenState extends State<MapScreen> {
                   mapToolbarEnabled: false,
                   minMaxZoomPreference: const MinMaxZoomPreference(2.0, 20.0),
                   polygons: _areaPolygons, // TUNNING PURPOSE
+                  padding: EdgeInsets.only(
+                    bottom: 86 + MediaQuery.of(context).padding.bottom,
+                  ),
                 ),
 
                 // 🔍 Floating Search Bar
@@ -881,10 +956,14 @@ class _MapScreenState extends State<MapScreen> {
           },
         ),
       ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(
+          bottom: 86 + MediaQuery.of(context).padding.bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
           FloatingActionButton.extended(
             heroTag: 'reloadFab',
             // onPressed: () => context.read<PinCubit>().loadPins(),
@@ -914,14 +993,8 @@ class _MapScreenState extends State<MapScreen> {
             tooltip: 'Debug',
             child: const Icon(Icons.bug_report),
           ),
-          FloatingActionButton.extended(
-            heroTag: 'filterFab',
-            onPressed: () => _openFilterSheet(),
-            icon: const Icon(Icons.filter_list),
-            label: const Text('Filter'),
-          ),
-          const SizedBox(height: 12),
-        ],
+          ],
+        ),
       ),
     );
   }
