@@ -11,6 +11,8 @@ import 'package:frontend/features/parking_status_detection/parking_status_bloc.d
 import 'package:frontend/features/parking_status_detection/parking_status_event.dart';
 import 'package:frontend/features/parking_status_detection/parking_status_state.dart';
 import 'package:frontend/features/parking_status_detection/bluetooth/audio_bluetooth_service.dart';
+import 'package:frontend/features/parking_status_detection/gps/gps_speed_bloc.dart';
+import 'package:frontend/features/parking_status_detection/gps/gps_speed_state.dart';
 
 // Helper: safely read a Provider/Bloc; returns null if not found (no exception)
 T? maybeReadBloc<T>(BuildContext context) {
@@ -104,6 +106,7 @@ class _DebugScreenState extends State<DebugScreen> {
     // Safely read providers in build; return null if missing
     final PinCubit? pinCubit = maybeReadBloc<PinCubit>(context);
     final ParkingBloc? parkingBloc = maybeReadBloc<ParkingBloc>(context);
+    final GpsSpeedBloc? gpsSpeedBloc = maybeReadBloc<GpsSpeedBloc>(context);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Debug / Diagnostics')),
@@ -212,6 +215,80 @@ class _DebugScreenState extends State<DebugScreen> {
 
           const SizedBox(height: 8),
 
+          // GPS Speed Sensor Display
+          Card(
+            child: (gpsSpeedBloc == null)
+                ? const ListTile(
+              title: Text('🛰️ GPS Speed Sensor'),
+              subtitle: Text('⚠️ GpsSpeedBloc provider not found'),
+            )
+                : BlocBuilder<GpsSpeedBloc, GpsSpeedState>(
+              bloc: gpsSpeedBloc,
+              builder: (context, state) {
+                if (state is GpsSpeedInitial) {
+                  return const ListTile(
+                    title: Text('🛰️ GPS Speed Sensor'),
+                    subtitle: Text('Initializing...'),
+                  );
+                }
+
+                if (state is GpsSpeedReading) {
+                  final vote = state.vote.toString().split('.').last;
+                  final voteIcon = vote == 'driving' ? '🚗' : vote == 'parked' ? '🅿️' : '❓';
+
+                  final rawSpeedKmh = state.rawSpeed * 3.6;
+                  final filteredSpeedKmh = state.filteredSpeed * 3.6;
+                  final displacement = state.windowDisplacement;
+                  final candidateSec = state.candidateSeconds;
+                  final accuracy = state.accuracy ?? -1;
+                  final scenario = state.accuracyScenario;
+
+                  // Scenario-based thresholds
+                  final String vIn, vOut, dWindow, tCandidate, tConfirm;
+                  final String scenarioIcon;
+
+                  switch (scenario) {
+                    case "good":
+                      vIn = "1.2"; vOut = "2.2"; dWindow = "8.0";
+                      tCandidate = "3.0"; tConfirm = "4.0";
+                      scenarioIcon = "🟢";
+                      break;
+                    case "medium":
+                      vIn = "1.3"; vOut = "2.3"; dWindow = "10.0";
+                      tCandidate = "3.0"; tConfirm = "5.0";
+                      scenarioIcon = "🟡";
+                      break;
+                    case "poor":
+                    default:
+                      vIn = "1.5"; vOut = "2.5"; dWindow = "15.0";
+                      tCandidate = "3.0"; tConfirm = "6.0";
+                      scenarioIcon = "🔴";
+                      break;
+                  }
+
+                  return ListTile(
+                    title: Text('🛰️ GPS Speed Sensor $voteIcon'),
+                    subtitle: Text(
+                      'Vote: $vote | Scenario: $scenario $scenarioIcon\n'
+                      'Speed: ${filteredSpeedKmh.toStringAsFixed(1)} km/h (filtered) | ${rawSpeedKmh.toStringAsFixed(1)} km/h (raw)\n'
+                      'Thresholds: vIn=${vIn}m/s, vOut=${vOut}m/s\n'
+                      'Displacement: ${displacement.toStringAsFixed(1)} m [dWindow=${dWindow}m]\n'
+                      'Candidate: ${candidateSec.toStringAsFixed(1)} s [tCand=${tCandidate}s, tConf=${tConfirm}s]\n'
+                      'Accuracy: ${accuracy.toStringAsFixed(1)} m'
+                    ),
+                  );
+                }
+
+                return const ListTile(
+                  title: Text('🛰️ GPS Speed Sensor'),
+                  subtitle: Text('Unknown state'),
+                );
+              },
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
           // Sensor Voting Display
           Card(
             child: (parkingBloc == null)
@@ -249,6 +326,13 @@ class _DebugScreenState extends State<DebugScreen> {
                   sensorLines.add('• bluetooth → $vote ${vote == 'driving' ? '✅' : '🅿️'}');
                 } else {
                   sensorLines.add('• bluetooth → (no vote) ⚪');
+                }
+
+                if (votes.containsKey('gps_speed')) {
+                  final vote = votes['gps_speed'].toString().split('.').last;
+                  sensorLines.add('• gps_speed → $vote ${vote == 'driving' ? '✅' : vote == 'parked' ? '🅿️' : '❓'}');
+                } else {
+                  sensorLines.add('• gps_speed → (no vote) ⚪');
                 }
 
                 final voteCountText = 'Driving: $drivingVotes | Parked: $parkedVotes';
