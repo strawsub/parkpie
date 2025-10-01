@@ -41,8 +41,8 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
     super.initState();
 
     // USE MOCK DATA FOR TESTING MULTI-RESTRICTION UI
-    // TODO: Set this to false when enhanced API is ready
-    const bool useMockData = true;
+    // TODO: Flip MockParkingService.useMockData when enhanced API is ready
+    final bool useMockData = MockParkingService.useMockData;
 
     if (useMockData) {
       // Use mock data with multiple restrictions per day for testing

@@ -4,6 +4,9 @@ import '../features/map/pin/pin_model.dart';
 /// This simulates the enhanced API that will return multiple time periods per day
 class MockParkingService {
 
+  /// Toggle to control whether the UI should use mock parking data.
+  static bool useMockData = true;
+
   /// Sample Melbourne parking location with realistic multi-restriction data
   static ParkingLocation getMockParkingLocation() {
     return ParkingLocation(
