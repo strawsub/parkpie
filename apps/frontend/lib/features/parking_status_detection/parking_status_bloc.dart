@@ -9,6 +9,9 @@ import 'package:frontend/features/parking_status_detection/gyroscope/gyro_event.
 import 'package:frontend/features/parking_status_detection/bluetooth/bluetooth_bloc.dart';
 import 'package:frontend/features/parking_status_detection/bluetooth/bluetooth_state.dart';
 import 'package:frontend/features/parking_status_detection/bluetooth/bluetooth_event.dart';
+import 'package:frontend/features/parking_status_detection/gps/gps_speed_bloc.dart';
+import 'package:frontend/features/parking_status_detection/gps/gps_speed_state.dart';
+import 'package:frontend/features/parking_status_detection/gps/gps_speed_event.dart';
 import 'package:frontend/features/parking_status_detection/parking_status_event.dart';
 import 'package:frontend/features/parking_status_detection/parking_status_state.dart';
 import 'package:frontend/features/parking_status_detection/utils.dart';
@@ -18,11 +21,13 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
   final GyroBloc gyroBloc;
   final AccBloc accBloc;
   final BluetoothBloc bluetoothBloc;
+  final GpsSpeedBloc gpsSpeedBloc;
 
   // Subscriptions
   StreamSubscription<GyroState>? _gyroSubscription;
   StreamSubscription<AccState>? _accSubscription;
   StreamSubscription<BluetoothState>? _bluetoothSubscription;
+  StreamSubscription<GpsSpeedState>? _gpsSpeedSubscription;
 
   // Configuration
   static const int _numVotesParking = 3;
@@ -35,6 +40,7 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
     required this.gyroBloc,
     required this.accBloc,
     required this.bluetoothBloc,
+    required this.gpsSpeedBloc,
   }) : super(const ParkingUnknown()) {
     on<UpdateSensorVote>(_onUpdateSensorVote);
     on<UserConfirmedParking>(_onUserConfirmedParking);
@@ -70,6 +76,16 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
         add(UpdateSensorVote(
           sensorName: 'bluetooth',
           vote: bluetoothState.vote,
+        ));
+      }
+    });
+
+    // Listen to GPS speed state changes
+    _gpsSpeedSubscription = gpsSpeedBloc.stream.listen((gpsSpeedState) {
+      if (gpsSpeedState is GpsSpeedReading) {
+        add(UpdateSensorVote(
+          sensorName: 'gps_speed',
+          vote: gpsSpeedState.vote,
         ));
       }
     });
@@ -217,7 +233,8 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
     gyroBloc.add(const ResetGyro());
     accBloc.add(const ResetAcc());
     bluetoothBloc.add(const ResetBluetooth());
-    
+    gpsSpeedBloc.add(const GpsSpeedReset());
+
     // Reset to unknown state
     emit(const ParkingUnknown());
   }
@@ -228,6 +245,7 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
     await _gyroSubscription?.cancel();
     await _accSubscription?.cancel();
     await _bluetoothSubscription?.cancel();
+    await _gpsSpeedSubscription?.cancel();
     return super.close();
   }
 }

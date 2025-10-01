@@ -19,6 +19,7 @@ import 'features/parking_status_detection/parking_status_event.dart';
 import 'features/parking_status_detection/gyroscope/gyro_bloc.dart';
 import 'features/parking_status_detection/bluetooth/bluetooth_bloc.dart';
 import 'features/parking_status_detection/accelerometer/acc_bloc.dart';
+import 'features/parking_status_detection/gps/gps_speed_bloc.dart';
 
 import 'l10n/app_localizations.dart';
 import 'widgets/nav_bar.dart';
@@ -35,10 +36,12 @@ class ParkPieApp extends StatelessWidget {
     final accBloc = AccBloc();
     final gyroBloc = GyroBloc();
     final bluetoothBloc = BluetoothBloc();
+    final gpsSpeedBloc = GpsSpeedBloc();
     final parkingBloc = ParkingBloc(
       accBloc: accBloc,
       gyroBloc: gyroBloc,
       bluetoothBloc: bluetoothBloc,
+      gpsSpeedBloc: gpsSpeedBloc,
     );
 
     return MultiBlocProvider(
@@ -51,6 +54,7 @@ class ParkPieApp extends StatelessWidget {
         BlocProvider<AccBloc>.value(value: accBloc),
         BlocProvider<GyroBloc>.value(value: gyroBloc),
         BlocProvider<BluetoothBloc>.value(value: bluetoothBloc),
+        BlocProvider<GpsSpeedBloc>.value(value: gpsSpeedBloc),
         BlocProvider<ParkingBloc>.value(value: parkingBloc),
         BlocProvider(create: (_) => LocationCubit(),),
 
