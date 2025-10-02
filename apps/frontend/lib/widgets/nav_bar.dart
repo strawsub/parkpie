@@ -5,7 +5,11 @@ class BottomNavBar extends StatelessWidget {
   final int currentIndex;
   final Function(int) onTap;
 
-  const BottomNavBar({super.key, required this.currentIndex, required this.onTap});
+  const BottomNavBar({
+    super.key,
+    required this.currentIndex,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +22,7 @@ class BottomNavBar extends StatelessWidget {
       height: 70 + bottomPadding + 16,
       child: Center(
         child: Container(
-          height: 60,
+          height: 72,
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(30),
@@ -36,7 +40,7 @@ class BottomNavBar extends StatelessWidget {
               _buildNavItem(
                 index: 0,
                 iconPath: 'assets/parking_nav.svg',
-                label: 'Park',
+                label: 'Parking',
               ),
               _buildNavItem(
                 index: 1,
@@ -61,31 +65,57 @@ class BottomNavBar extends StatelessWidget {
     required String label,
   }) {
     final isSelected = index == currentIndex;
-    final bool isCenterButton = index == 1; 
+    final bool isCenterButton = index == 1;
+    final Color iconColor = isCenterButton
+        ? Colors.white
+        : (isSelected ? const Color(0xFF7FAC58) : Colors.grey.shade600);
+    final Color textColor = isSelected
+        ? const Color(0xFF7FAC58)
+        : Colors.grey.shade600;
+    final double containerSize = isCenterButton ? 48 : 36;
+    final double iconSize = isCenterButton ? 26 : 22;
+    const double labelSpacing = 4;
 
-    return GestureDetector(
-      onTap: () => onTap(index),
-      child: Container(
-        width: isCenterButton ? 50 : 40,
-        height: isCenterButton ? 50 : 40,
-        decoration: isCenterButton
-            ? BoxDecoration(
-                color: const Color(0xFF7FAC58),
-                borderRadius: BorderRadius.circular(25),
-              )
-            : null,
-        child: Center(
-          child: SvgPicture.asset(
-            iconPath,
-            width: isCenterButton ? 28 : 24,
-            height: isCenterButton ? 28 : 24,
-            colorFilter: ColorFilter.mode(
-              isCenterButton
-                  ? Colors.white
-                  : (isSelected ? const Color(0xFF7FAC58) : Colors.grey.shade600),
-              BlendMode.srcIn,
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: label,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => onTap(index),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: containerSize,
+              height: containerSize,
+              decoration: isCenterButton
+                  ? BoxDecoration(
+                      color: const Color(0xFF7FAC58),
+                      borderRadius: BorderRadius.circular(containerSize / 2),
+                    )
+                  : null,
+              child: Center(
+                child: SvgPicture.asset(
+                  iconPath,
+                  width: iconSize,
+                  height: iconSize,
+                  colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
+                ),
+              ),
             ),
-          ),
+            const SizedBox(height: labelSpacing),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.1,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                color: textColor,
+              ),
+            ),
+          ],
         ),
       ),
     );

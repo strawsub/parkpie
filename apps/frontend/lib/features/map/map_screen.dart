@@ -171,44 +171,55 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _loadAreasFromApi() async {
-    final uri = Uri.parse(
-      'https://parkpie-90018.azurewebsites.net/api/map/getallsegments',
-    );
-    final resp = await http.get(uri);
-    if (resp.statusCode != 200) {
-      throw Exception('getallsegments failed: ${resp.statusCode}');
-    }
-
-    final List data = json.decode(resp.body) as List;
-
-    final loaded = <AreaRect>[];
-    for (final raw in data) {
-      final m = raw as Map<String, dynamic>;
-      final id = m['id'].toString();
-      final label = m['label']?.toString() ?? 'Segment $id';
-
-      final sw = _ewkbPointToLatLng(m['location_sw']['value'] as String);
-      final ne = _ewkbPointToLatLng(m['location_ne']['value'] as String);
-      final center = _ewkbPointToLatLng(
-        m['location_center']['value'] as String,
+    try {
+      final uri = Uri.parse(
+        'https://parkpie-90018.azurewebsites.net/api/map/getallsegments',
       );
-
-      loaded.add(
-        AreaRect(
-          id: 'area_$id',
-          label: label,
-          bounds: LatLngBounds(southwest: sw, northeast: ne),
-          center: center,
-        ),
-      );
-    }
-
-    setState(() {
-      _areas = loaded;
-      if (_showAreasDebug) {
-        _rebuildAreaPolygons();
+      final resp = await http.get(uri);
+      if (resp.statusCode != 200) {
+        debugPrint('Failed to load segments: status ${resp.statusCode}');
+        return;
       }
-    });
+
+      final rawData = json.decode(resp.body);
+      if (rawData is! List) {
+        debugPrint('Unexpected segment payload');
+        return;
+      }
+
+      final loaded = <AreaRect>[];
+      for (final raw in rawData) {
+        final m = raw as Map<String, dynamic>;
+        final id = m['id'].toString();
+        final label = m['label']?.toString() ?? 'Segment $id';
+
+        final sw = _ewkbPointToLatLng(m['location_sw']['value'] as String);
+        final ne = _ewkbPointToLatLng(m['location_ne']['value'] as String);
+        final center = _ewkbPointToLatLng(
+          m['location_center']['value'] as String,
+        );
+
+        loaded.add(
+          AreaRect(
+            id: 'area_$id',
+            label: label,
+            bounds: LatLngBounds(southwest: sw, northeast: ne),
+            center: center,
+          ),
+        );
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _areas = loaded;
+        if (_showAreasDebug) {
+          _rebuildAreaPolygons();
+        }
+      });
+    } catch (error, stackTrace) {
+      debugPrint('Failed to load segments: ${error.runtimeType}: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    }
   }
 
   LatLng _computeCentroid(List<Pin> pins) {
@@ -581,7 +592,7 @@ class _MapScreenState extends State<MapScreen> {
       text: count.toString(),
       style: TextStyle(
         color: Colors.white,
-        fontSize: (displaySize * 0.4) * pixelRatio, 
+        fontSize: (displaySize * 0.4) * pixelRatio,
         fontWeight: FontWeight.bold,
         fontFamily: 'Roboto',
       ),
@@ -752,7 +763,7 @@ class _MapScreenState extends State<MapScreen> {
     // Pre-generate common cluster icon sizes (1-50, then some larger ones)
     final counts = [
       ...List.generate(50, (i) => i + 1), // 1-50
-      60, 70, 80, 90, 100, 150, 200, 300, 500, 999
+      60, 70, 80, 90, 100, 150, 200, 300, 500, 999,
     ];
 
     for (final count in counts) {
@@ -964,35 +975,35 @@ class _MapScreenState extends State<MapScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-          FloatingActionButton.extended(
-            heroTag: 'reloadFab',
-            // onPressed: () => context.read<PinCubit>().loadPins(),
-            onPressed: _clearFilterAndReload,
-            icon: const Icon(Icons.refresh),
-            label: const Text('Reload'),
-          ),
-          const SizedBox(height: 12),
-          FloatingActionButton(
-            heroTag: 'debugFab',
-            mini: true,
-            onPressed: () {
-              final pinCubit = context.read<PinCubit>();
-              final parkingBloc = context.read<ParkingBloc>();
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => MultiBlocProvider(
-                    providers: [
-                      BlocProvider.value(value: pinCubit),
-                      BlocProvider.value(value: parkingBloc),
-                    ],
-                    child: const DebugScreen(),
+            FloatingActionButton.extended(
+              heroTag: 'reloadFab',
+              // onPressed: () => context.read<PinCubit>().loadPins(),
+              onPressed: _clearFilterAndReload,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Reload'),
+            ),
+            const SizedBox(height: 12),
+            FloatingActionButton(
+              heroTag: 'debugFab',
+              mini: true,
+              onPressed: () {
+                final pinCubit = context.read<PinCubit>();
+                final parkingBloc = context.read<ParkingBloc>();
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => MultiBlocProvider(
+                      providers: [
+                        BlocProvider.value(value: pinCubit),
+                        BlocProvider.value(value: parkingBloc),
+                      ],
+                      child: const DebugScreen(),
+                    ),
                   ),
-                ),
-              );
-            },
-            tooltip: 'Debug',
-            child: const Icon(Icons.bug_report),
-          ),
+                );
+              },
+              tooltip: 'Debug',
+              child: const Icon(Icons.bug_report),
+            ),
           ],
         ),
       ),
@@ -1002,3 +1013,6 @@ class _MapScreenState extends State<MapScreen> {
   // ___________________________________________________________________________
   // ###########################################################################
 }
+
+
+
