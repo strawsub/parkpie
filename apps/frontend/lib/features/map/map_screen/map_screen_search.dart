@@ -29,6 +29,7 @@ extension MapScreenSearchLogic on MapScreenCubit {
           radiusMeters: 500,
           durationMinutes: 60,
           startTime: TimeOfDay.now(),
+          date: DateTime.now(),
         );
 
     await applyFilterWithSearch(filterConfig);

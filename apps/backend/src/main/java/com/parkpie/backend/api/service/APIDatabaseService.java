@@ -11,11 +11,11 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -36,12 +36,7 @@ public class APIDatabaseService {
 
     private List<Map<String, Object>> rows = new ArrayList<>();
 
-    // Get current date
-    LocalDate today = LocalDate.now();
 
-    // Get DayOfWeek (MONDAY=1, ... SUNDAY=7)
-    DayOfWeek dow = today.getDayOfWeek();
-    int dowNo = dow.getValue();
 
     public void downloadCSV() {
         rows = new ArrayList<>();
@@ -124,6 +119,7 @@ public class APIDatabaseService {
     public List<Map<String, Object>> getSignForPin() {
 
 
+        int dowNo = LocalDate.now().getDayOfWeek().getValue();
         String sql = """
                 SELECT
                     ps.id                         AS id,
@@ -184,7 +180,7 @@ public class APIDatabaseService {
 
     public List<Map<String, Object>> queryByFilter(
         double lat, double lng, double radius,
-        Integer duration, String restrictionTime // "HH:mm:ss"
+        Integer duration, String restrictionTime, String restrictionDate // time "HH:mm:ss", date "yyyy-MM-dd"
     ) {
         StringBuilder sql = new StringBuilder("""
                     SELECT
@@ -202,6 +198,15 @@ public class APIDatabaseService {
                     AND ps.day_of_week = ?
                 """);
 
+        LocalDate filterDate = LocalDate.now();
+        if (restrictionDate != null && !restrictionDate.isBlank()) {
+            try {
+                filterDate = LocalDate.parse(restrictionDate);
+            } catch (DateTimeParseException ignored) {
+            }
+        }
+        int dowNo = filterDate.getDayOfWeek().getValue();
+
         List<Object> params = new ArrayList<>();
         // PostGIS: ST_MakePoint(lng, lat)
         params.add(lng); params.add(lat);
@@ -210,17 +215,20 @@ public class APIDatabaseService {
         params.add(dowNo);
 
         if (duration != null) {
-            sql.append(" AND ps.maximum_stay_minutes >= ? ");
+            sql.append(" AND (ps.maximum_stay_minutes IS NULL OR ps.maximum_stay_minutes = 0 OR ps.maximum_stay_minutes >= ?) ");
             params.add(duration);
         }
 
         if (restrictionTime != null && !restrictionTime.isBlank()) {
-            // handle both normal windows and overnight windows (end < start)
             sql.append("""
                 AND (
-                    (ps.end_time >= ps.start_time AND ?::time BETWEEN ps.start_time AND ps.end_time)
-                    OR
-                    (ps.end_time < ps.start_time AND (?::time >= ps.start_time OR ?::time <= ps.end_time))
+                    ps.start_time IS NULL
+                    OR ps.end_time IS NULL
+                    OR (
+                        (ps.end_time >= ps.start_time AND ?::time BETWEEN ps.start_time AND ps.end_time)
+                        OR
+                        (ps.end_time < ps.start_time AND (?::time >= ps.start_time OR ?::time <= ps.end_time))
+                    )
                 )
                 """);
             params.add(restrictionTime);
@@ -402,3 +410,7 @@ public class APIDatabaseService {
         return jdbc.queryForList(sql, lng, lat, lng, lat, radius);
     }
 }
+
+
+
+

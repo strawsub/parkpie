@@ -52,9 +52,10 @@ public class APIServices {
             @RequestParam double lng,
             @RequestParam double radius,
             @RequestParam(required = false) Integer duration,
-            @RequestParam(required = false) String restrictionTime
+            @RequestParam(required = false) String restrictionTime,
+            @RequestParam(required = false) String restrictionDate
     ) {
-        return dbService.queryByFilter(lat, lng, radius, duration, restrictionTime);
+        return dbService.queryByFilter(lat, lng, radius, duration, restrictionTime, restrictionDate);
     }
 
     @ResponseBody
@@ -101,3 +102,4 @@ public class APIServices {
         return dbService.getAllRestrictionsForLocation(lat, lng, radius);
     }
 }
+

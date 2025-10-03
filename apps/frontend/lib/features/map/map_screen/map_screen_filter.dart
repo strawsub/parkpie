@@ -23,6 +23,7 @@ extension MapScreenFilterLogic on MapScreenCubit {
       radiusMeters: 1000,
       durationMinutes: 120,
       startTime: TimeOfDay.now(),
+      date: DateTime.now(),
     );
   }
 
@@ -40,11 +41,17 @@ extension MapScreenFilterLogic on MapScreenCubit {
         center = await _getCurrentLocation();
       }
 
+      final filterDate = config.date ?? DateTime.now();
+      final normalizedConfig = config.date == null
+          ? config.copyWith(date: filterDate)
+          : config;
+
       final pins = await _fetchPinsWithinRange(
         center: center,
-        radius: config.radiusMeters,
-        durationMinutes: config.durationMinutes,
-        startTime: config.startTime,
+        radius: normalizedConfig.radiusMeters,
+        durationMinutes: normalizedConfig.durationMinutes,
+        startTime: normalizedConfig.startTime,
+        date: filterDate,
       );
 
       final filteredMarkers = _buildParkingMarkers(pins);
@@ -54,7 +61,7 @@ extension MapScreenFilterLogic on MapScreenCubit {
         filterActive: true,
         filteredRawMarkers: filteredMarkers,
         markers: mergedMarkers,
-        lastFilterConfig: config,
+        lastFilterConfig: normalizedConfig,
         selectedPoint: center,
         isApplyingFilter: false,
       );
@@ -68,7 +75,7 @@ extension MapScreenFilterLogic on MapScreenCubit {
           ),
           MapScreenSnackBarCommand(
             '${pins.length} parking spots found '
-            '${config.mode == LocationMode.current ? "near you" : "at selected location"}',
+            '${normalizedConfig.mode == LocationMode.current ? "near you" : "at selected location"}',
           ),
         ],
       );
@@ -105,11 +112,19 @@ extension MapScreenFilterLogic on MapScreenCubit {
     return LatLng(pos.latitude, pos.longitude);
   }
 
+  String _formatDate(DateTime date) {
+    final year = date.year.toString().padLeft(4, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '$year-$month-$day';
+  }
+
   Future<List<Pin>> _fetchPinsWithinRange({
     required LatLng center,
     required double radius,
     required int durationMinutes,
     required TimeOfDay startTime,
+    required DateTime date,
   }) async {
     String two(int n) => n.toString().padLeft(2, '0');
     final restrictionTime =
@@ -125,6 +140,7 @@ extension MapScreenFilterLogic on MapScreenCubit {
             'radius': radius.round().toString(),
             'duration': durationMinutes.toString(),
             'restrictionTime': restrictionTime,
+            'restrictionDate': _formatDate(date),
           },
         );
 

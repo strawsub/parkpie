@@ -37,12 +37,8 @@ public class ParkingSignAggregationService {
 
             // Track the exact windows we (re)create this run for targeted cleanup
             Set<WindowKey> expected = new HashSet<>();
-            Set<String> seen = new HashSet<>();
             List<Map<String, Object>> restrictions = fetchRestrictionsForZone(zone);
-            restrictions = ensureSevenDays(restrictions);
             for (Map<String, Object> r : restrictions) {
-                String key = keyOf(r);
-                if (!seen.add(key)) continue;
 
                 Integer dow = (Integer) r.get("day_of_week");
                 LocalTime startT = (LocalTime) r.get("start_time");
@@ -69,10 +65,6 @@ public class ParkingSignAggregationService {
             deleteStaleWindows(zone, expected);
         }
         return upserts;
-    }
-
-    private String keyOf(Map<String, Object> r) {
-        return r.get("day_of_week") + "|" + r.get("start_time") + "|" + r.get("end_time");
     }
 
     private ZoneAgg aggregateZone(int zone) {
@@ -137,52 +129,6 @@ public class ParkingSignAggregationService {
         return m;
     }
 
-    /**
-     * Ensure each zone has windows for days 1..7.
-     * For any missing day d, copy all windows from the next available day after d (wraps to 1..7) and set day_of_week=d.
-     */
-    private List<Map<String, Object>> ensureSevenDays(List<Map<String, Object>> input) {
-        if (input == null || input.isEmpty()) return input;
-        Map<Integer, List<Map<String, Object>>> byDay = new HashMap<>();
-        for (Map<String, Object> r : input) {
-            Integer dow = (Integer) r.get("day_of_week");
-            if (dow == null) continue;
-            byDay.computeIfAbsent(dow, k -> new ArrayList<>()).add(r);
-        }
-
-        // if all 1..7 present, return as-is
-        boolean all = true;
-        for (int d = 1; d <= 7; d++) if (!byDay.containsKey(d)) { all = false; break; }
-        if (all) return input;
-
-        List<Map<String, Object>> out = new ArrayList<>(input);
-        for (int d = 1; d <= 7; d++) {
-            if (byDay.containsKey(d)) continue;
-            // find next available day after d (wrap to 1)
-            Integer src = null;
-            for (int n = d + 1; n <= 7; n++) {
-                if (byDay.containsKey(n)) { src = n; break; }
-            }
-            if (src == null) {
-                for (int n = 1; n < d; n++) {
-                    if (byDay.containsKey(n)) { src = n; break; }
-                }
-            }
-            if (src == null) continue; // nothing to copy
-
-            List<Map<String, Object>> srcRows = byDay.get(src);
-            List<Map<String, Object>> clones = new ArrayList<>();
-            for (Map<String, Object> r : srcRows) {
-                Map<String, Object> copy = new HashMap<>(r);
-                copy.put("day_of_week", d);
-                clones.add(copy);
-            }
-            byDay.put(d, clones);
-            out.addAll(clones);
-        }
-        return out;
-    }
-
     private int deleteStaleWindows(int zone, Set<WindowKey> expectedWindows) {
         // If we didn't upsert any valid windows, remove all existing for this zone (matches prior behavior)
         if (expectedWindows == null || expectedWindows.isEmpty()) {
@@ -207,3 +153,11 @@ public class ParkingSignAggregationService {
         return jdbc.update(sql.toString(), params.toArray());
     }
 }
+
+
+
+
+
+
+
+

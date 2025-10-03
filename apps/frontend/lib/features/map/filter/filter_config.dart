@@ -9,6 +9,7 @@ class FilterConfig {
   final double radiusMeters;
   final int durationMinutes;
   final TimeOfDay startTime;
+  final DateTime? date;
 
   const FilterConfig({
     required this.mode,
@@ -16,6 +17,7 @@ class FilterConfig {
     required this.radiusMeters,
     required this.durationMinutes,
     required this.startTime,
+    this.date,
   });
 
   bool get useCurrentLocation => mode == LocationMode.current;
@@ -26,6 +28,7 @@ class FilterConfig {
     double? radiusMeters,
     int? durationMinutes,
     TimeOfDay? startTime,
+    DateTime? date,
   }) {
     return FilterConfig(
       mode: mode ?? this.mode,
@@ -33,6 +36,7 @@ class FilterConfig {
       radiusMeters: radiusMeters ?? this.radiusMeters,
       durationMinutes: durationMinutes ?? this.durationMinutes,
       startTime: startTime ?? this.startTime,
+      date: date ?? this.date,
     );
   }
 }

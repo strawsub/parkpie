@@ -6,12 +6,13 @@ const String kFilterRequestPickOnMap = '__FILTER_PICK_ON_MAP__';
 Future<Object?> showFilterSheet(BuildContext context, {FilterConfig? initial}) {
   final defaults =
       initial ??
-      const FilterConfig(
+      FilterConfig(
         mode: LocationMode.selected,
         selectedPoint: null,
         radiusMeters: 1000,
         durationMinutes: 120,
-        startTime: TimeOfDay(hour: 17, minute: 0),
+        startTime: const TimeOfDay(hour: 17, minute: 0),
+        date: DateTime.now(),
       );
 
   return showModalBottomSheet<Object?>(
@@ -45,7 +46,7 @@ class _FilterSheetState extends State<_FilterSheet> {
     _durationCtrl = TextEditingController(
       text: widget.initial.durationMinutes.toString(),
     );
-    _selectedDate = DateTime.now();
+    _selectedDate = widget.initial.date ?? DateTime.now();
   }
 
   @override
@@ -84,7 +85,7 @@ class _FilterSheetState extends State<_FilterSheet> {
       radiusMeters: _radius,
       durationMinutes: minutes,
       startTime: _time,
-      // date: _selectedDate, // assuming FilterConfig has a date field
+      date: _selectedDate,
     );
     Navigator.of(context).pop(cfg);
   }
