@@ -5,82 +5,48 @@ LatLng _ewkbPointToLatLng(String hex) {
   for (var i = 0; i < bytes.length; i++) {
     bytes[i] = int.parse(hex.substring(i * 2, i * 2 + 2), radix: 16);
   }
-  final b = ByteData.sublistView(bytes);
+  final buffer = ByteData.sublistView(bytes);
 
   if (bytes[0] != 1) {
     throw ArgumentError('Only little-endian EWKB supported');
   }
 
-  final type = b.getUint32(1, Endian.little);
+  final type = buffer.getUint32(1, Endian.little);
   final hasSrid = (type & 0x20000000) != 0;
   final baseType = (type & 0x0FFFFFFF);
   if (baseType != 1) throw ArgumentError('Expected Point geometry');
 
-  var off = 5;
+  var offset = 5;
   if (hasSrid) {
-    final srid = b.getUint32(off, Endian.little);
+    final srid = buffer.getUint32(offset, Endian.little);
     if (srid != 4326) throw ArgumentError('Expected SRID 4326, got $srid');
-    off += 4;
+    offset += 4;
   }
 
-  final lon = b.getFloat64(off, Endian.little);
-  final lat = b.getFloat64(off + 8, Endian.little);
+  final lon = buffer.getFloat64(offset, Endian.little);
+  final lat = buffer.getFloat64(offset + 8, Endian.little);
   return LatLng(lat, lon);
 }
 
-mixin _MapScreenAreaMixin on _MapScreenStateFields {
-  void _rebuildAreaPolygons() {
-    if (!_showAreasDebug) {
-      _areaPolygons = {};
-      return;
-    }
-
-    final stroke = const Color(0xFFFF5252).withValues(); // light red stroke
-    final fill = const Color(0x33FF5252); // light red fill, ~20% opacity
-
-    final polys = <Polygon>{};
-    for (final a in _areas) {
-      final sw = a.bounds.southwest;
-      final ne = a.bounds.northeast;
-      final nw = LatLng(ne.latitude, sw.longitude);
-      final se = LatLng(sw.latitude, ne.longitude);
-
-      polys.add(
-        Polygon(
-          polygonId: PolygonId('area_poly_${a.id}'),
-          points: [sw, se, ne, nw],
-          strokeColor: stroke,
-          strokeWidth: 2,
-          fillColor: fill,
-          consumeTapEvents: true,
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(a.label),
-                duration: const Duration(milliseconds: 800),
-              ),
-            );
-          },
-        ),
-      );
-    }
-    _areaPolygons = polys;
-  }
-
+extension MapScreenAreaLogic on MapScreenCubit {
   Future<void> _loadAreasFromApi() async {
+    const endpoint =
+        'https://parkpie-90018.azurewebsites.net/api/map/getallsegments';
+
+    _emitState(state.copyWith(isLoadingAreas: true));
+
     try {
-      final uri = Uri.parse(
-        'https://parkpie-90018.azurewebsites.net/api/map/getallsegments',
-      );
-      final resp = await http.get(uri);
+      final resp = await http.get(Uri.parse(endpoint));
       if (resp.statusCode != 200) {
         debugPrint('Failed to load segments: status ${resp.statusCode}');
+        _emitState(state.copyWith(isLoadingAreas: false));
         return;
       }
 
       final rawData = json.decode(resp.body);
       if (rawData is! List) {
         debugPrint('Unexpected segment payload');
+        _emitState(state.copyWith(isLoadingAreas: false));
         return;
       }
 
@@ -106,49 +72,112 @@ mixin _MapScreenAreaMixin on _MapScreenStateFields {
         );
       }
 
-      if (!mounted) return;
-      setState(() {
-        _areas = loaded;
-        if (_showAreasDebug) {
-          _rebuildAreaPolygons();
-        }
-      });
+      final polygons = state.showAreasDebug
+          ? _buildPolygonsForAreas(loaded)
+          : <Polygon>{};
+
+      _emitState(
+        state.copyWith(
+          areas: loaded,
+          areaPolygons: polygons,
+          isLoadingAreas: false,
+        ),
+      );
+      _rebuildMarkers();
     } catch (error, stackTrace) {
       debugPrint('Failed to load segments: ${error.runtimeType}: $error');
       debugPrintStack(stackTrace: stackTrace);
+      _emitState(state.copyWith(isLoadingAreas: false));
     }
+  }
+
+  Future<void> _preloadClusterIcons() async {
+    final counts = [
+      ...List.generate(50, (i) => i + 1),
+      60,
+      70,
+      80,
+      90,
+      100,
+      150,
+      200,
+      300,
+      500,
+      999,
+    ];
+
+    for (final count in counts) {
+      _clusterIconCache[count] = await _createClusterIcon(count);
+    }
+
+    if (!isClosed) {
+      _emitState(state.copyWith(iconsLoaded: true));
+      _rebuildMarkers();
+    }
+  }
+
+  Set<Polygon> _buildPolygonsForAreas(List<AreaRect> areas) {
+    if (areas.isEmpty) {
+      return {};
+    }
+
+    final stroke = const Color(0xFFFF5252);
+    final fill = const Color(0x33FF5252);
+    final polys = <Polygon>{};
+
+    for (final area in areas) {
+      final sw = area.bounds.southwest;
+      final ne = area.bounds.northeast;
+      final nw = LatLng(ne.latitude, sw.longitude);
+      final se = LatLng(sw.latitude, ne.longitude);
+
+      polys.add(
+        Polygon(
+          polygonId: PolygonId('area_poly_${area.id}'),
+          points: [sw, se, ne, nw],
+          strokeColor: stroke,
+          strokeWidth: 2,
+          fillColor: fill,
+          consumeTapEvents: true,
+          onTap: () {
+            _emitState(
+              state,
+              commands: [
+                MapScreenSnackBarCommand(
+                  area.label,
+                  duration: const Duration(milliseconds: 800),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+    }
+
+    return polys;
   }
 
   LatLng _computeCentroid(List<Pin> pins) {
     double lat = 0, lng = 0;
     int n = 0;
-    for (final p in pins) {
-      if (p.lat != null && p.lng != null) {
-        lat += p.lat!;
-        lng += p.lng!;
+    for (final pin in pins) {
+      if (pin.lat != null && pin.lng != null) {
+        lat += pin.lat!;
+        lng += pin.lng!;
         n++;
       }
     }
-    return n == 0 ? _initialPosition : LatLng(lat / n, lng / n);
-  }
-
-  bool _boundsContain(LatLngBounds b, LatLng p) {
-    final sw = b.southwest;
-    final ne = b.northeast;
-    return p.latitude >= sw.latitude &&
-        p.latitude <= ne.latitude &&
-        p.longitude >= sw.longitude &&
-        p.longitude <= ne.longitude;
+    return n == 0 ? state.initialPosition : LatLng(lat / n, lng / n);
   }
 
   Map<AreaRect, List<Pin>> _groupPinsByArea(List<Pin> pins) {
-    final Map<AreaRect, List<Pin>> map = {for (final a in _areas) a: <Pin>[]};
-    for (final p in pins) {
-      if (p.lat == null || p.lng == null) continue;
-      final pos = LatLng(p.lat!, p.lng!);
-      for (final a in _areas) {
-        if (_boundsContain(a.bounds, pos)) {
-          map[a]!.add(p);
+    final map = {for (final area in state.areas) area: <Pin>[]};
+    for (final pin in pins) {
+      if (pin.lat == null || pin.lng == null) continue;
+      final pos = LatLng(pin.lat!, pin.lng!);
+      for (final area in state.areas) {
+        if (_boundsContain(area.bounds, pos)) {
+          map[area]!.add(pin);
           break;
         }
       }
@@ -156,9 +185,104 @@ mixin _MapScreenAreaMixin on _MapScreenStateFields {
     return map;
   }
 
+  bool _boundsContain(LatLngBounds bounds, LatLng point) {
+    final sw = bounds.southwest;
+    final ne = bounds.northeast;
+    return point.latitude >= sw.latitude &&
+        point.latitude <= ne.latitude &&
+        point.longitude >= sw.longitude &&
+        point.longitude <= ne.longitude;
+  }
+
+  Set<Marker> _prepareMarkers(List<Pin> pins) {
+    if (state.filterActive) {
+      return state.filteredRawMarkers;
+    }
+
+    if (state.renderZoom >= state.pinZoomThreshold) {
+      return _buildParkingMarkers(pins);
+    }
+
+    if (!state.iconsLoaded) {
+      return {};
+    }
+
+    if (state.areas.isNotEmpty) {
+      final grouped = _groupPinsByArea(pins);
+      final markers = <Marker>{};
+      for (final entry in grouped.entries) {
+        final area = entry.key;
+        final relatedPins = entry.value;
+        if (relatedPins.isEmpty) continue;
+        markers.add(_buildAreaMarker(area, relatedPins.length));
+      }
+      if (markers.isNotEmpty) {
+        return markers;
+      }
+    }
+
+    if (pins.isEmpty) {
+      return {};
+    }
+
+    return {_buildAverageMarker(pins)};
+  }
+
+  Set<Marker> _buildParkingMarkers(List<Pin> pins) {
+    return pins.where((p) => p.lat != null && p.lng != null).map((pin) {
+      final pos = LatLng(pin.lat!, pin.lng!);
+      final markerId = 'pin_${(pin.id ?? '${pin.lat}_${pin.lng}').toString()}';
+      return Marker(
+        markerId: MarkerId(markerId),
+        position: pos,
+        onTap: () => _handleParkingMarkerTap(pin, pos),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet),
+      );
+    }).toSet();
+  }
+
+  Marker _buildAreaMarker(AreaRect area, int count) {
+    final icon = _getClusterIcon(count);
+
+    return Marker(
+      markerId: MarkerId('area_${area.id}'),
+      position: area.center,
+      icon: icon,
+      infoWindow: InfoWindow(
+        title: '${area.label} - $count',
+        snippet: 'Tap to zoom in',
+        onTap: () {
+          if (state.isAnimating) return;
+          _animateCamera(area.center, zoom: state.pinZoomThreshold + 1);
+        },
+      ),
+    );
+  }
+
+  Marker _buildAverageMarker(List<Pin> pins) {
+    final center = _computeCentroid(pins);
+    final count = pins.length;
+    final icon = _getClusterIcon(count);
+
+    return Marker(
+      markerId: const MarkerId('avg_pin'),
+      position: center,
+      icon: icon,
+      infoWindow: InfoWindow(
+        title: '$count spots',
+        snippet: 'Tap to zoom in',
+        onTap: () {
+          if (state.isAnimating) return;
+          final targetZoom = (state.liveZoom + 2).clamp(2.0, 20.0);
+          _animateCamera(center, zoom: targetZoom);
+        },
+      ),
+    );
+  }
+
   Future<BitmapDescriptor> _createClusterIcon(int count) async {
-    final pictureRecorder = PictureRecorder();
-    final canvas = Canvas(pictureRecorder);
+    final recorder = PictureRecorder();
+    final canvas = Canvas(recorder);
 
     double displaySize = 40.0;
     if (count >= 100) {
@@ -207,9 +331,9 @@ mixin _MapScreenAreaMixin on _MapScreenStateFields {
     );
     textPainter.paint(canvas, textOffset);
 
-    final picture = pictureRecorder.endRecording();
-    final img = await picture.toImage(renderSize.toInt(), renderSize.toInt());
-    final bytes = await img.toByteData(format: ImageByteFormat.png);
+    final picture = recorder.endRecording();
+    final image = await picture.toImage(renderSize.toInt(), renderSize.toInt());
+    final bytes = await image.toByteData(format: ImageByteFormat.png);
     return BitmapDescriptor.bytes(bytes!.buffer.asUint8List());
   }
 
@@ -230,119 +354,5 @@ mixin _MapScreenAreaMixin on _MapScreenStateFields {
     }
 
     return _clusterIconCache[closestCount] ?? _clusterIconCache[1]!;
-  }
-
-  Future<void> _preloadClusterIcons() async {
-    final counts = [
-      ...List.generate(50, (i) => i + 1),
-      60,
-      70,
-      80,
-      90,
-      100,
-      150,
-      200,
-      300,
-      500,
-      999,
-    ];
-
-    for (final count in counts) {
-      _clusterIconCache[count] = await _createClusterIcon(count);
-    }
-
-    if (mounted) {
-      setState(() {
-        _iconsLoaded = true;
-      });
-    }
-  }
-
-  Set<Marker> _buildParkingMarkers(List<Pin> pins) {
-    return pins.where((p) => p.lat != null && p.lng != null).map((pin) {
-      final pos = LatLng(pin.lat!, pin.lng!);
-      final markerId = 'pin_${(pin.id ?? '${pin.lat}_${pin.lng}').toString()}';
-      return Marker(
-        markerId: MarkerId(markerId),
-        position: pos,
-        onTap: () => _showParkingInfo(context, pin),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet),
-      );
-    }).toSet();
-  }
-
-  Marker _buildAreaMarker(AreaRect area, int count) {
-    final icon = _getClusterIcon(count);
-
-    return Marker(
-      markerId: MarkerId('area_${area.id}'),
-      position: area.center,
-      icon: icon,
-      infoWindow: InfoWindow(
-        title: '${area.label} - $count',
-        snippet: 'Tap to zoom in',
-        onTap: () async {
-          if (_isAnimating) return;
-          _isAnimating = true;
-          try {
-            await _mapController?.animateCamera(
-              CameraUpdate.newCameraPosition(
-                CameraPosition(
-                  target: area.center,
-                  zoom: _pinZoomThreshold + 1,
-                ),
-              ),
-            );
-          } finally {
-            _isAnimating = false;
-          }
-        },
-      ),
-    );
-  }
-
-  Marker _buildAverageMarker(List<Pin> pins) {
-    final center = _computeCentroid(pins);
-    final count = pins.length;
-    final icon = _getClusterIcon(count);
-
-    return Marker(
-      markerId: const MarkerId('avg_pin'),
-      position: center,
-      icon: icon,
-      infoWindow: InfoWindow(
-        title: '$count spots',
-        snippet: 'Tap to zoom in',
-        onTap: () async {
-          if (_isAnimating) return;
-          _isAnimating = true;
-          try {
-            await _mapController?.animateCamera(CameraUpdate.zoomBy(2.0));
-          } finally {
-            _isAnimating = false;
-          }
-        },
-      ),
-    );
-  }
-
-  void _showParkingInfo(BuildContext context, Pin pin) {
-    final pos = LatLng(pin.lat!, pin.lng!);
-
-    showModalBottomSheet(
-      context: context,
-      useRootNavigator: true,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => ParkingInfoSheet(
-        location: pos,
-        id: pin.id,
-        occupancyPercent: pin.occupancyPercent,
-        startTime: pin.startTime,
-        endTime: pin.endTime,
-        maximumStayMinutes: pin.maximumStayMinutes,
-        description: pin.description,
-      ),
-    );
   }
 }

@@ -1,76 +1,41 @@
 part of 'package:frontend/features/map/map_screen.dart';
 
-mixin _MapScreenFilterMixin on _MapScreenAreaMixin {
+extension MapScreenFilterLogic on MapScreenCubit {
   Set<Marker> _mergeWithSearch(Set<Marker> base) {
-    final all = Set<Marker>.from(base);
-    if (_searchMarker != null) all.add(_searchMarker!);
-    if (_pickerMarker != null) all.add(_pickerMarker!);
-
-    if (_isPickingLocation) {
-      return _pickerMarker != null ? {_pickerMarker!} : {};
+    final merged = <Marker>{...base};
+    if (state.searchMarker != null) {
+      merged.add(state.searchMarker!);
     }
-    return all;
+    if (state.pickerMarker != null) {
+      merged.add(state.pickerMarker!);
+    }
+
+    if (state.isPickingLocation) {
+      return state.pickerMarker != null ? {state.pickerMarker!} : {};
+    }
+    return merged;
   }
 
-  Future<void> _openFilterSheet({FilterConfig? seed}) async {
-    _isFilterOpen = true;
-    try {
-      final result = await showFilterSheet(
-        context,
-        initial: seed ?? _getDefaultFilterConfig(),
-      );
-
-      if (!mounted) return;
-
-      if (result == kFilterRequestPickOnMap) {
-        final picked = await _startPickOnMap();
-        if (!mounted || picked == null) return;
-
-        final base = seed ?? _getDefaultFilterConfig();
-
-        await _openFilterSheet(
-          seed: base.copyWith(
-            mode: LocationMode.selected,
-            selectedPoint: picked,
-          ),
-        );
-        return;
-      }
-
-      if (result is FilterConfig) {
-        await _applyFilterWithSearch(result);
-      }
-    } finally {
-      _isFilterOpen = false;
-    }
-  }
-
-  FilterConfig _getDefaultFilterConfig() {
+  FilterConfig defaultFilterConfig() {
     return FilterConfig(
       mode: LocationMode.selected,
-      selectedPoint: _selectedPoint,
-      radiusMeters: 1000, // 1km default
-      durationMinutes: 120, // 2 hours
+      selectedPoint: state.selectedPoint,
+      radiusMeters: 1000,
+      durationMinutes: 120,
       startTime: TimeOfDay.now(),
     );
   }
 
-  // New unified method that handles both search location and filter
-  Future<void> _applyFilterWithSearch(FilterConfig config) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final mapCtrl = _mapController;
-    
-    setState(() {
-      _markers = {};
-      _lastFilterConfig = config; // Store for future use
-    });
+  Future<void> applyFilterWithSearch(FilterConfig config) async {
+    _emitState(state.copyWith(isApplyingFilter: true));
 
     try {
       final LatLng center;
-      
       if (config.mode == LocationMode.selected) {
+        if (config.selectedPoint == null) {
+          throw StateError('Selected location is required for this filter');
+        }
         center = config.selectedPoint!;
-        _selectedPoint = center;
       } else {
         center = await _getCurrentLocation();
       }
@@ -81,35 +46,41 @@ mixin _MapScreenFilterMixin on _MapScreenAreaMixin {
         durationMinutes: config.durationMinutes,
         startTime: config.startTime,
       );
-      
-      debugPrint('[Filter] Received ${pins.length} pins from API');
-      
-      if (!mounted) return;
 
       final filteredMarkers = _buildParkingMarkers(pins);
-      debugPrint('[Filter] Created ${filteredMarkers.length} markers');
+      final mergedMarkers = _mergeWithSearch(filteredMarkers);
 
-      setState(() {
-        _filterActive = true;
-        _filteredRawMarkers = filteredMarkers;
-        _markers = _mergeWithSearch(filteredMarkers);
-      });
+      final nextState = state.copyWith(
+        filterActive: true,
+        filteredRawMarkers: filteredMarkers,
+        markers: mergedMarkers,
+        lastFilterConfig: config,
+        selectedPoint: center,
+        isApplyingFilter: false,
+      );
 
-      await mapCtrl?.animateCamera(CameraUpdate.newLatLng(center));
-
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
+      _emitState(
+        nextState,
+        commands: [
+          MapScreenAnimateCameraCommand(
+            target: center,
+            zoom: nextState.liveZoom,
+          ),
+          MapScreenSnackBarCommand(
             '${pins.length} parking spots found '
             '${config.mode == LocationMode.current ? "near you" : "at selected location"}',
           ),
-        ),
+        ],
       );
-    } catch (e) {
-      debugPrint('[Filter] Filter error: $e');
-      if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text('Failed to filter pins: ${e.toString()}')),
+    } catch (error) {
+      debugPrint('[Filter] Filter error: $error');
+      _emitState(
+        state.copyWith(isApplyingFilter: false),
+        commands: [
+          MapScreenSnackBarCommand(
+            'Failed to filter pins: ${error.toString()}',
+          ),
+        ],
       );
     }
   }
@@ -144,17 +115,18 @@ mixin _MapScreenFilterMixin on _MapScreenAreaMixin {
     final restrictionTime =
         '${two(startTime.hour)}:${two(startTime.minute)}:00';
 
-    final uri = Uri.parse(
-      'https://parkpie-90018.azurewebsites.net/api/map/querybyradius',
-    ).replace(
-      queryParameters: {
-        'lat': center.latitude.toString(),
-        'lng': center.longitude.toString(),
-        'radius': radius.round().toString(),
-        'duration': durationMinutes.toString(),
-        'restrictionTime': restrictionTime,
-      },
-    );
+    final uri =
+        Uri.parse(
+          'https://parkpie-90018.azurewebsites.net/api/map/querybyradius',
+        ).replace(
+          queryParameters: {
+            'lat': center.latitude.toString(),
+            'lng': center.longitude.toString(),
+            'radius': radius.round().toString(),
+            'duration': durationMinutes.toString(),
+            'restrictionTime': restrictionTime,
+          },
+        );
 
     final resp = await http.get(uri);
     if (resp.statusCode != 200) {
@@ -164,7 +136,6 @@ mixin _MapScreenFilterMixin on _MapScreenAreaMixin {
     }
 
     final List data = json.decode(resp.body) as List;
-
     final pins = <Pin>[];
     for (final raw in data) {
       final m = raw as Map<String, dynamic>;
@@ -172,75 +143,85 @@ mixin _MapScreenFilterMixin on _MapScreenAreaMixin {
       final ewkb = (m['location'] as Map<String, dynamic>)['value'] as String;
       final pos = _ewkbPointToLatLng(ewkb);
 
-      final pin = Pin(
-        id: idStr,
-        lat: pos.latitude,
-        lng: pos.longitude,
-        occupancyPercent: (m['occupancy_percent'] as num?)?.toDouble(),
-        maximumStayMinutes: m['maximum_stay_minutes'] as int?,
-        startTime: m['start_time'] as String?,
-        endTime: m['end_time'] as String?,
-        description:
-            'Zone ${m['zone_number']}  ${m['distance']?.toStringAsFixed(1)}m away',
+      pins.add(
+        Pin(
+          id: idStr,
+          lat: pos.latitude,
+          lng: pos.longitude,
+          occupancyPercent: (m['occupancy_percent'] as num?)?.toDouble(),
+          maximumStayMinutes: m['maximum_stay_minutes'] as int?,
+          startTime: m['start_time'] as String?,
+          endTime: m['end_time'] as String?,
+          description:
+              'Zone ${m['zone_number']}  ${m['distance']?.toStringAsFixed(1)}m away',
+        ),
       );
-
-      pins.add(pin);
     }
 
     return pins;
   }
 
-  Future<LatLng?> _startPickOnMap() async {
-    _isPickingLocation = true;
-    _pickCompleter = Completer<LatLng?>();
-    setState(() {});
+  Future<LatLng?> startPickOnMap() {
+    if (state.isPickingLocation && _pickCompleter != null) {
+      return _pickCompleter!.future;
+    }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Tap on the map to choose a point')),
+    _pickCompleter = Completer<LatLng?>();
+    _emitState(
+      state.copyWith(isPickingLocation: true),
+      commands: const [
+        MapScreenSnackBarCommand('Tap on the map to choose a point'),
+      ],
     );
 
     return _pickCompleter!.future;
   }
 
-  void _handleMapTap(LatLng pos) {
-    if (_isPickingLocation) {
-      _isPickingLocation = false;
-      _selectedPoint = pos;
-      _pickerMarker = Marker(
+  void handleMapTap(LatLng position) {
+    if (state.isPickingLocation) {
+      _pickCompleter?.complete(position);
+      _pickCompleter = null;
+
+      final pickerMarker = Marker(
         markerId: const MarkerId('picker'),
-        position: pos,
+        position: position,
         icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
         infoWindow: const InfoWindow(title: 'Selected point'),
       );
-      _pickCompleter?.complete(pos);
-      _pickCompleter = null;
-      setState(() {});
+
+      final nextState = state.copyWith(
+        isPickingLocation: false,
+        pickerMarker: pickerMarker,
+        selectedPoint: position,
+      );
+
+      _emitState(nextState);
+      _rebuildMarkers();
       return;
     }
 
-    _dismissFilterIfOpen();
+    _handleDismissFilterSheetRequest();
   }
 
-  void _dismissFilterIfOpen() {
-    if (_isFilterOpen) {
-      Navigator.of(context).maybePop();
-    }
-  }
+  void clearFilter() {
+    final cleared = state.copyWith(
+      filterActive: false,
+      filteredRawMarkers: {},
+      clearPickerMarker: true,
+      clearSearchMarker: true,
+      clearSelectedPoint: true,
+      clearLastFilterConfig: true,
+      isPickingLocation: false,
+    );
 
-  void _clearFilterAndReload() {
-    setState(() {
-      _filterActive = false;
-      _filteredRawMarkers = {};
-      _pickerMarker = null;
-      _selectedPoint = null;
-      _searchMarker = null;
-      _lastFilterConfig = null;
-    });
+    _emitState(cleared);
+    _rebuildMarkers();
 
-    context.read<PinCubit>().loadPins();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Filter cleared. Reloaded all pins.')),
+    _emitState(
+      state,
+      commands: const [
+        MapScreenSnackBarCommand('Filter cleared. Reloaded all pins.'),
+      ],
     );
   }
 }

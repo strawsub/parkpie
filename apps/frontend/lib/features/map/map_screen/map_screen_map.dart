@@ -1,32 +1,130 @@
 part of 'package:frontend/features/map/map_screen.dart';
 
-mixin _MapScreenMapMixin on _MapScreenStateFields {
-  void _onMapCreated(GoogleMapController controller) async {
-    _mapController = controller;
-    final z = await _mapController?.getZoomLevel();
-    if (z != null && mounted) {
-      _liveZoom = z;
-      _renderZoom = z;
-      setState(() {}); // initial draw
+class MapScreenCubit extends Cubit<MapScreenState> {
+  MapScreenCubit() : super(MapScreenState.initial());
+
+  final Map<int, BitmapDescriptor> _clusterIconCache = {};
+  Completer<LatLng?>? _pickCompleter;
+  List<Pin> _latestPins = const [];
+
+  void initialize() {
+    _preloadClusterIcons();
+    _loadAreasFromApi();
+  }
+
+  void clearCommands() {
+    if (state.commands.isEmpty) return;
+    emit(state.copyWith(commands: const []));
+  }
+
+  Future<void> onMapCreated(GoogleMapController controller) async {
+    final zoom = await controller.getZoomLevel();
+    if (!isClosed) {
+      _emitState(state.copyWith(liveZoom: zoom, renderZoom: zoom));
     }
   }
 
-  void _onCameraMove(CameraPosition pos) {
-    _liveZoom = pos.zoom;
+  void onCameraMove(CameraPosition position) {
+    if ((position.zoom - state.liveZoom).abs() < 0.001) {
+      return;
+    }
+    _emitState(state.copyWith(liveZoom: position.zoom));
   }
 
-  void _onCameraIdle() {
-    if (_isAnimating) return;
+  void onCameraIdle() {
+    if (state.isAnimating) {
+      return;
+    }
 
-    final wasShowingPins = _renderZoom >= _pinZoomThreshold;
+    final wasShowingPins = state.renderZoom >= state.pinZoomThreshold;
     final crossedToPins =
-        !wasShowingPins && _liveZoom >= (_pinZoomThreshold + _hysteresis / 2);
-    final crossedToAvg =
-        wasShowingPins && _liveZoom <= (_pinZoomThreshold - _hysteresis / 2);
+        !wasShowingPins &&
+        state.liveZoom >= (state.pinZoomThreshold + state.hysteresis / 2);
+    final crossedToAverage =
+        wasShowingPins &&
+        state.liveZoom <= (state.pinZoomThreshold - state.hysteresis / 2);
 
-    if (crossedToPins || crossedToAvg) {
-      _renderZoom = _liveZoom;
-      setState(() {});
+    if (crossedToPins || crossedToAverage) {
+      _emitState(state.copyWith(renderZoom: state.liveZoom));
+      _rebuildMarkers();
     }
+  }
+
+  Future<void> onPinsUpdated(List<Pin> pins) async {
+    _latestPins = pins;
+    _rebuildMarkers();
+
+    if (pins.isEmpty || state.hasCenteredInitially) {
+      return;
+    }
+
+    final center = _computeCentroid(pins);
+    final nextState = state.copyWith(hasCenteredInitially: true);
+    _emitState(
+      nextState,
+      commands: [
+        MapScreenAnimateCameraCommand(
+          target: center,
+          zoom: nextState.liveZoom,
+          animate: false,
+        ),
+      ],
+    );
+  }
+
+  void onCameraAnimationComplete() {
+    if (!state.isAnimating) return;
+    _emitState(state.copyWith(isAnimating: false));
+  }
+
+  void notifyFilterSheetOpened() {
+    if (state.isFilterOpen) return;
+    _emitState(state.copyWith(isFilterOpen: true));
+  }
+
+  void notifyFilterSheetClosed() {
+    if (!state.isFilterOpen) return;
+    _emitState(state.copyWith(isFilterOpen: false));
+  }
+
+  void _rebuildMarkers() {
+    final base = _prepareMarkers(_latestPins);
+    final merged = _mergeWithSearch(base);
+    _emitState(state.copyWith(markers: merged));
+  }
+
+  void _animateCamera(LatLng target, {double? zoom, bool animate = true}) {
+    final nextState = state.copyWith(
+      isAnimating: animate ? true : state.isAnimating,
+    );
+    _emitState(
+      nextState,
+      commands: [
+        MapScreenAnimateCameraCommand(
+          target: target,
+          zoom: zoom,
+          animate: animate,
+        ),
+      ],
+    );
+  }
+
+  void _handleParkingMarkerTap(Pin pin, LatLng location) {
+    _emitState(
+      state,
+      commands: [MapScreenShowParkingInfoCommand(pin: pin, location: location)],
+    );
+  }
+
+  void _handleDismissFilterSheetRequest() {
+    if (!state.isFilterOpen) return;
+    _emitState(state, commands: const [MapScreenDismissFilterSheetCommand()]);
+  }
+
+  void _emitState(
+    MapScreenState newState, {
+    List<MapScreenCommand> commands = const [],
+  }) {
+    emit(newState.copyWith(commands: commands));
   }
 }

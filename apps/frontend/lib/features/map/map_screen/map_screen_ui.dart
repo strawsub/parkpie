@@ -1,154 +1,185 @@
+// ignore_for_file: use_build_context_synchronously
 part of 'package:frontend/features/map/map_screen.dart';
 
-mixin _MapScreenUiMixin
-    on
-        _MapScreenAreaMixin,
-        _MapScreenFilterMixin,
-        _MapScreenMapMixin,
-        _MapScreenSearchMixin {
-  Widget buildMapScreen(BuildContext context) {
+class _MapScreenView extends StatefulWidget {
+  const _MapScreenView();
+
+  @override
+  State<_MapScreenView> createState() => _MapScreenViewState();
+}
+
+class _MapScreenViewState extends State<_MapScreenView> {
+  final TextEditingController _searchController = TextEditingController();
+  GoogleMapController? _googleMapController;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final pinState = context.read<PinCubit>().state;
+      if (pinState is PinLoaded) {
+        context.read<MapScreenCubit>().onPinsUpdated(pinState.pins);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       body: MultiBlocListener(
-        listeners: [_filterTriggerListener(), _searchListener()],
+        listeners: [
+          BlocListener<FilterTriggerCubit, int>(
+            listener: (context, _) => _openFilterSheet(context),
+          ),
+          BlocListener<SearchCubit, SearchState>(listener: _handleSearchState),
+          BlocListener<PinCubit, PinState>(listener: _handlePinState),
+          BlocListener<MapScreenCubit, MapScreenState>(
+            listenWhen: (previous, current) => current.commands.isNotEmpty,
+            listener: _handleMapCommands,
+          ),
+        ],
         child: BlocBuilder<PinCubit, PinState>(
-          builder: (context, state) => _buildMapContent(context, state),
+          builder: (context, pinState) {
+            if (pinState is PinLoading || pinState is PinInitial) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (pinState is PinError) {
+              return _buildErrorCard(pinState);
+            }
+
+            return BlocBuilder<MapScreenCubit, MapScreenState>(
+              buildWhen: (previous, current) =>
+                  previous.markers != current.markers ||
+                  previous.areaPolygons != current.areaPolygons ||
+                  previous.filterActive != current.filterActive ||
+                  previous.searchMarker != current.searchMarker ||
+                  previous.pickerMarker != current.pickerMarker,
+              builder: (context, mapState) {
+                return Stack(
+                  children: [
+                    _buildGoogleMap(context, mapState),
+                    _buildSearchBar(context, mapState),
+                  ],
+                );
+              },
+            );
+          },
         ),
       ),
       floatingActionButton: _buildFloatingButtons(context),
     );
   }
 
-  BlocListener<FilterTriggerCubit, int> _filterTriggerListener() {
-    return BlocListener<FilterTriggerCubit, int>(
-      listener: (context, state) {
-        _openFilterSheet();
-      },
-    );
-  }
-
-  BlocListener<SearchCubit, SearchState> _searchListener() {
-    return BlocListener<SearchCubit, SearchState>(
-      listener: (context, state) {
-        if (state is SearchLoading) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Searching...'),
-              duration: Duration(seconds: 1),
-            ),
-          );
-        } else if (state is SearchSuccess) {
-          _handleSearchSuccess(state);
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Found: ${state.query}')));
-        } else if (state is SearchError) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(state.message)));
-        } else if (state is SearchCleared) {
-          _handleSearchCleared();
-        }
-      },
-    );
-  }
-
-  Widget _buildMapContent(BuildContext context, PinState state) {
-    if (state is PinLoading || state is PinInitial) {
-      return const Center(child: CircularProgressIndicator());
+  void _handlePinState(BuildContext context, PinState state) {
+    if (state is PinLoaded) {
+      context.read<MapScreenCubit>().onPinsUpdated(state.pins);
     }
-
-    if (state is PinError) {
-      return _buildErrorCard(state);
-    }
-
-    final pins = (state as PinLoaded).pins;
-    _centerOnFirstLoad(pins);
-
-    final baseMarkers = _prepareMarkers(pins);
-    _markers = _mergeWithSearch(baseMarkers);
-
-    return Stack(
-      children: [_buildGoogleMap(context), _buildSearchBar(context)],
-    );
   }
 
-  Widget _buildErrorCard(PinError state) {
-    return Center(
-      child: Card(
-        color: Colors.red.shade700,
-        margin: const EdgeInsets.all(16),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Text(
-            'Failed to load pins:\n${state.message}',
-            style: const TextStyle(color: Colors.white),
-          ),
+  Future<void> _handleSearchState(
+    BuildContext context,
+    SearchState state,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final mapCubit = context.read<MapScreenCubit>();
+
+    if (state is SearchLoading) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Searching...'),
+          duration: Duration(seconds: 1),
         ),
-      ),
-    );
-  }
-
-  void _centerOnFirstLoad(List<Pin> pins) {
-    if (_hasCenteredInitially || pins.isEmpty || _mapController == null) {
+      );
       return;
     }
 
-    final center = _computeCentroid(pins);
-    _hasCenteredInitially = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _mapController?.moveCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(target: center, zoom: _liveZoom),
-        ),
-      );
-    });
+    if (state is SearchSuccess) {
+      _searchController.clear();
+      FocusScope.of(context).unfocus();
+
+      await mapCubit.handleSearchSuccess(state);
+
+      messenger.showSnackBar(SnackBar(content: Text('Found: ${state.query}')));
+      return;
+    }
+
+    if (state is SearchError) {
+      messenger.showSnackBar(SnackBar(content: Text(state.message)));
+      return;
+    }
+
+    if (state is SearchCleared) {
+      _searchController.clear();
+      FocusScope.of(context).unfocus();
+      mapCubit.handleSearchCleared();
+    }
   }
 
-  Set<Marker> _prepareMarkers(List<Pin> pins) {
-    if (_filterActive) {
-      return _filteredRawMarkers;
-    }
+  Future<void> _handleMapCommands(
+    BuildContext context,
+    MapScreenState state,
+  ) async {
+    final mapCubit = context.read<MapScreenCubit>();
 
-    final bool showRealPins = _renderZoom >= _pinZoomThreshold;
+    for (final command in state.commands) {
+      if (command is MapScreenSnackBarCommand) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(command.message),
+            duration: command.duration ?? const Duration(seconds: 4),
+          ),
+        );
+      } else if (command is MapScreenAnimateCameraCommand) {
+        final controller = _googleMapController;
+        if (controller == null) {
+          continue;
+        }
 
-    if (showRealPins) {
-      return _buildParkingMarkers(pins);
-    }
-
-    if (!_iconsLoaded) {
-      // Show loading or simplified markers while icons are being generated
-      return {};
-    }
-
-    if (_areas.isNotEmpty) {
-      final grouped = _groupPinsByArea(pins);
-      final markers = <Marker>{};
-      for (final entry in grouped.entries) {
-        final area = entry.key;
-        final ps = entry.value;
-        if (ps.isEmpty) continue;
-        final marker = _buildAreaMarker(area, ps.length);
-        markers.add(marker);
+        final zoom = command.zoom ?? state.liveZoom;
+        final update = CameraUpdate.newCameraPosition(
+          CameraPosition(target: command.target, zoom: zoom),
+        );
+        if (command.animate) {
+          await controller.animateCamera(update);
+          mapCubit.onCameraAnimationComplete();
+        } else {
+          await controller.moveCamera(update);
+        }
+      } else if (command is MapScreenShowParkingInfoCommand) {
+        await _showParkingInfo(context, command.pin, command.location);
+      } else if (command is MapScreenDismissFilterSheetCommand) {
+        if (mapCubit.state.isFilterOpen && Navigator.of(context).canPop()) {
+          Navigator.of(context).maybePop();
+        }
       }
-      if (markers.isNotEmpty) {
-        return markers;
-      }
     }
 
-    return {_buildAverageMarker(pins)};
+    mapCubit.clearCommands();
   }
 
-  Widget _buildGoogleMap(BuildContext context) {
+  Widget _buildGoogleMap(BuildContext context, MapScreenState mapState) {
+    final cubit = context.read<MapScreenCubit>();
+
     return GoogleMap(
-      onMapCreated: _onMapCreated,
-      onCameraMove: _onCameraMove,
-      onCameraIdle: _onCameraIdle,
-      onTap: _handleMapTap,
+      onMapCreated: (controller) {
+        _googleMapController = controller;
+        cubit.onMapCreated(controller);
+      },
+      onCameraMove: cubit.onCameraMove,
+      onCameraIdle: cubit.onCameraIdle,
+      onTap: cubit.handleMapTap,
       initialCameraPosition: CameraPosition(
-        target: _initialPosition,
+        target: mapState.initialPosition,
         zoom: 13.5,
       ),
-      markers: _markers,
+      markers: mapState.markers,
       mapType: MapType.normal,
       myLocationEnabled: true,
       myLocationButtonEnabled: true,
@@ -156,23 +187,25 @@ mixin _MapScreenUiMixin
       compassEnabled: true,
       mapToolbarEnabled: false,
       minMaxZoomPreference: const MinMaxZoomPreference(2.0, 20.0),
-      polygons: _areaPolygons,
+      polygons: mapState.areaPolygons,
       padding: EdgeInsets.only(
         bottom: 86 + MediaQuery.of(context).padding.bottom,
       ),
     );
   }
 
-  Widget _buildSearchBar(BuildContext context) {
+  Widget _buildSearchBar(BuildContext context, MapScreenState mapState) {
+    final mapCubit = context.read<MapScreenCubit>();
+
     return Positioned(
       top: 60,
       left: 16,
       right: 16,
       child: Material(
         elevation: 6,
-        borderRadius: BorderRadius.circular(30), // rounder
+        borderRadius: BorderRadius.circular(30),
         child: Container(
-          height: 50, // taller
+          height: 50,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             color: Colors.white,
@@ -180,13 +213,10 @@ mixin _MapScreenUiMixin
           ),
           child: Row(
             children: [
-              // Icon inside the search bar
               Padding(
                 padding: const EdgeInsets.only(right: 8.0),
                 child: Image.asset('assets/icon.png', width: 28, height: 28),
               ),
-
-              // Expanded TextField
               Expanded(
                 child: TextField(
                   controller: _searchController,
@@ -204,25 +234,22 @@ mixin _MapScreenUiMixin
                   },
                 ),
               ),
-
-              // Filter button
               IconButton(
                 icon: Icon(
                   Icons.filter_list,
-                  color: _filterActive ? Colors.blue : null,
+                  color: mapState.filterActive ? Colors.blue : null,
                 ),
                 tooltip: 'Filter parking spots',
-                onPressed: () => _openFilterSheet(),
+                onPressed: () => _openFilterSheet(context),
               ),
-
-              // Clear button
-              if (_filterActive || _searchMarker != null)
+              if (mapState.filterActive || mapState.searchMarker != null)
                 IconButton(
                   icon: const Icon(Icons.clear),
                   tooltip: 'Clear filter and search',
                   onPressed: () {
                     context.read<SearchCubit>().clearSearch();
-                    _clearFilterAndReload();
+                    mapCubit.clearFilter();
+                    context.read<PinCubit>().loadPins();
                   },
                 )
               else
@@ -252,7 +279,12 @@ mixin _MapScreenUiMixin
         children: [
           FloatingActionButton.extended(
             heroTag: 'reloadFab',
-            onPressed: _clearFilterAndReload,
+            onPressed: () {
+              final mapCubit = context.read<MapScreenCubit>();
+              mapCubit.clearFilter();
+              context.read<SearchCubit>().clearSearch();
+              context.read<PinCubit>().loadPins();
+            },
             icon: const Icon(Icons.refresh),
             label: const Text('Reload'),
           ),
@@ -279,6 +311,96 @@ mixin _MapScreenUiMixin
             child: const Icon(Icons.bug_report),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildErrorCard(PinError state) {
+    return Center(
+      child: Card(
+        color: Colors.red.shade700,
+        margin: const EdgeInsets.all(16),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Text(
+            'Failed to load pins:\n${state.message}',
+            style: const TextStyle(color: Colors.white),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openFilterSheet(
+    BuildContext context, {
+    FilterConfig? seed,
+  }) async {
+    final mapCubit = context.read<MapScreenCubit>();
+    if (mapCubit.state.isFilterOpen) {
+      return;
+    }
+
+    mapCubit.notifyFilterSheetOpened();
+    try {
+      final initial =
+          seed ??
+          mapCubit.state.lastFilterConfig ??
+          mapCubit.defaultFilterConfig();
+      final result = await showFilterSheet(context, initial: initial);
+      if (!mounted) return;
+
+      if (result == null) {
+        return;
+      }
+
+      if (result == kFilterRequestPickOnMap) {
+        final picked = await mapCubit.startPickOnMap();
+        if (!mounted) {
+          return;
+        }
+        if (picked == null) {
+          return;
+        }
+        final base =
+            mapCubit.state.lastFilterConfig ?? mapCubit.defaultFilterConfig();
+        await _openFilterSheet(
+          context,
+          seed: base.copyWith(
+            mode: LocationMode.selected,
+            selectedPoint: picked,
+          ),
+        );
+        return;
+      }
+
+      if (result is FilterConfig) {
+        await mapCubit.applyFilterWithSearch(result);
+      }
+    } finally {
+      if (mounted) {
+        mapCubit.notifyFilterSheetClosed();
+      }
+    }
+  }
+
+  Future<void> _showParkingInfo(
+    BuildContext context,
+    Pin pin,
+    LatLng location,
+  ) async {
+    await showModalBottomSheet(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ParkingInfoSheet(
+        location: location,
+        id: pin.id,
+        occupancyPercent: pin.occupancyPercent,
+        startTime: pin.startTime,
+        endTime: pin.endTime,
+        maximumStayMinutes: pin.maximumStayMinutes,
+        description: pin.description,
       ),
     );
   }

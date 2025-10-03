@@ -1,50 +1,45 @@
 part of 'package:frontend/features/map/map_screen.dart';
 
-mixin _MapScreenSearchMixin on _MapScreenFilterMixin {
+extension MapScreenSearchLogic on MapScreenCubit {
+  Future<void> handleSearchSuccess(SearchSuccess result) async {
+    _animateCamera(result.location, zoom: 15);
 
-  // Modified to automatically apply filter after search
-  Future<void> _handleSearchSuccess(SearchSuccess state) async {
-    await _mapController?.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(target: state.location, zoom: 15),
-      ),
-    );
-    if (!mounted) return;
-
-    setState(() {
-      _searchMarker = Marker(
-        markerId: MarkerId(state.markerId),
-        position: state.location,
-        infoWindow: InfoWindow(title: 'Search Result', snippet: state.query),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-      );
-      _selectedPoint = state.location;
-    });
-
-    _searchController.clear();
-    FocusScope.of(context).unfocus();
-
-    // Automatically apply filter with the search location
-    final filterConfig = _lastFilterConfig?.copyWith(
-      mode: LocationMode.selected,
-      selectedPoint: state.location,
-    ) ?? FilterConfig(
-      mode: LocationMode.selected,
-      selectedPoint: state.location,
-      radiusMeters: 500, 
-      durationMinutes: 60,
-      startTime: TimeOfDay.now(),
+    final searchMarker = Marker(
+      markerId: MarkerId(result.markerId),
+      position: result.location,
+      infoWindow: InfoWindow(title: 'Search Result', snippet: result.query),
+      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
     );
 
-    await _applyFilterWithSearch(filterConfig);
+    final updatedState = state.copyWith(
+      searchMarker: searchMarker,
+      selectedPoint: result.location,
+    );
+    _emitState(updatedState);
+    _rebuildMarkers();
+
+    final filterConfig =
+        state.lastFilterConfig?.copyWith(
+          mode: LocationMode.selected,
+          selectedPoint: result.location,
+        ) ??
+        FilterConfig(
+          mode: LocationMode.selected,
+          selectedPoint: result.location,
+          radiusMeters: 500,
+          durationMinutes: 60,
+          startTime: TimeOfDay.now(),
+        );
+
+    await applyFilterWithSearch(filterConfig);
   }
 
-  void _handleSearchCleared() {
-    setState(() {
-      _searchMarker = null;
-      _selectedPoint = null;
-    });
-    _searchController.clear();
-    FocusScope.of(context).unfocus();
+  void handleSearchCleared() {
+    final cleared = state.copyWith(
+      clearSearchMarker: true,
+      clearSelectedPoint: true,
+    );
+    _emitState(cleared);
+    _rebuildMarkers();
   }
 }

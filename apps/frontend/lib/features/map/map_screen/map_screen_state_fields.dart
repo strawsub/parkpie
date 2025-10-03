@@ -1,37 +1,176 @@
 part of 'package:frontend/features/map/map_screen.dart';
 
-mixin _MapScreenStateFields on State<MapScreen> {
-  GoogleMapController? _mapController;
+abstract class MapScreenCommand {
+  const MapScreenCommand();
+}
 
-  final Map<int, BitmapDescriptor> _clusterIconCache = {};
-  final TextEditingController _searchController = TextEditingController();
+class MapScreenSnackBarCommand extends MapScreenCommand {
+  final String message;
+  final Duration? duration;
 
-  Set<Marker> _markers = {};
-  Set<Marker> _filteredRawMarkers = {};
-  Set<Polygon> _areaPolygons = {};
-  List<AreaRect> _areas = [];
+  const MapScreenSnackBarCommand(this.message, {this.duration});
+}
 
-  Completer<LatLng?>? _pickCompleter;
+class MapScreenAnimateCameraCommand extends MapScreenCommand {
+  final LatLng target;
+  final double? zoom;
+  final bool animate;
 
-  Marker? _searchMarker;
-  Marker? _pickerMarker;
+  const MapScreenAnimateCameraCommand({
+    required this.target,
+    this.zoom,
+    this.animate = true,
+  });
+}
 
-  LatLng? _selectedPoint;
-  FilterConfig? _lastFilterConfig;
+class MapScreenShowParkingInfoCommand extends MapScreenCommand {
+  final Pin pin;
+  final LatLng location;
 
-  bool _hasCenteredInitially = false;
-  bool _isFilterOpen = false;
-  bool _isPickingLocation = false;
-  bool _filterActive = false;
-  bool _isAnimating = false;
-  bool _iconsLoaded = false;
+  const MapScreenShowParkingInfoCommand({
+    required this.pin,
+    required this.location,
+  });
+}
 
-  double _liveZoom = 13.5;
-  double _renderZoom = 13.5;
+class MapScreenDismissFilterSheetCommand extends MapScreenCommand {
+  const MapScreenDismissFilterSheetCommand();
+}
 
-  double get _pinZoomThreshold => 15;
-  double get _hysteresis => 0.5;
-  LatLng get _initialPosition => const LatLng(-37.8035820, 144.9593280);
+class MapScreenState {
+  final Set<Marker> markers;
+  final Set<Marker> filteredRawMarkers;
+  final Set<Polygon> areaPolygons;
+  final List<AreaRect> areas;
+  final Marker? searchMarker;
+  final Marker? pickerMarker;
+  final LatLng? selectedPoint;
+  final FilterConfig? lastFilterConfig;
+  final bool hasCenteredInitially;
+  final bool isPickingLocation;
+  final bool filterActive;
+  final bool isFilterOpen;
+  final bool iconsLoaded;
+  final bool isApplyingFilter;
+  final bool isLoadingAreas;
+  final bool isAnimating;
+  final double renderZoom;
+  final double liveZoom;
+  final double pinZoomThreshold;
+  final double hysteresis;
+  final LatLng initialPosition;
+  final bool showAreasDebug;
+  final List<MapScreenCommand> commands;
 
-  bool get _showAreasDebug => false;
+  const MapScreenState({
+    required this.markers,
+    required this.filteredRawMarkers,
+    required this.areaPolygons,
+    required this.areas,
+    required this.searchMarker,
+    required this.pickerMarker,
+    required this.selectedPoint,
+    required this.lastFilterConfig,
+    required this.hasCenteredInitially,
+    required this.isPickingLocation,
+    required this.filterActive,
+    required this.isFilterOpen,
+    required this.iconsLoaded,
+    required this.isApplyingFilter,
+    required this.isLoadingAreas,
+    required this.isAnimating,
+    required this.renderZoom,
+    required this.liveZoom,
+    required this.pinZoomThreshold,
+    required this.hysteresis,
+    required this.initialPosition,
+    required this.showAreasDebug,
+    required this.commands,
+  });
+
+  factory MapScreenState.initial() => MapScreenState(
+    markers: {},
+    filteredRawMarkers: {},
+    areaPolygons: {},
+    areas: const [],
+    searchMarker: null,
+    pickerMarker: null,
+    selectedPoint: null,
+    lastFilterConfig: null,
+    hasCenteredInitially: false,
+    isPickingLocation: false,
+    filterActive: false,
+    isFilterOpen: false,
+    iconsLoaded: false,
+    isApplyingFilter: false,
+    isLoadingAreas: false,
+    isAnimating: false,
+    renderZoom: 13.5,
+    liveZoom: 13.5,
+    pinZoomThreshold: 15,
+    hysteresis: 0.5,
+    initialPosition: const LatLng(-37.8035820, 144.9593280),
+    showAreasDebug: false,
+    commands: const [],
+  );
+
+  MapScreenState copyWith({
+    Set<Marker>? markers,
+    Set<Marker>? filteredRawMarkers,
+    Set<Polygon>? areaPolygons,
+    List<AreaRect>? areas,
+    Marker? searchMarker,
+    bool clearSearchMarker = false,
+    Marker? pickerMarker,
+    bool clearPickerMarker = false,
+    LatLng? selectedPoint,
+    bool clearSelectedPoint = false,
+    FilterConfig? lastFilterConfig,
+    bool clearLastFilterConfig = false,
+    bool? hasCenteredInitially,
+    bool? isPickingLocation,
+    bool? filterActive,
+    bool? isFilterOpen,
+    bool? iconsLoaded,
+    bool? isApplyingFilter,
+    bool? isLoadingAreas,
+    bool? isAnimating,
+    double? renderZoom,
+    double? liveZoom,
+    List<MapScreenCommand>? commands,
+  }) {
+    return MapScreenState(
+      markers: markers ?? this.markers,
+      filteredRawMarkers: filteredRawMarkers ?? this.filteredRawMarkers,
+      areaPolygons: areaPolygons ?? this.areaPolygons,
+      areas: areas ?? this.areas,
+      searchMarker: clearSearchMarker
+          ? null
+          : (searchMarker ?? this.searchMarker),
+      pickerMarker: clearPickerMarker
+          ? null
+          : (pickerMarker ?? this.pickerMarker),
+      selectedPoint: clearSelectedPoint
+          ? null
+          : (selectedPoint ?? this.selectedPoint),
+      lastFilterConfig: clearLastFilterConfig
+          ? null
+          : (lastFilterConfig ?? this.lastFilterConfig),
+      hasCenteredInitially: hasCenteredInitially ?? this.hasCenteredInitially,
+      isPickingLocation: isPickingLocation ?? this.isPickingLocation,
+      filterActive: filterActive ?? this.filterActive,
+      isFilterOpen: isFilterOpen ?? this.isFilterOpen,
+      iconsLoaded: iconsLoaded ?? this.iconsLoaded,
+      isApplyingFilter: isApplyingFilter ?? this.isApplyingFilter,
+      isLoadingAreas: isLoadingAreas ?? this.isLoadingAreas,
+      isAnimating: isAnimating ?? this.isAnimating,
+      renderZoom: renderZoom ?? this.renderZoom,
+      liveZoom: liveZoom ?? this.liveZoom,
+      pinZoomThreshold: pinZoomThreshold,
+      hysteresis: hysteresis,
+      initialPosition: initialPosition,
+      showAreasDebug: showAreasDebug,
+      commands: commands ?? this.commands,
+    );
+  }
 }
