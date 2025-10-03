@@ -7,22 +7,14 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'pin_state.dart';
 import 'pin_model.dart';
+import 'package:frontend/services/api_config.dart';
 
 class PinCubit extends Cubit<PinState> {
   PinCubit() : super(PinInitial());
 
   /// Resolve API base
   String _apiBase() {
-    const fromEnv = String.fromEnvironment(
-      'API_BASE_URL',
-      defaultValue: 'https://parkpie-90018.azurewebsites.net',
-    );
-    if (fromEnv.isNotEmpty) return fromEnv;
-    if (kIsWeb) return 'http://localhost:8081';
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:8081';
-    }
-    return 'https://parkpie-90018.azurewebsites.net';
+    return resolveApiBaseUrl();
   }
   // String _apiBase() {
   //   const fromEnv = String.fromEnvironment('API_BASE_URL');
@@ -135,7 +127,7 @@ class PinCubit extends Cubit<PinState> {
         }
         emit(PinLoaded(_pinsFromJsonList(cached)));
       } else {
-        if (kDebugMode) print('[PinCubit] No cache available → error');
+        if (kDebugMode) print('[PinCubit] No cache available -> error');
         emit(PinError(e.toString()));
       }
     }

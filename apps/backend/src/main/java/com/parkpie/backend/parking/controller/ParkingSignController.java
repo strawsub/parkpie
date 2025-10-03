@@ -31,7 +31,7 @@ public class ParkingSignController {
     }
 
     @PostMapping(value = "/ingest", consumes = "application/json")
-    public int ingest(@Validated @RequestBody UserSignIngestDto.Request request) {
+    public UserSignIngestDto.Response ingest(@Validated @RequestBody UserSignIngestDto.Request request) {
         return service.ingestUserSign(request);
     }
 }

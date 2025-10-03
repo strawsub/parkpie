@@ -1,24 +1,41 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:camera/camera.dart';
+import 'dart:convert';
 import 'dart:io';
+
+import 'package:camera/camera.dart';
+import 'package:crypto/crypto.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:frontend/features/camera/camera_event.dart';
 import 'package:frontend/features/camera/camera_state.dart';
+import 'package:frontend/features/camera/sign_restriction.dart';
+import 'package:frontend/services/api_config.dart';
+import 'package:frontend/services/sign_ingest_service.dart';
+import 'package:frontend/services/sign_zone_storage.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 
-// Khue's API key, use sparingly
+// TODO: Replace with secure runtime configuration
 const apiKey = "AIzaSyBTF-RFzdOlaveCX-5N6WVA_6UjaJ6KZ9M";
 
 class CameraBloc extends Bloc<CameraEvent, CameraState> {
-  late final GenerativeModel _model;
+  final GenerativeModel _ocrModel;
+  final SignIngestService _signService;
+  final SignZoneStorage _zoneStorage;
+
   CameraController? _cameraController;
   List<CameraDescription>? _cameras;
 
-  CameraBloc() : super(CameraInitial()) {
-    _model = GenerativeModel(
-      model: 'gemini-2.5-flash-lite',
-      apiKey: apiKey,
-    );
-
+  CameraBloc({
+    GenerativeModel? ocrModel,
+    SignIngestService? signIngestService,
+    SignZoneStorage? zoneStorage,
+  }) : _ocrModel =
+           ocrModel ??
+           GenerativeModel(model: 'gemini-2.5-flash-lite', apiKey: apiKey),
+       _signService =
+           signIngestService ??
+           SignIngestService(backendBaseUrl: resolveApiBaseUrl()),
+       _zoneStorage = zoneStorage ?? SignZoneStorage(),
+       super(CameraInitial()) {
     on<CameraOpened>(_onCameraOpened);
     on<PhotoCaptured>(_onPhotoCaptured);
     on<PhotoRetaken>(_onPhotoRetaken);
@@ -34,37 +51,39 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
     return super.close();
   }
 
-  Future<void> _onCameraOpened(CameraOpened event, Emitter<CameraState> emit) async {
+  Future<void> _onCameraOpened(
+    CameraOpened event,
+    Emitter<CameraState> emit,
+  ) async {
     try {
       emit(CameraLoading());
 
-      // Initialize cameras - this will automatically request permissions if needed
       try {
         _cameras ??= await availableCameras();
       } catch (e) {
-        // Handle permission and camera access errors
         final errorMessage = e.toString().toLowerCase();
-        if (errorMessage.contains('permission') || errorMessage.contains('denied')) {
-          emit(CameraError("Please grant camera permission to use this feature"));
+        if (errorMessage.contains('permission') ||
+            errorMessage.contains('denied')) {
+          emit(
+            CameraError("Please grant camera permission to use this feature"),
+          );
         } else {
           emit(CameraError("Failed to access camera: ${e.toString()}"));
         }
         return;
       }
-      
+
       if (_cameras == null || _cameras!.isEmpty) {
         emit(CameraError("No cameras available on this device"));
         return;
       }
 
-      // Find back camera
       CameraDescription? backCamera;
       try {
         backCamera = _cameras!.firstWhere(
           (camera) => camera.lensDirection == CameraLensDirection.back,
         );
-      } catch (e) {
-        // If no back camera found, use the first available camera
+      } catch (_) {
         if (_cameras!.isNotEmpty) {
           backCamera = _cameras!.first;
         } else {
@@ -73,32 +92,28 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
         }
       }
 
-      // Dispose existing controller if any
       await _cameraController?.dispose();
-
-      // Initialize camera controller
       _cameraController = CameraController(
         backCamera,
         ResolutionPreset.high,
         imageFormatGroup: ImageFormatGroup.jpeg,
-        enableAudio: false, // Disable audio for photo capture
+        enableAudio: false,
       );
 
       try {
         await _cameraController!.initialize();
-        
-        // Double check initialization was successful
         if (!_cameraController!.value.isInitialized) {
           emit(CameraError("Camera initialization failed"));
           return;
         }
-        
         emit(CameraReady());
       } catch (e) {
-        // Handle camera initialization errors, including permissions
         final errorMessage = e.toString().toLowerCase();
-        if (errorMessage.contains('permission') || errorMessage.contains('denied')) {
-          emit(CameraError("Please grant camera permission to use this feature"));
+        if (errorMessage.contains('permission') ||
+            errorMessage.contains('denied')) {
+          emit(
+            CameraError("Please grant camera permission to use this feature"),
+          );
         } else {
           emit(CameraError("Camera initialization error: ${e.toString()}"));
         }
@@ -108,25 +123,24 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
     }
   }
 
-  Future<void> _onPhotoCaptured(PhotoCaptured event, Emitter<CameraState> emit) async {
+  Future<void> _onPhotoCaptured(
+    PhotoCaptured event,
+    Emitter<CameraState> emit,
+  ) async {
     try {
       if (_cameraController == null) {
         emit(CameraError("Camera controller not available"));
         return;
       }
-      
       if (!_cameraController!.value.isInitialized) {
         emit(CameraError("Camera not initialized"));
         return;
       }
-
       if (_cameraController!.value.isTakingPicture) {
-        // Already taking a picture, ignore this request
         return;
       }
 
       emit(CameraLoading());
-      
       try {
         final XFile image = await _cameraController!.takePicture();
         add(PhotoUploaded(image.path));
@@ -138,65 +152,157 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
     }
   }
 
-  void _onPhotoRetaken(PhotoRetaken event, Emitter<CameraState> emit) async {
-    // Reset to camera ready state instead of reopening camera
+  void _onPhotoRetaken(PhotoRetaken event, Emitter<CameraState> emit) {
     emit(CameraReady());
   }
 
-  Future<void> _onPhotoUploaded(PhotoUploaded event, Emitter<CameraState> emit) async {
+  Future<void> _onPhotoUploaded(
+    PhotoUploaded event,
+    Emitter<CameraState> emit,
+  ) async {
     try {
       emit(PhotoUploading(event.imagePath));
 
       final file = File(event.imagePath);
       final bytes = await file.readAsBytes();
 
-      // Send image + prompt to Gemini
-      final response = await _model.generateContent([
+      final ocrResponse = await _ocrModel.generateContent([
         Content.multi([
-          TextPart("Extract all the readable text from this parking sign image."),
+          TextPart(
+            "Extract all the readable text from this parking sign image.",
+          ),
           DataPart('image/jpeg', bytes),
-        ])
+        ]),
       ]);
 
-      final ocrText = response.text ?? "";
-
-      if (ocrText.isEmpty) {
-        emit(CameraError("OCR returned no text"));
+      final rawText = (ocrResponse.text ?? '').trim();
+      if (rawText.isEmpty) {
+        emit(CameraError("Gemini returned no text for this sign"));
         return;
       }
 
-      // Parse OCR into structured fields
-      final databaseEntry = _parseOcrTextToFields(ocrText);
+      final position = await _obtainPosition();
 
-      // Emit success state
-      emit(PhotoOCRSuccess(
-        imagePath: event.imagePath,
-        ocrText: ocrText,
-        databaseEntry: databaseEntry,
-      ));
+      final parsed = await _signService.extractSignJson(
+        signText: rawText,
+        lat: position.latitude,
+        lng: position.longitude,
+        apiKey: apiKey,
+      );
+      _signService.validatePayload(parsed);
+
+      final restrictionMaps = (parsed['restrictions'] as List<dynamic>)
+          .cast<Map<String, dynamic>>();
+      final restrictions = restrictionMaps
+          .map((e) => SignRestriction.fromJson(e))
+          .toList(growable: false);
+
+      final fingerprint = _fingerprint(
+        position.latitude,
+        position.longitude,
+        restrictions,
+      );
+      final cachedZone = await _zoneStorage.readZone(fingerprint);
+
+      final payload = Map<String, dynamic>.from(parsed);
+      if (cachedZone != null) {
+        payload['zone_number'] = cachedZone;
+      }
+
+      final ingestResult = await _signService.sendToBackend(payload);
+      await _zoneStorage.writeZone(fingerprint, ingestResult.zoneNumber);
+
+      String explanation = '';
+      try {
+        explanation = await _signService.generateExplanation(
+          restrictions: restrictionMaps,
+          lat: position.latitude,
+          lng: position.longitude,
+          rawText: rawText,
+          apiKey: apiKey,
+        );
+      } catch (_) {
+        explanation = '';
+      }
+
+      emit(
+        SignAnalysisSuccess(
+          imagePath: event.imagePath,
+          rawText: rawText,
+          explanation: explanation,
+          restrictions: restrictions,
+          zoneNumber: ingestResult.zoneNumber,
+          restrictionsSaved: ingestResult.restrictionsSaved,
+          replacedPrevious: ingestResult.replacedPrevious,
+          latitude: position.latitude,
+          longitude: position.longitude,
+        ),
+      );
     } catch (e) {
-      emit(CameraError("Gemini OCR failed: $e"));
+      emit(CameraError("Sign analysis failed: ${e.toString()}"));
     }
   }
 
   void _onCameraClosed(CameraClosed event, Emitter<CameraState> emit) {
-    // Cleanup camera resources
     _cameraController?.dispose();
     _cameraController = null;
     _cameras = null;
     emit(CameraInitial());
   }
 
-  // Helper to extract structured fields
-  Map<String, dynamic> _parseOcrTextToFields(String text) {
-    final maxHoursMatch = RegExp(r"Maximum Hours:\s*(\d+)").firstMatch(text);
-    final dayOfWeekMatch = RegExp(r"Day of Week:\s*(\w+)").firstMatch(text);
-    final startTimeMatch = RegExp(r"Start Time:\s*([\d:APM]+)").firstMatch(text);
+  Future<Position> _obtainPosition() async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      throw Exception('Location services are disabled');
+    }
 
-    return {
-      "maximum_hours_restriction": maxHoursMatch?.group(1) ?? "",
-      "day_of_week": dayOfWeekMatch?.group(1) ?? "",
-      "start_time": startTimeMatch?.group(1) ?? "",
-    };
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        throw Exception('Location permission denied');
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      throw Exception('Location permissions are permanently denied');
+    }
+
+    return Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.best),
+    );
+  }
+
+  String _fingerprint(
+    double lat,
+    double lng,
+    List<SignRestriction> restrictions,
+  ) {
+    final sorted = [...restrictions]
+      ..sort((a, b) {
+        final dayCompare = a.dayOfWeek.compareTo(b.dayOfWeek);
+        if (dayCompare != 0) return dayCompare;
+        final startCompare = a.startTime.compareTo(b.startTime);
+        if (startCompare != 0) return startCompare;
+        return a.endTime.compareTo(b.endTime);
+      });
+
+    final buffer = StringBuffer()
+      ..write(lat.toStringAsFixed(5))
+      ..write('|')
+      ..write(lng.toStringAsFixed(5));
+    for (final r in sorted) {
+      buffer
+        ..write('|')
+        ..write(r.dayOfWeek)
+        ..write('-')
+        ..write(r.startTime)
+        ..write('-')
+        ..write(r.endTime)
+        ..write('-')
+        ..write(r.maximumStayMinutes?.toString() ?? 'null');
+    }
+
+    return sha1.convert(utf8.encode(buffer.toString())).toString();
   }
 }
