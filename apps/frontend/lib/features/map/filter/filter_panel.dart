@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'filter_config.dart';
 
 const String kFilterRequestPickOnMap = '__FILTER_PICK_ON_MAP__';
