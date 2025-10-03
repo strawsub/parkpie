@@ -39,7 +39,6 @@ public class ParkingSignAggregationService {
             Set<WindowKey> expected = new HashSet<>();
             Set<String> seen = new HashSet<>();
             List<Map<String, Object>> restrictions = fetchRestrictionsForZone(zone);
-            restrictions = pickOnePerDay(restrictions);
             restrictions = ensureSevenDays(restrictions);
             for (Map<String, Object> r : restrictions) {
                 String key = keyOf(r);
@@ -180,67 +179,6 @@ public class ParkingSignAggregationService {
             }
             byDay.put(d, clones);
             out.addAll(clones);
-        }
-        return out;
-    }
-
-    /**
-     * Reduce to at most one restriction per day_of_week. If multiple exist for a day,
-     * choose the one with the longest duration; tie-break by highest maximum_stay_minutes,
-     * then by earliest start_time.
-     */
-    private List<Map<String, Object>> pickOnePerDay(List<Map<String, Object>> input) {
-        if (input == null || input.isEmpty()) return input;
-        Map<Integer, Map<String, Object>> best = new HashMap<>();
-        for (Map<String, Object> r : input) {
-            Integer dow = (Integer) r.get("day_of_week");
-            java.time.LocalTime st = (java.time.LocalTime) r.get("start_time");
-            java.time.LocalTime en = (java.time.LocalTime) r.get("end_time");
-            Integer maxStay = (Integer) r.get("maximum_stay_minutes");
-            if (dow == null || st == null || en == null || maxStay == null) continue;
-
-            long duration = java.time.Duration.between(st, en).toMinutes();
-            if (duration < 0) {
-                // Handle windows that wrap past midnight by treating as full-day minus gap
-                duration = java.time.Duration.between(st, java.time.LocalTime.MIDNIGHT).toMinutes() +
-                        java.time.Duration.between(java.time.LocalTime.MIDNIGHT, en).toMinutes();
-            }
-
-            Map<String, Object> cur = best.get(dow);
-            if (cur == null) {
-                r.put("__dur__", duration);
-                best.put(dow, r);
-                continue;
-            }
-            long curDur = (long) cur.get("__dur__");
-            int curMaxStay = (Integer) cur.get("maximum_stay_minutes");
-            java.time.LocalTime curSt = (java.time.LocalTime) cur.get("start_time");
-
-            boolean better = false;
-            if (duration > curDur) better = true;
-            else if (duration == curDur && maxStay > curMaxStay) better = true;
-            else if (duration == curDur && maxStay == curMaxStay && st.isBefore(curSt)) better = true;
-
-            if (better) {
-                r.put("__dur__", duration);
-                best.put(dow, r);
-            }
-        }
-        List<Map<String, Object>> out = new ArrayList<>();
-        // Keep day order 1..7 if available
-        for (int d = 1; d <= 7; d++) {
-            Map<String, Object> r = best.get(d);
-            if (r != null) {
-                r.remove("__dur__");
-                out.add(r);
-            }
-        }
-        // Include any unexpected days (outside 1..7) just in case
-        for (Map.Entry<Integer, Map<String, Object>> e : best.entrySet()) {
-            if (e.getKey() == null || (e.getKey() >= 1 && e.getKey() <= 7)) continue;
-            Map<String, Object> r = e.getValue();
-            r.remove("__dur__");
-            out.add(r);
         }
         return out;
     }
