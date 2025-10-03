@@ -165,41 +165,77 @@ mixin _MapScreenUiMixin
 
   Widget _buildSearchBar(BuildContext context) {
     return Positioned(
-      top: 40,
+      top: 60,
       left: 16,
       right: 16,
       child: Material(
         elevation: 6,
-        borderRadius: BorderRadius.circular(8),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _searchController,
-                textInputAction: TextInputAction.search,
-                decoration: const InputDecoration(
-                  hintText: 'Search location...',
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 14,
+        borderRadius: BorderRadius.circular(30), // rounder
+        child: Container(
+          height: 50, // taller
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(30),
+          ),
+          child: Row(
+            children: [
+              // Icon inside the search bar
+              Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: Image.asset('assets/icon.png', width: 28, height: 28),
+              ),
+
+              // Expanded TextField
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  textInputAction: TextInputAction.search,
+                  decoration: const InputDecoration(
+                    hintText: 'Search location...',
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(vertical: 14),
                   ),
+                  onSubmitted: (query) {
+                    if (query.isNotEmpty) {
+                      context.read<SearchCubit>().searchLocation(query);
+                    }
+                  },
                 ),
-                onSubmitted: (query) =>
-                    context.read<SearchCubit>().searchLocation(query),
               ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.search),
-              onPressed: () => context.read<SearchCubit>().searchLocation(
-                _searchController.text,
+
+              // Filter button
+              IconButton(
+                icon: Icon(
+                  Icons.filter_list,
+                  color: _filterActive ? Colors.blue : null,
+                ),
+                tooltip: 'Filter parking spots',
+                onPressed: () => _openFilterSheet(),
               ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.clear),
-              onPressed: () => context.read<SearchCubit>().clearSearch(),
-            ),
-          ],
+
+              // Clear button
+              if (_filterActive || _searchMarker != null)
+                IconButton(
+                  icon: const Icon(Icons.clear),
+                  tooltip: 'Clear filter and search',
+                  onPressed: () {
+                    context.read<SearchCubit>().clearSearch();
+                    _clearFilterAndReload();
+                  },
+                )
+              else
+                IconButton(
+                  icon: const Icon(Icons.clear),
+                  tooltip: 'Clear search',
+                  onPressed: () {
+                    _searchController.clear();
+                    context.read<SearchCubit>().clearSearch();
+                  },
+                ),
+            ],
+          ),
         ),
       ),
     );

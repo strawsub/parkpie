@@ -1,22 +1,23 @@
 part of 'package:frontend/features/map/map_screen.dart';
 
 mixin _MapScreenFilterMixin on _MapScreenAreaMixin {
+  Set<Marker> _mergeWithSearch(Set<Marker> base) {
+    final all = Set<Marker>.from(base);
+    if (_searchMarker != null) all.add(_searchMarker!);
+    if (_pickerMarker != null) all.add(_pickerMarker!);
+
+    if (_isPickingLocation) {
+      return _pickerMarker != null ? {_pickerMarker!} : {};
+    }
+    return all;
+  }
+
   Future<void> _openFilterSheet({FilterConfig? seed}) async {
     _isFilterOpen = true;
     try {
       final result = await showFilterSheet(
         context,
-        initial:
-            seed ??
-            FilterConfig(
-              mode: _selectedPoint == null
-                  ? LocationMode.current
-                  : LocationMode.selected,
-              selectedPoint: _selectedPoint,
-              radiusMeters: 100,
-              durationMinutes: 60,
-              startTime: TimeOfDay.now(),
-            ),
+        initial: seed ?? _getDefaultFilterConfig(),
       );
 
       if (!mounted) return;
@@ -25,15 +26,7 @@ mixin _MapScreenFilterMixin on _MapScreenAreaMixin {
         final picked = await _startPickOnMap();
         if (!mounted || picked == null) return;
 
-        final base =
-            seed ??
-            FilterConfig(
-              mode: LocationMode.selected,
-              selectedPoint: picked,
-              radiusMeters: 100,
-              durationMinutes: 60,
-              startTime: TimeOfDay.now(),
-            );
+        final base = seed ?? _getDefaultFilterConfig();
 
         await _openFilterSheet(
           seed: base.copyWith(
@@ -45,40 +38,42 @@ mixin _MapScreenFilterMixin on _MapScreenAreaMixin {
       }
 
       if (result is FilterConfig) {
-        if (result.mode == LocationMode.selected) {
-          _selectedPoint = result.selectedPoint;
-        }
-
-        _applyFilter(result);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              result.mode == LocationMode.current
-                  ? 'Using current location'
-                  : 'Using point: '
-                        '${result.selectedPoint?.latitude.toStringAsFixed(5)}, '
-                        '${result.selectedPoint?.longitude.toStringAsFixed(5)}',
-            ),
-          ),
-        );
+        await _applyFilterWithSearch(result);
       }
     } finally {
       _isFilterOpen = false;
     }
   }
 
-  Future<void> _applyFilter(FilterConfig config) async {
+  FilterConfig _getDefaultFilterConfig() {
+    return FilterConfig(
+      mode: LocationMode.selected,
+      selectedPoint: _selectedPoint,
+      radiusMeters: 1000, // 1km default
+      durationMinutes: 120, // 2 hours
+      startTime: TimeOfDay.now(),
+    );
+  }
+
+  // New unified method that handles both search location and filter
+  Future<void> _applyFilterWithSearch(FilterConfig config) async {
     final messenger = ScaffoldMessenger.of(context);
     final mapCtrl = _mapController;
+    
     setState(() {
       _markers = {};
+      _lastFilterConfig = config; // Store for future use
     });
 
     try {
-      final LatLng center = config.mode == LocationMode.selected
-          ? config.selectedPoint!
-          : await _getCurrentLocation();
+      final LatLng center;
+      
+      if (config.mode == LocationMode.selected) {
+        center = config.selectedPoint!;
+        _selectedPoint = center;
+      } else {
+        center = await _getCurrentLocation();
+      }
 
       final pins = await _fetchPinsWithinRange(
         center: center,
@@ -86,20 +81,35 @@ mixin _MapScreenFilterMixin on _MapScreenAreaMixin {
         durationMinutes: config.durationMinutes,
         startTime: config.startTime,
       );
+      
+      debugPrint('[Filter] Received ${pins.length} pins from API');
+      
       if (!mounted) return;
 
       final filteredMarkers = _buildParkingMarkers(pins);
+      debugPrint('[Filter] Created ${filteredMarkers.length} markers');
 
       setState(() {
         _filterActive = true;
         _filteredRawMarkers = filteredMarkers;
+        _markers = _mergeWithSearch(filteredMarkers);
       });
 
       await mapCtrl?.animateCamera(CameraUpdate.newLatLng(center));
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            '${pins.length} parking spots found '
+            '${config.mode == LocationMode.current ? "near you" : "at selected location"}',
+          ),
+        ),
+      );
     } catch (e) {
+      debugPrint('[Filter] Filter error: $e');
       if (!mounted) return;
       messenger.showSnackBar(
-        const SnackBar(content: Text('Failed to filter pins')),
+        SnackBar(content: Text('Failed to filter pins: ${e.toString()}')),
       );
     }
   }
@@ -117,7 +127,6 @@ mixin _MapScreenFilterMixin on _MapScreenAreaMixin {
       throw Exception('Location permission permanently denied');
     }
 
-    // Get current position
     final pos = await Geolocator.getCurrentPosition(
       locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
     );
@@ -131,23 +140,21 @@ mixin _MapScreenFilterMixin on _MapScreenAreaMixin {
     required int durationMinutes,
     required TimeOfDay startTime,
   }) async {
-    // Format time as HH:mm:ss
     String two(int n) => n.toString().padLeft(2, '0');
     final restrictionTime =
         '${two(startTime.hour)}:${two(startTime.minute)}:00';
 
-    final uri =
-        Uri.parse(
-          'https://parkpie-90018.azurewebsites.net/api/map/querybyradius',
-        ).replace(
-          queryParameters: {
-            'lat': center.latitude.toString(),
-            'lng': center.longitude.toString(),
-            'radius': radius.round().toString(),
-            'duration': durationMinutes.toString(),
-            'restrictionTime': restrictionTime,
-          },
-        );
+    final uri = Uri.parse(
+      'https://parkpie-90018.azurewebsites.net/api/map/querybyradius',
+    ).replace(
+      queryParameters: {
+        'lat': center.latitude.toString(),
+        'lng': center.longitude.toString(),
+        'radius': radius.round().toString(),
+        'duration': durationMinutes.toString(),
+        'restrictionTime': restrictionTime,
+      },
+    );
 
     final resp = await http.get(uri);
     if (resp.statusCode != 200) {
@@ -174,7 +181,7 @@ mixin _MapScreenFilterMixin on _MapScreenAreaMixin {
         startTime: m['start_time'] as String?,
         endTime: m['end_time'] as String?,
         description:
-            'Zone ${m['zone_number']}  ${m['distance']?.toStringAsFixed(1)}m away',
+            'Zone ${m['zone_number']}  ${m['distance']?.toStringAsFixed(1)}m away',
       );
 
       pins.add(pin);
@@ -224,15 +231,16 @@ mixin _MapScreenFilterMixin on _MapScreenAreaMixin {
     setState(() {
       _filterActive = false;
       _filteredRawMarkers = {};
-
       _pickerMarker = null;
       _selectedPoint = null;
+      _searchMarker = null;
+      _lastFilterConfig = null;
     });
 
     context.read<PinCubit>().loadPins();
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Filter cleared. Reloaded pins.')),
+      const SnackBar(content: Text('Filter cleared. Reloaded all pins.')),
     );
   }
 }

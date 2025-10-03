@@ -1,17 +1,8 @@
 part of 'package:frontend/features/map/map_screen.dart';
 
-mixin _MapScreenSearchMixin on _MapScreenStateFields {
-  Set<Marker> _mergeWithSearch(Set<Marker> base) {
-    final all = Set<Marker>.from(base);
-    if (_searchMarker != null) all.add(_searchMarker!);
-    if (_pickerMarker != null) all.add(_pickerMarker!);
+mixin _MapScreenSearchMixin on _MapScreenFilterMixin {
 
-    if (_isPickingLocation) {
-      return _pickerMarker != null ? {_pickerMarker!} : {};
-    }
-    return all;
-  }
-
+  // Modified to automatically apply filter after search
   Future<void> _handleSearchSuccess(SearchSuccess state) async {
     await _mapController?.animateCamera(
       CameraUpdate.newCameraPosition(
@@ -27,14 +18,32 @@ mixin _MapScreenSearchMixin on _MapScreenStateFields {
         infoWindow: InfoWindow(title: 'Search Result', snippet: state.query),
         icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
       );
+      _selectedPoint = state.location;
     });
 
     _searchController.clear();
     FocusScope.of(context).unfocus();
+
+    // Automatically apply filter with the search location
+    final filterConfig = _lastFilterConfig?.copyWith(
+      mode: LocationMode.selected,
+      selectedPoint: state.location,
+    ) ?? FilterConfig(
+      mode: LocationMode.selected,
+      selectedPoint: state.location,
+      radiusMeters: 500, 
+      durationMinutes: 60,
+      startTime: TimeOfDay.now(),
+    );
+
+    await _applyFilterWithSearch(filterConfig);
   }
 
   void _handleSearchCleared() {
-    setState(() => _searchMarker = null);
+    setState(() {
+      _searchMarker = null;
+      _selectedPoint = null;
+    });
     _searchController.clear();
     FocusScope.of(context).unfocus();
   }

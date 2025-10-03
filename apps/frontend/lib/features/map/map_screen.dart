@@ -1,23 +1,3 @@
-/*  
- *   ############################################################################################
- *   ######################################### INDICES ##########################################
- *   ____________________________________________________________________________________________
- *  |      |                            |                                                        |
- *  | #NO  |   Name                     |   Description                                          |
- *  |------|----------------------------|--------------------------------------------------------|
- *  | #1   |   SEGMENT DEBUGGER         |   Just In case for show segments                       |
- *  | #2   |   SEGMENT GENERATION       |   Generate segments from API and create average pins   |
- *  | #3   |   FILTER HANDLER           |   Open filter panel, apply filter, pick on map         |
- *  | #4   |   MAP OPERATIONS           |   Map creation, camera movement, zoom handling         |
- *  | #5   |   PINNING                  |   Create markers from pin data, custom icons           |
- *  | #6   |   INFO PANEL HANDLER       |   Show parking info bottom sheet                       |
- *  | #7   |   SEARCHING OPERATION      |   Search location, handle search states                |
- *  | #8   |   APP INITIATOR & DISPOSER |   Init and dispose resources                           |
- *  | #9   |   CUSTOMIZED WIDGET ITEMS  |   Customized widgets in build()                        |
- *  |______|____________________________|________________________________________________________|
- * 
- */
-
 import 'dart:ui';
 import 'dart:async';
 import 'dart:convert';

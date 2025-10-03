@@ -8,10 +8,10 @@ Future<Object?> showFilterSheet(BuildContext context, {FilterConfig? initial}) {
   final defaults =
       initial ??
       const FilterConfig(
-        mode: LocationMode.current,
+        mode: LocationMode.selected,
         selectedPoint: null,
-        radiusMeters: 100,
-        durationMinutes: 60,
+        radiusMeters: 1000,
+        durationMinutes: 120,
         startTime: TimeOfDay(hour: 17, minute: 0),
       );
 
@@ -33,22 +33,20 @@ class _FilterSheet extends StatefulWidget {
 }
 
 class _FilterSheetState extends State<_FilterSheet> {
-  late LocationMode _mode;
-  LatLng? _point;
   late double _radius;
   late TextEditingController _durationCtrl;
   late TimeOfDay _time;
+  DateTime? _selectedDate;
 
   @override
   void initState() {
     super.initState();
-    _mode = widget.initial.mode;
-    _point = widget.initial.selectedPoint;
     _radius = widget.initial.radiusMeters;
     _time = widget.initial.startTime;
     _durationCtrl = TextEditingController(
       text: widget.initial.durationMinutes.toString(),
     );
+    _selectedDate = DateTime.now();
   }
 
   @override
@@ -69,105 +67,40 @@ class _FilterSheetState extends State<_FilterSheet> {
     if (picked != null) setState(() => _time = picked);
   }
 
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (picked != null) setState(() => _selectedDate = picked);
+  }
+
   void _submit() {
-    final minutes = int.tryParse(_durationCtrl.text.trim()) ?? 0;
+    final minutes = int.tryParse(_durationCtrl.text.trim()) ?? 120;
     final cfg = FilterConfig(
-      mode: _mode,
-      selectedPoint: _mode == LocationMode.selected ? _point : null,
+      mode: widget.initial.mode,
+      selectedPoint: widget.initial.selectedPoint,
       radiusMeters: _radius,
       durationMinutes: minutes,
       startTime: _time,
+      // date: _selectedDate, // assuming FilterConfig has a date field
     );
     Navigator.of(context).pop(cfg);
   }
 
   void _reset() {
     setState(() {
-      _mode = LocationMode.current;
-      _point = null;
-      _radius = 100;
-      _durationCtrl.text = '60';
-      _time = const TimeOfDay(hour: 17, minute: 0);
+      _radius = 1000;
+      _durationCtrl.text = '120';
+      _time = TimeOfDay.now();
+      _selectedDate = DateTime.now();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    Widget locationSection() {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Location', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            children: [
-              ChoiceChip(
-                label: const Text('Use current'),
-                selected: _mode == LocationMode.current,
-                onSelected: (_) => setState(() => _mode = LocationMode.current),
-              ),
-              ChoiceChip(
-                label: const Text('Selected point'),
-                selected: _mode == LocationMode.selected,
-                onSelected: (_) {
-                  if (_point == null) {
-                    Navigator.of(
-                      context,
-                      rootNavigator: true,
-                    ).pop(kFilterRequestPickOnMap);
-                  } else {
-                    setState(() => _mode = LocationMode.selected);
-                  }
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-
-          // Details card
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade400),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: _mode == LocationMode.current
-                ? Row(
-                    children: const [
-                      Icon(Icons.my_location),
-                      SizedBox(width: 8),
-                      Text('Using device location'),
-                    ],
-                  )
-                : Row(
-                    children: [
-                      const Icon(Icons.location_on),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _point == null
-                              ? 'No point selected'
-                              : 'Lat: ${_point!.latitude.toStringAsFixed(6)} '
-                                    'Lng: ${_point!.longitude.toStringAsFixed(6)}',
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      OutlinedButton.icon(
-                        onPressed: () => Navigator.of(
-                          context,
-                          rootNavigator: true,
-                        ).pop(kFilterRequestPickOnMap),
-                        icon: const Icon(Icons.add_location_alt_outlined),
-                        label: const Text('Pick on map'),
-                      ),
-                    ],
-                  ),
-          ),
-        ],
-      );
-    }
-
     final card = Material(
       color: Theme.of(context).cardColor,
       borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -183,6 +116,7 @@ class _FilterSheetState extends State<_FilterSheet> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Drag handle
               Container(
                 width: 40,
                 height: 4,
@@ -193,39 +127,51 @@ class _FilterSheetState extends State<_FilterSheet> {
                 ),
               ),
 
-              locationSection(),
-              const SizedBox(height: 16),
-
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Radius (m)',
+                  'Filter Parking Spots',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              // Radius slider
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Search Radius',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
+              const SizedBox(height: 4),
               Row(
                 children: [
                   Expanded(
                     child: Slider(
                       value: _radius,
-                      min: 0,
-                      max: 300,
-                      divisions: 30,
-                      label: _radius.toStringAsFixed(0),
+                      min: 100,
+                      max: 2000,
+                      divisions: 19,
+                      label: '${_radius.toStringAsFixed(0)}m',
+                      activeColor: const Color(0xFF7FAC58),
                       onChanged: (v) => setState(() => _radius = v),
                     ),
                   ),
                   SizedBox(
-                    width: 64,
+                    width: 80,
                     child: Text(
-                      _radius.toStringAsFixed(0),
+                      '${(_radius / 1000).toStringAsFixed(1)} km',
                       textAlign: TextAlign.end,
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
                   ),
                 ],
               ),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
+
+              // Row: Duration
               Row(
                 children: [
                   Expanded(
@@ -243,19 +189,26 @@ class _FilterSheetState extends State<_FilterSheet> {
                           decoration: const InputDecoration(
                             isDense: true,
                             border: OutlineInputBorder(),
-                            hintText: 'e.g. 60',
+                            hintText: 'e.g. 120',
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 12),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
+              // Row: Start Time and Date
+              Row(
+                children: [
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Time',
+                          'Start Time',
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         const SizedBox(height: 6),
@@ -269,11 +222,47 @@ class _FilterSheetState extends State<_FilterSheet> {
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.access_time),
+                                const Icon(Icons.access_time, size: 20),
                                 const SizedBox(width: 8),
                                 Text(_time.format(context)),
                                 const Spacer(),
-                                const Icon(Icons.arrow_drop_down),
+                                const Icon(Icons.arrow_drop_down, size: 20),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Date',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 6),
+                        InkWell(
+                          onTap: _pickDate,
+                          borderRadius: BorderRadius.circular(8),
+                          child: InputDecorator(
+                            decoration: const InputDecoration(
+                              isDense: true,
+                              border: OutlineInputBorder(),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.calendar_today, size: 20),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _selectedDate != null
+                                      ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
+                                      : 'Select date',
+                                ),
+                                const Spacer(),
+                                const Icon(Icons.arrow_drop_down, size: 20),
                               ],
                             ),
                           ),
@@ -284,20 +273,27 @@ class _FilterSheetState extends State<_FilterSheet> {
                 ],
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
+
+              // Action buttons
               Row(
                 children: [
-                  OutlinedButton(onPressed: _reset, child: const Text('Reset')),
-                  const Spacer(),
                   TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Cancel'),
+                    onPressed: _reset,
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFF7FAC58),
+                    ),
+                    child: const Text('Reset'),
                   ),
-                  const SizedBox(width: 8),
+                  const Spacer(),
                   ElevatedButton.icon(
                     onPressed: _submit,
                     icon: const Icon(Icons.check),
-                    label: const Text('Apply'),
+                    label: const Text('Apply Filter'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF7FAC58),
+                      foregroundColor: Colors.white,
+                    ),
                   ),
                 ],
               ),
@@ -308,11 +304,11 @@ class _FilterSheetState extends State<_FilterSheet> {
     );
 
     return DraggableScrollableSheet(
-      initialChildSize: 0.6,
-      minChildSize: 0.35,
+      initialChildSize: 0.55,
+      minChildSize: 0.4,
       maxChildSize: 0.65,
       snap: true,
-      snapSizes: const [0.6, 0.65],
+      snapSizes: const [0.55],
       expand: false,
       builder: (_, controller) => ClipRRect(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),

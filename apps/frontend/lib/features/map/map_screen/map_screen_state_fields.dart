@@ -17,6 +17,7 @@ mixin _MapScreenStateFields on State<MapScreen> {
   Marker? _pickerMarker;
 
   LatLng? _selectedPoint;
+  FilterConfig? _lastFilterConfig;
 
   bool _hasCenteredInitially = false;
   bool _isFilterOpen = false;
