@@ -8,10 +8,13 @@ import 'features/navigation/filter_trigger_cubit.dart';
 import 'features/map/map_screen.dart';
 import 'features/map/pin/pin_cubit.dart';
 import 'features/map/search/search_cubit.dart';
-import 'features/gps_correction/location_bloc.dart'; 
+import 'features/gps_correction/location_bloc.dart';
 
 import 'features/camera/camera_screen.dart';
 import 'features/camera/camera_bloc.dart';
+import 'services/api_config.dart';
+import 'services/sign_ingest_service.dart';
+import 'services/sign_zone_storage.dart';
 
 import 'features/parking_status_detection/parking_status_bloc.dart';
 import 'features/parking_status_detection/parking_status_state.dart';
@@ -43,12 +46,20 @@ class ParkPieApp extends StatelessWidget {
       bluetoothBloc: bluetoothBloc,
       gpsSpeedBloc: gpsSpeedBloc,
     );
+    final apiBase = resolveApiBaseUrl();
+    final signZoneStorage = SignZoneStorage();
+    final signIngestService = SignIngestService(backendBaseUrl: apiBase);
 
     return MultiBlocProvider(
       providers: [
         BlocProvider(create: (_) => NavigationCubit()),
         BlocProvider(create: (_) => FilterTriggerCubit()),
-        BlocProvider(create: (_) => CameraBloc()),
+        BlocProvider(
+          create: (_) => CameraBloc(
+            signIngestService: signIngestService,
+            zoneStorage: signZoneStorage,
+          ),
+        ),
         BlocProvider(create: (_) => PinCubit()..loadPins()),
         BlocProvider<SearchCubit>(create: (context) => SearchCubit()),
         BlocProvider<AccBloc>.value(value: accBloc),
@@ -56,8 +67,7 @@ class ParkPieApp extends StatelessWidget {
         BlocProvider<BluetoothBloc>.value(value: bluetoothBloc),
         BlocProvider<GpsSpeedBloc>.value(value: gpsSpeedBloc),
         BlocProvider<ParkingBloc>.value(value: parkingBloc),
-        BlocProvider(create: (_) => LocationCubit(),),
-
+        BlocProvider(create: (_) => LocationCubit()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -82,7 +92,6 @@ class HomeContainer extends StatefulWidget {
 }
 
 class _HomeContainerState extends State<HomeContainer> {
-
   void _handleNavTap(BuildContext context, int index, int currentIndex) {
     if (index == 2) {
       // Filter tapped - stay on parking screen (index 0) and trigger filter
@@ -133,7 +142,8 @@ class _HomeContainerState extends State<HomeContainer> {
                     right: 0,
                     child: BottomNavBar(
                       currentIndex: selectedIndex,
-                      onTap: (index) => _handleNavTap(context, index, selectedIndex),
+                      onTap: (index) =>
+                          _handleNavTap(context, index, selectedIndex),
                     ),
                   ),
               ],

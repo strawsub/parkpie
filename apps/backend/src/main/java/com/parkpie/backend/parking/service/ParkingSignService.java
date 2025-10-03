@@ -6,7 +6,10 @@ import com.parkpie.backend.parking.repository.ParkingSignRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 @Service
 public class ParkingSignService {
@@ -25,26 +28,68 @@ public class ParkingSignService {
     }
 
     @Transactional
-    public int ingestUserSign(UserSignIngestDto.Request req) {
-        // Validate 7 unique days 1..7
-        boolean[] seen = new boolean[8];
-        for (var r : req.restrictions) {
-            int d = r.day_of_week;
-            if (d < 1 || d > 7) throw new IllegalArgumentException("day_of_week out of range: " + d);
-            if (seen[d]) throw new IllegalArgumentException("Duplicate day_of_week: " + d);
-            seen[d] = true;
-        }
-        for (int d = 1; d <= 7; d++) {
-            if (!seen[d]) throw new IllegalArgumentException("Missing day_of_week: " + d);
+    public UserSignIngestDto.Response ingestUserSign(UserSignIngestDto.Request req) {
+        Objects.requireNonNull(req, "request");
+        var location = Objects.requireNonNull(req.location, "location");
+        double lat = Objects.requireNonNull(location.lat, "location.lat");
+        double lng = Objects.requireNonNull(location.lng, "location.lng");
+
+        if (req.restrictions == null || req.restrictions.isEmpty()) {
+            throw new IllegalArgumentException("At least one restriction is required");
         }
 
-        int inserted = 0;
+        Map<String, UserSignIngestDto.Restriction> unique = new LinkedHashMap<>();
         for (var r : req.restrictions) {
-            inserted += parkingSignRepository.insertManual(
-                    req.location.lat, req.location.lng,
-                    r.day_of_week, r.start_time, r.end_time, r.maximum_stay_minutes
+            Integer dow = Objects.requireNonNull(r.day_of_week, "restriction.day_of_week");
+            if (dow < 1 || dow > 7) {
+                throw new IllegalArgumentException("day_of_week out of range: " + dow);
+            }
+            if (r.maximum_stay_minutes != null && r.maximum_stay_minutes < 0) {
+                throw new IllegalArgumentException("maximum_stay_minutes must be >= 0 for day " + dow);
+            }
+            if (r.start_time == null || r.end_time == null) {
+                throw new IllegalArgumentException("Missing start or end time for day " + dow);
+            }
+            String key = dow + "|" + r.start_time + "|" + r.end_time;
+            unique.put(key, r);
+        }
+
+        int zoneNumber;
+        int replaced = 0;
+        if (req.zone_number != null) {
+            zoneNumber = req.zone_number;
+            if (zoneNumber >= 0) {
+                throw new IllegalArgumentException("Manual zone_number must be negative");
+            }
+            replaced = parkingSignRepository.deleteByZone(zoneNumber);
+        } else {
+            zoneNumber = allocateManualZoneNumber();
+        }
+
+        int saved = 0;
+        for (var r : unique.values()) {
+            saved += parkingSignRepository.upsertManual(
+                    zoneNumber,
+                    lat,
+                    lng,
+                    r.day_of_week,
+                    r.start_time,
+                    r.end_time,
+                    r.maximum_stay_minutes
             );
         }
-        return inserted;
+
+        return new UserSignIngestDto.Response(zoneNumber, saved, replaced);
+    }
+
+    private int allocateManualZoneNumber() {
+        long next = parkingSignRepository.nextManualZoneSequence();
+        if (next <= 0) {
+            throw new IllegalStateException("manual_zone_number_seq returned invalid value: " + next);
+        }
+        if (next > Integer.MAX_VALUE) {
+            throw new IllegalStateException("manual zone number overflow");
+        }
+        return (int) -next;
     }
 }

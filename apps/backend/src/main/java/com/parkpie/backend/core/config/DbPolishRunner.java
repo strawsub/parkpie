@@ -160,5 +160,22 @@ public class DbPolishRunner implements ApplicationRunner {
             END
             $$;
         """);
+        jdbc.execute("""
+            DO $$
+            BEGIN
+              IF NOT EXISTS (
+                SELECT 1 FROM pg_class WHERE relkind = 'S' AND relname = 'manual_zone_number_seq'
+              ) THEN
+                CREATE SEQUENCE manual_zone_number_seq START WITH 1;
+              END IF;
+            END
+            $$;
+        """);
     }
 }
+
+
+
+
+
+

@@ -66,14 +66,21 @@ public interface ParkingSignRepository extends JpaRepository<ParkingSign, Long> 
             day_of_week, start_time, end_time,
             maximum_stay_minutes, occupancy_percent, updated_at
         ) VALUES (
-            NULL, ST_SetSRID(ST_MakePoint(:lng,:lat),4326),
+            :zone, ST_SetSRID(ST_MakePoint(:lng,:lat),4326),
             :dow, :startT, :endT, :maxStay, NULL, NULL
         )
+        ON CONFLICT ON CONSTRAINT uq_sign_zone_window DO UPDATE SET
+            location = EXCLUDED.location,
+            maximum_stay_minutes = EXCLUDED.maximum_stay_minutes
         """, nativeQuery = true)
-    int insertManual(@Param("lat") double lat,
+    int upsertManual(@Param("zone") int zoneNumber,
+                     @Param("lat") double lat,
                      @Param("lng") double lng,
                      @Param("dow") Integer dayOfWeek,
                      @Param("startT") java.time.LocalTime startTime,
                      @Param("endT") java.time.LocalTime endTime,
                      @Param("maxStay") Integer maximumStay);
+
+    @Query(value = "SELECT nextval('manual_zone_number_seq')", nativeQuery = true)
+    long nextManualZoneSequence();
 }

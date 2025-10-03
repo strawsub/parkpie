@@ -9,10 +9,13 @@ import java.util.List;
 public class UserSignIngestDto {
 
     public static class Location {
+        @NotNull
         @DecimalMin("-90.0") @DecimalMax("90.0")
-        public double lat;
+        public Double lat;
+
+        @NotNull
         @DecimalMin("-180.0") @DecimalMax("180.0")
-        public double lng;
+        public Double lng;
     }
 
     public static class Restriction {
@@ -25,7 +28,7 @@ public class UserSignIngestDto {
         @NotNull
         public LocalTime end_time;   // HH:mm
 
-        @NotNull @Positive
+        @PositiveOrZero
         public Integer maximum_stay_minutes;
     }
 
@@ -33,9 +36,23 @@ public class UserSignIngestDto {
         @NotNull @Valid
         public Location location;
 
-        @NotNull @Size(min = 7, max = 7)
         @Valid
+        @NotNull @Size(min = 1, max = 42)
         public List<Restriction> restrictions;
+
+        @Negative
+        public Integer zone_number;
+    }
+
+    public static class Response {
+        public int zone_number;
+        public int restrictions_saved;
+        public int replaced_previous;
+
+        public Response(int zoneNumber, int restrictionsSaved, int replacedPrevious) {
+            this.zone_number = zoneNumber;
+            this.restrictions_saved = restrictionsSaved;
+            this.replaced_previous = replacedPrevious;
+        }
     }
 }
-
