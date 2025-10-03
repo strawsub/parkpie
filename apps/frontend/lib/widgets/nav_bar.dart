@@ -47,11 +47,6 @@ class BottomNavBar extends StatelessWidget {
                 iconPath: 'assets/contribute_nav.svg',
                 label: 'Scan',
               ),
-              _buildNavItem(
-                index: 2,
-                iconPath: 'assets/filter_nav.svg',
-                label: 'Filter',
-              ),
             ],
           ),
         ),

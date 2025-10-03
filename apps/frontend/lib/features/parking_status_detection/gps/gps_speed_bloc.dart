@@ -209,13 +209,13 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
     final candidateSeconds = _getCandidateSeconds(event.timestamp);
 
     // Debug logging
-    debugPrint('GPS: raw=${rawSpeed.toStringAsFixed(2)}m/s, '
-        'filtered=${filteredSpeed.toStringAsFixed(2)}m/s, '
-        'disp=${windowStats.displacement.toStringAsFixed(1)}m, '
-        'acc=${event.horizAcc?.toStringAsFixed(1) ?? "null"}m, '
-        'scenario=$accuracyScenario, '
-        'vote=${vote.toString().split('.').last}, '
-        'candidate=${candidateSeconds.toStringAsFixed(1)}s');
+    // debugPrint('GPS: raw=${rawSpeed.toStringAsFixed(2)}m/s, '
+    //     'filtered=${filteredSpeed.toStringAsFixed(2)}m/s, '
+    //     'disp=${windowStats.displacement.toStringAsFixed(1)}m, '
+    //     'acc=${event.horizAcc?.toStringAsFixed(1) ?? "null"}m, '
+    //     'scenario=$accuracyScenario, '
+    //     'vote=${vote.toString().split('.').last}, '
+    //     'candidate=${candidateSeconds.toStringAsFixed(1)}s');
 
     emit(GpsSpeedReading(
       vote: vote,
