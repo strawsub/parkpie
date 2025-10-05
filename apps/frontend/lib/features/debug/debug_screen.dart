@@ -15,6 +15,8 @@ import 'package:frontend/features/parking_status_detection/gps/gps_speed_bloc.da
 import 'package:frontend/features/parking_status_detection/gps/gps_speed_state.dart';
 import 'package:frontend/features/parking_status_detection/accelerometer/acc_bloc.dart';
 import 'package:frontend/features/parking_status_detection/accelerometer/acc_state.dart';
+import 'package:frontend/features/parking_status_detection/gyroscope/gyro_bloc.dart';
+import 'package:frontend/features/parking_status_detection/gyroscope/gyro_state.dart';
 import 'package:frontend/features/parking_status_detection/utils.dart';
 
 // Helper: safely read a Provider/Bloc; returns null if not found (no exception)
@@ -139,14 +141,7 @@ class _DebugScreenState extends State<DebugScreen> {
                   c = Colors.yellow;
                   final duration = DateTime.now().difference(state.candidateStartTime).inSeconds;
 
-                  // Check gyro spike status (simplified)
-                  String gyroStatus = '⭕ No spike';
-                  if (state.latchedGyroSpikeTime != null) {
-                    final spikeAge = DateTime.now().difference(state.latchedGyroSpikeTime!).inSeconds;
-                    gyroStatus = '🟢 Spike latched (${spikeAge}s) - freeze active';
-                  }
-
-                  details = '\nDuration: ${duration}s | $gyroStatus';
+                  details = '\nDuration: ${duration}s\nWaiting for: BT disconnect, Gyro spike (instant), or 60s timeout';
                 }
                 if (state is ParkingDetected) c = Colors.purple;
                 if (state is Parked) c = Colors.green;
@@ -209,7 +204,7 @@ class _DebugScreenState extends State<DebugScreen> {
                   return ListTile(
                     title: Text('Accelerometer Stillness $stillIcon'),
                     subtitle: Text(
-                      'RMS: ${rms.toStringAsFixed(3)} [Enter ≤0.07, Exit ≥0.10]\n'
+                      'RMS: ${rms.toStringAsFixed(3)} [Enter ≤0.40, Exit ≥0.45]\n'
                           'Quiet Ratio: ${(quietRatio * 100).toStringAsFixed(0)}% [Need ≥70%]\n'
                           'Status: ${isStill ? "STILL (parked)" : "MOVING (driving)"}',
                     ),
@@ -217,6 +212,36 @@ class _DebugScreenState extends State<DebugScreen> {
                 }
                 return const ListTile(
                   title: Text('Accelerometer Stillness'),
+                  subtitle: Text('Initializing...'),
+                );
+              },
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          // Gyroscope Details (from GyroBloc)
+          Card(
+            child: BlocBuilder<GyroBloc, GyroState>(
+              builder: (context, gyroState) {
+                if (gyroState is GyroReading) {
+                  final maxRotation = gyroState.maxRotation ?? 0.0;
+                  final isSpike = gyroState.vote == SensorVote.parked;
+                  final spikeIcon = isSpike ? '🟢' : '🔴';
+
+                  return ListTile(
+                    title: Text('Gyroscope Rotation $spikeIcon'),
+                    subtitle: Text(
+                      'Max Rotation: ${maxRotation.toStringAsFixed(3)} rad/s\n'
+                          'Threshold: >0.8 rad/s triggers spike (parked vote)\n'
+                          'Status: ${isSpike ? "SPIKE DETECTED (parked)" : "No spike (driving)"}\n'
+                          'Note: Only active in StoppedCandidate state\n'
+                          'Behavior: Instant promotion to ParkingDetected (no freeze)',
+                    ),
+                  );
+                }
+                return const ListTile(
+                  title: Text('Gyroscope Rotation'),
                   subtitle: Text('Initializing...'),
                 );
               },
@@ -291,24 +316,24 @@ class _DebugScreenState extends State<DebugScreen> {
                   final accuracy = state.accuracy ?? -1;
                   final scenario = state.accuracyScenario;
 
-                  // Scenario-based thresholds
+                  // Scenario-based thresholds (updated to match current config)
                   final String vIn, vOut, dWindow, tCandidate, tConfirm;
                   final String scenarioIcon;
 
                   switch (scenario) {
                     case "good":
-                      vIn = "1.2"; vOut = "2.2"; dWindow = "8.0";
+                      vIn = "1.2"; vOut = "4.1"; dWindow = "12.0";
                       tCandidate = "3.0"; tConfirm = "4.0";
                       scenarioIcon = "🟢";
                       break;
                     case "medium":
-                      vIn = "1.3"; vOut = "2.3"; dWindow = "10.0";
+                      vIn = "1.3"; vOut = "4.1"; dWindow = "16.0";
                       tCandidate = "3.0"; tConfirm = "5.0";
                       scenarioIcon = "🟡";
                       break;
                     case "poor":
                     default:
-                      vIn = "1.5"; vOut = "2.5"; dWindow = "15.0";
+                      vIn = "1.5"; vOut = "4.1"; dWindow = "20.0";
                       tCandidate = "3.0"; tConfirm = "6.0";
                       scenarioIcon = "🔴";
                       break;
@@ -319,8 +344,9 @@ class _DebugScreenState extends State<DebugScreen> {
                     subtitle: Text(
                         'Vote: $vote | Scenario: $scenario $scenarioIcon\n'
                             'Speed: ${filteredSpeedKmh.toStringAsFixed(1)} km/h (filtered) | ${rawSpeedKmh.toStringAsFixed(1)} km/h (raw)\n'
-                            'Thresholds: vIn=${vIn}m/s, vOut=${vOut}m/s\n'
+                            'Thresholds: vIn=${vIn}m/s (${(double.parse(vIn) * 3.6).toStringAsFixed(1)}km/h), vOut=${vOut}m/s (${(double.parse(vOut) * 3.6).toStringAsFixed(1)}km/h)\n'
                             'Displacement: ${displacement.toStringAsFixed(1)} m [dWindow=${dWindow}m]\n'
+                            'Linear Distance Required: 10.0 m for driving\n'
                             'Candidate: ${candidateSec.toStringAsFixed(1)} s [tCand=${tCandidate}s, tConf=${tConfirm}s]\n'
                             'Accuracy: ${accuracy.toStringAsFixed(1)} m'
                     ),
@@ -362,10 +388,12 @@ class _DebugScreenState extends State<DebugScreen> {
                   sensorLines.add('• accelerometer → (no vote) ⚪');
                 }
 
-                // Gyroscope
+                // Gyroscope (only active in StoppedCandidate)
                 if (votes.containsKey('gyroscope')) {
                   final vote = votes['gyroscope'].toString().split('.').last;
-                  sensorLines.add('• gyroscope → $vote ${vote == 'driving' ? '✅' : '🅿️'}');
+                  final isStoppedCandidate = state is StoppedCandidate;
+                  final activeIndicator = isStoppedCandidate ? '' : ' (DISABLED)';
+                  sensorLines.add('• gyroscope → $vote ${vote == 'parked' ? '🅿️' : '⚪'}$activeIndicator');
                 } else {
                   sensorLines.add('• gyroscope → (no vote) ⚪');
                 }

@@ -1,420 +1,324 @@
-1. APP START / INITIALIZATION
+⏺ Updated: Complete Parking Detection Logic (Current Implementation)
 
-State: ParkingUnknown
-
-Entry Condition:
-- App just launched
-- Default initial state
-
-Exit Conditions:
-- To Driving: ≥2 driving votes OR GPS vote = driving
-- No other exits (can't go directly to parked)
+Changes: Removed 3-second gyro freeze mechanism. Gyro spike now triggers instant promotion to
+ParkingDetected.
 
   ---
-2. DRIVING SCENARIO
+Overview: 5-State Machine with Sensor Fusion
 
-State: Driving (Orange indicator 🟠)
-
-Entry Conditions:
-
-- From Unknown: ≥2 driving votes OR GPS = driving
-- From StoppedCandidate: Sustained motion detected (revert conditions met)
-- From ParkingDetected: Sustained motion detected
-- From Parked: ≥2 driving votes OR GPS = driving
-
-Detection Logic:
-
-- GPS speed vote = driving (v ≥ vOut = 2.5 m/s for 3s)
-- OR accelerometer vote = driving (RMS > 0.10)
-- OR gyroscope vote = driving (low rotation, stable)
-- OR bluetooth connected (car audio active)
-
-Exit Conditions:
-
-- To StoppedCandidate (Normal): GPS low speed (v ≤ 1.2 m/s) AND Acc stillness (RMS ≤ 0.07) for 3s
-- To ParkingDetected (BT Fast Path): Stopped + BT disconnects (within 2s of prior connection)
-
-Key Behavior:
-
-- Gyro spikes IGNORED in Driving state (prevents red light false positives)
-
-  ---
-3. STOPPED CANDIDATE SCENARIO
-
-State: StoppedCandidate (Yellow indicator 🟡)
-
-Entry Conditions:
-
-- From Driving:
-    - GPS vote = parked (v ≤ vIn for 3s)
-    - AND Acc vote = parked (RMS ≤ 0.07, quiet ratio ≥ 70% for 3s)
-    - AND no BT disconnect (otherwise goes direct to ParkingDetected)
-
-Active Detection Logic:
-
-A. Revert to Driving (Exit to Driving):
-
-GPS Available:
-- GPS speed ≥ 2.5 m/s (vOut) for 3s sustained ✅
-- OR Acc RMS > 0.10 for 4s sustained ✅
-
-GPS Stale (indoors/tunnels):
-- Ignore GPS and gyro completely
-- Acc RMS > 0.10 for 4s sustained ✅ (acc-only revert)
-
-B. BT Disconnect Promotion (Exit to ParkingDetected):
-
-- BT was previously connected AND now disconnected
-- Stopped condition active (GPS low speed OR Acc stillness)
-- Within 2s of disconnect timestamp
-- Result: Instant promotion to ParkingDetected ⚡
-
-C. Gyro Spike Evidence Collection:
-
-Phase 1: Spike Detection & Latching
-- Gyro spike detected (rotation > threshold)
-- Spike latched with timestamp
-- Only valid if detected AFTER entering StoppedCandidate
-
-Phase 2: Freeze Window (0-3s after spike)
-- Purpose: Ignore acc spike from grabbing phone
-- Duration: 3 seconds
-- Action: Just wait, no checks
-
-Phase 3: Recovery Window (3-12s after spike)
-- Purpose: Check if phone returns to stillness
-- Success condition: Acc still (RMS ≤ 0.07) AND Acc vote = parked
-- If success: Mark recovery timestamp, start Hold timer
-- If fail (>12s): Clear latched spike, stay in Candidate
-
-Phase 4: Hold Window (after recovery, 30s duration)
-- Purpose: Verify sustained stillness
-- Requirements:
-    - Acc RMS ≤ 0.07 continuously
-    - GPS low speed (v ≤ vIn) OR GPS stale with IMU confirmation
-    - Displacement ≤ dWindow
-- If break: Reset hold timer (don't revert, just restart hold)
-- If complete: Promote to ParkingDetected ✅
-
-Phase 5: Spike Expiry
-- Spike expires after 25s from latch
-- If expired: Clear spike + recovery + hold timers
-
-D. Timeout Promotion (Exit to ParkingDetected):
-
-- After 60s in StoppedCandidate with no motion
-- Auto-promote to ParkingDetected
-- User will see confirmation dialog
-
-Periodic Timer:
-
-- 1.5s wall-clock tick keeps timers advancing
-- Works even when GPS samples stale
-- Re-evaluates state every tick
+┌─────────────┐
+│   Unknown   │ ◄─── App starts here
+└─────────────┘
+│
+│ GPS: speed ≥4.1m/s + distance >10m for 3s
+▼
+┌─────────────┐
+│   Driving   │
+└─────────────┘
+│                    ▲
+│ GPS parked         │ GPS: speed ≥4.1m/s
+│ + Acc still        │ + distance >10m for 3s
+▼                    │
+┌─────────────────────────┐│
+│  StoppedCandidate       ││
+│  (waiting for evidence) ││
+└─────────────────────────┘│
+│                    │
+│ 3 promotion paths  │
+│ (instant)          │
+▼                    │
+┌─────────────────┐        │
+│ ParkingDetected │────────┘
+└─────────────────┘
+│
+│ User confirms "Yes"
+▼
+┌─────────────┐
+│   Parked    │ ◄─── Terminal state
+└─────────────┘
 
   ---
-4. PARKING DETECTED SCENARIO
+Sensor Layer: 4 Independent Sensors
 
-State: ParkingDetected (Purple indicator 🟣)
+1. GPS Speed Sensor (gps_speed_bloc.dart)
 
-Entry Conditions:
+Purpose: Detect driving via GPS speed + linear distance
 
-- From Driving (BT Fast Path): BT disconnect while stopped
-- From StoppedCandidate (BT): BT disconnect within 2s
-- From StoppedCandidate (Gyro): Hold window completed (30s after recovery)
-- From StoppedCandidate (Timeout): 60s with no motion
+Voting Logic:
 
-Detection Logic:
+// DRIVING VOTE: Requires BOTH speed ≥ 4.1 m/s AND distance > 10m for ≥3s
+if (speed >= 4.1) {
+_drivingCandidateStartTime ??= timestamp;
+_drivingLinearDistance = haversineDistance(startSample, currentSample);
 
-- Evidence collected in StoppedCandidate validates parking
-- Auto-confirm timer starts (3 seconds)
+    if (duration >= 3.0s && _drivingLinearDistance > 10.0m) {
+      return SensorVote.driving;
+    }
+    return SensorVote.unknown;
+}
 
-Exit Conditions:
+// PARKED VOTE: BOTH low speed AND small displacement (scenario-aware)
+if (speed <= vIn && displacement <= dWindow) {
+_parkedCandidateStartTime ??= timestamp;
 
-- To Parked: Auto-confirm timer completes (3s) → Show dialog → Parked
-- To Driving: Sustained motion detected (same revert logic as StoppedCandidate)
+    if (duration >= tConfirm) {
+      return SensorVote.parked;
+    }
+    return SensorVote.unknown;
+}
 
-User Interaction:
-
-- Dialog shown: "Are you parked?"
-- User confirms → Parked state
-- User rejects → ResetParking → Unknown → Driving
-
-  ---
-5. PARKED SCENARIO
-
-State: Parked (Green indicator 🟢)
-
-Entry Conditions:
-
-- From ParkingDetected: Auto-confirm (3s) OR user confirmation
-
-Detection Logic:
-
-- Vehicle is stationary
-- User confirmed parking
-
-Exit Conditions:
-
-- To Driving: ≥2 driving votes OR GPS vote = driving
+Key Thresholds:
+- Driving: vOut = 4.1 m/s (~14.8 km/h), distance > 10m, time ≥ 3s
+- Parked: vIn = 1.2-1.5 m/s (scenario), dWindow = 12-20m (scenario), time = 4-6s (scenario)
 
   ---
-SPECIAL SCENARIOS
+2. Accelerometer Sensor (acc_bloc.dart)
 
-Red Light Detection (Prevents False Positive):
+Purpose: Detect vehicle stillness via RMS magnitude
 
-Timeline:
-t=0s:   Vehicle stops at red light
-→ Enter StoppedCandidate
+Voting Logic:
 
-t=5s:   User picks up phone (checking map)
-→ Gyro spike detected & latched
+if (rms > 0.5) {
+return SensorVote.driving;  // High motion
+}
 
-t=5-8s: Freeze window (ignore acc spike)
+if (quietRatio >= 0.7 && rms < 0.4 && duration >= 5.0s) {
+return SensorVote.parked;  // Still
+}
 
-t=8s:   User holding phone, moving slightly
-→ Acc RMS = 0.09-0.12 (> 0.07 threshold)
-→ Quiet ratio = 55% (< 70% threshold)
-→ Status: MOVING ❌
+return SensorVote.unknown;
 
-t=8-17s: User continues using phone
-→ Still moving, RMS > 0.07
-→ Recovery FAILS at t=17s (12s deadline)
-→ Spike cleared
-
-t=30s:  Light turns green
-→ v ≥ 2.5 m/s for 3s
-→ Revert to Driving ✅
-
-Result: NO parking detected (correct behavior)
-
-Indoor Parking / GPS Loss:
-
-Timeline:
-t=0s:   Enter underground parking
-→ StoppedCandidate
-
-t=10s:  GPS stops updating (stale)
-→ GPS-stale mode activated
-→ Ignore gyro completely
-→ Use acc-only revert logic
-
-t=15s:  User picks up phone to exit
-→ Gyro spike latched
-
-t=15-18s: Freeze
-
-t=20s:  Phone in pocket, acc still
-→ Recovery success
-
-t=20-50s: Hold window (30s)
-→ Wall-clock 1.5s timer advances hold
-→ IMU confirms stillness (GPS ignored)
-
-t=50s:  Hold complete
-→ ParkingDetected → Parked ✅
-
-Result: Parking detected using wall-clock + IMU
-
-BT Disconnect (Instant Detection):
-
-Timeline:
-t=0s:   Vehicle stops, engine still on
-→ StoppedCandidate
-→ BT connected to car audio
-
-t=3s:   User turns off engine
-→ BT disconnects from car
-
-t=3.1s: BT disconnect detected
-→ Stopped condition active (v=0, RMS=0.03)
-→ Within 2s of disconnect
-→ INSTANT promotion to ParkingDetected ⚡
-
-t=6s:   Auto-confirm (3s)
-→ Show dialog → Parked ✅
-
-Result: Fast parking detection (6s total)
-
-Long Red Light (>60s with Timeout):
-
-Timeline:
-t=0s:   Stop at red light
-→ StoppedCandidate
-
-t=0-60s: No phone pickup, no BT disconnect
-→ No evidence collected
-→ Waiting...
-
-t=60s:  Timeout reached
-→ Auto-promote to ParkingDetected
-
-t=63s:  Auto-confirm (3s)
-→ Dialog: "Are you parked?"
-→ User clicks "No"
-→ ResetParking() called
-→ Return to Unknown
-
-t=64s:  Detect driving
-→ Driving state ✅
-
-Result: User override prevents false positive
+Key Thresholds:
+- Stillness: RMS ≤ 0.40 m/s² (enter), ≥ 0.45 m/s² (exit)
+- Driving: RMS > 0.5 m/s²
+- Time: 5 seconds of stillness required
 
   ---
-SENSOR COORDINATION
+3. Gyroscope Sensor (gyro_bloc.dart)
 
-4 Active Sensors:
-1. GPS Speed - Primary speed detection (v ≤ 1.2 in, v ≥ 2.5 out)
-2. Accelerometer - Stillness detection (RMS ≤ 0.07 in, > 0.10 out, quiet ratio ≥ 70%)
-3. Gyroscope - Phone pickup detection (rotation > threshold, conditional voting)
-4. Bluetooth - Engine off detection (disconnect = instant parking)
+Purpose: Detect phone rotation spikes (user picking up phone)
 
-Voting System:
-- Each sensor votes: driving / parked / unknown
-- Gyro votes ONLY count in StoppedCandidate or later (conditional)
-- ≥2 driving votes → Driving (with hysteresis)
-- Stopped requires GPS + Acc agreement
+Voting Logic:
 
-Evidence Hierarchy:
-1. 🔴 BT Disconnect (Strongest) - Instant promotion
-2. 🟡 Gyro + Hold (Medium) - 45s minimum (freeze + recovery + hold)
-3. ⚪ 60s Timeout (Weakest) - Requires user confirmation
+final maxRotation = max(all magnitudes in 3s window);
 
-Complete Parking Detection Logic (Corrected)
+if (maxRotation > 0.8) {
+return SensorVote.parked;  // Spike detected
+} else {
+return SensorVote.driving;  // No spike
+}
 
-State Transitions
+Key Threshold: >0.8 rad/s
 
-1. ParkingUnknown → Driving
-
-Entry Conditions:
-- App just launched (default initial state)
-
-Exit Conditions:
-- To Driving: ≥2 driving votes OR GPS vote = driving
-- No other exits (can't go directly to parked)
+Conditional Voting (parking_status_bloc.dart:123-134):
+- Only active in StoppedCandidate state
+- Ignored in all other states (prevents red-light false positives)
 
   ---
-2. Driving → StoppedCandidate
+4. Bluetooth Sensor (bluetooth_bloc.dart)
 
-Entry Condition: isStopped = true
+Purpose: Detect car audio disconnect
 
-Where isStopped = isLowSpeed && isStill:
-- GPS vote = parked (v ≤ vIn for 3s) AND
-- Acc vote = parked (RMS ≤ 0.07, quiet ratio ≥ 70% for 3s)
+Voting Logic:
 
-Both conditions required - this is stricter than just ≥2 votes.
+if (isConnected) {
+vote = SensorVote.driving;  // Connected to car audio
+} else if (_wasConnected) {
+vote = SensorVote.parked;  // Disconnected after connection
+} else {
+vote = SensorVote.unknown;  // No history
+}
 
-Code:
-final isLowSpeed = gpsVote == SensorVote.parked;
-final isStill = accVote == SensorVote.parked;
-final isStopped = isLowSpeed && isStill;  // BOTH required
+  ---
+State Machine: Transitions & Logic
+
+State 1: Unknown → Driving
+
+Trigger (parking_status_bloc.dart:192-202):
+
+if (state is ParkingUnknown) {
+// Only GPS detection: speed ≥ 4.1 m/s AND distance > 10m for 3s
+if (gpsVote == SensorVote.driving) {
+return Driving(...);
+}
+}
+
+Requirements:
+- GPS speed ≥ 4.1 m/s for ≥3 seconds
+- AND linear distance > 10 meters
+
+No revert back to Unknown once Driving is reached.
+
+  ---
+State 2: Driving → StoppedCandidate
+
+Trigger (parking_status_bloc.dart:207-218):
 
 if (state is Driving) {
-if (isStopped) {
-_startCandidateProgressTimer();
-return StoppedCandidate(...);
+if (isStopped) {  // GPS parked AND Acc still
+_startCandidateProgressTimer();  // 1.5s wall-clock timer
+return StoppedCandidate(
+candidateStartTime: now,
+latchedGyroSpikeTime: null,  // No longer used
+);
 }
 }
 
-What Happens on Entry:
-- Start 60-second candidate timer
-- Latch gyro spike immediately if present
-- Store candidateStartTime
+Requirements:
+- GPS votes SensorVote.parked (speed ≤ 1.2-1.5 m/s for 4-6s)
+- AND Accelerometer votes SensorVote.parked (RMS < 0.40 m/s² for 5s)
 
   ---
-3. StoppedCandidate → Driving (Revert)
+State 3: StoppedCandidate → ParkingDetected or Driving
 
-Revert to Driving requires sustained evidence (hysteresis protection):
+3 Promotion Paths (Instant):
 
-GPS Available:
+Path 1: Gyro Spike ⚡ NEW: INSTANT (parking_status_bloc.dart:256-265)
 
-- GPS speed ≥ 2.5 m/s (vOut) for 3s sustained ✅
-- OR Acc RMS > 0.10 for 4s sustained ✅
-
-GPS Stale (indoors/tunnels):
-
-- Ignore GPS and gyro completely
-- Acc RMS > 0.10 for 4s sustained ✅ (acc-only revert)
-
-Code:
-bool _checkRevertConditions(...) {
-// When GPS is stale, ignore gyro and use acc-only revert logic
-if (isGpsStale) {
-if (currentAccRMS > 0.10) {
-_clearMotionStartTime ??= now;
-final motionDuration = now.difference(_clearMotionStartTime!);
-if (motionDuration >= _sustainedMotionDuration) {  // 4s
-return true; // REVERT based on acc alone
-}
-}
-return false;
+// 3. GYRO SPIKE LOGIC: Instant Promotion (no freeze window)
+if (hasGyroSpike) {
+_cancelCandidateProgressTimer();
+return ParkingDetected(...);  // IMMEDIATE
 }
 
-    // GPS is fresh: check for sustained high speed (v >= vOut for 3s)
-    if (gpsVote == SensorVote.driving) {
-      _highSpeedStartTime ??= now;
-      final highSpeedDuration = now.difference(_highSpeedStartTime!);
-      if (highSpeedDuration >= _sustainedHighSpeedDuration) {  // 3s
-        return true; // REVERT
-      }
-    }
+Requirements:
+- Gyroscope rotation > 0.8 rad/s
 
-    // Check for sustained clear motion (acc RMS > 0.10 for 4s)
-    if (currentAccRMS > 0.10) {
-      _clearMotionStartTime ??= now;
-      final motionDuration = now.difference(_clearMotionStartTime!);
-      if (motionDuration >= _sustainedMotionDuration) {  // 4s
-        return true; // REVERT
-      }
-    }
+Timing: Instant (no 3s freeze delay)
 
-    return false;
+  ---
+Path 2: Bluetooth Disconnect (parking_status_bloc.dart:245-254)
+
+if (hasBtDisconnect && (isLowSpeed || isStill)) {
+_cancelCandidateProgressTimer();
+return ParkingDetected(...);
 }
 
-Timing Constants:
-- _sustainedHighSpeedDuration = 3 seconds (GPS speed revert)
-- _sustainedMotionDuration = 4 seconds (Acc RMS revert)
+Requirements:
+- Bluetooth disconnected after being connected
+- AND (GPS low speed OR Accelerometer still)
+
+Timing: Instant
 
   ---
-4. StoppedCandidate → ParkingDetected (Promotion)
+Path 3: 60-Second Timeout (parking_status_bloc.dart:267-278)
 
-Three Paths:
+if (candidateDuration >= 60.0s && (isLowSpeed || isGpsStale)) {
+_cancelCandidateProgressTimer();
+return ParkingDetected(...);
+}
 
-1. Gyro Spike + 3s Freeze → ParkingDetected
-2. Bluetooth Disconnect (instant, if isLowSpeed || isStill) → ParkingDetected
-3. 60s Timeout (fallback, if isLowSpeed || isGpsStale) → ParkingDetected
+Requirements:
+- 60 seconds in StoppedCandidate
+- AND (GPS still parked OR GPS stale)
 
-  ---
-5. ParkingDetected → Parked
+Timing: After 60s
 
-Dialog Behavior:
-- "Yes" → Parked
-- "No" → Driving (not Unknown)
-- Dismissed without button → auto-confirm Parked
-
-  ---
-6. Parked (Terminal State)
-
-No automatic transitions out.
+Purpose: Handle case where user parks but doesn't pick up phone
 
   ---
-Summary of Key Logic
+Revert to Driving (parking_status_bloc.dart:227-243)
 
-Entry to StoppedCandidate:
+if (gpsVote == SensorVote.driving) {
+_cancelCandidateProgressTimer();
+return Driving(...);
+}
 
-isStopped = (GPS vote = parked) AND (Acc vote = parked)
-= (v ≤ vIn for 3s) AND (RMS ≤ 0.07, quiet ≥ 70% for 3s)
+Requirements:
+- GPS speed ≥ 4.1 m/s for ≥3s
+- AND linear distance > 10m
 
-Revert to Driving:
+  ---
+State 4: ParkingDetected → Parked or Driving
 
-GPS Available:
-- GPS ≥ 2.5 m/s for 3s OR Acc RMS > 0.10 for 4s
+Dialog (main.dart:147-180):
+- Shows "Are you parked?" with Yes/No buttons
+- Cannot dismiss by tapping outside or back button
+- No auto-confirm timer - stays open until user acts
 
-GPS Stale:
-- Acc RMS > 0.10 for 4s (ignore GPS and gyro)
+Outcome A: User Confirms "Yes" (parking_status_bloc.dart:441-451):
+emit(Parked(...));  // Terminal state
 
-Promotion to ParkingDetected:
+Outcome B: User Clicks "No" (parking_status_bloc.dart:471-485):
+emit(Driving(...));  // Revert to Driving without resetting sensors
 
-1. Gyro spike + 3s freeze
-2. BT disconnect (instant)
-3. 60s timeout
+Outcome C: Automatic Revert (parking_status_bloc.dart:317-333):
+// If GPS detects driving motion while dialog is open
+if (gpsVote == SensorVote.driving) {
+return Driving(...);
+}
+
+  ---
+State 5: Parked (Terminal)
+
+Behavior (parking_status_bloc.dart:346-354):
+// No automatic transitions out
+// User must manually reset
+return Parked(...);
+
+Exit: Manual reset only (ResetParking event → ParkingUnknown)
+
+  ---
+Key Changes from Previous Version
+
+❌ Removed: 3-Second Gyro Freeze Window
+
+Old Logic:
+// Spike detected → latch → wait 3s → promote
+if (timeSinceSpike >= 3.0s) {
+return ParkingDetected(...);
+}
+
+New Logic (parking_status_bloc.dart:256-265):
+// Spike detected → immediate promotion
+if (hasGyroSpike) {
+return ParkingDetected(...);  // INSTANT
+}
+
+Impact:
+- Faster parking detection when user picks up phone
+- No more waiting period after rotation spike detected
+- Simplified state machine (removed latchedGyroSpikeTime tracking)
+
+  ---
+Summary: Promotion Paths from StoppedCandidate
+
+| Path              | Trigger             | Requirements                          | Timing
+|
+|-------------------|---------------------|---------------------------------------|-------------------------
+|
+| Gyro Spike ⚡      | Rotation >0.8 rad/s | Gyro active only in StoppedCandidate  | Instant ✨
+|
+| BT Disconnect     | Bluetooth unpaired  | After being connected + still stopped | Instant
+|
+| 60s Timeout       | Time elapsed        | Still stopped or GPS stale            | After 60s
+|
+| Revert to Driving | GPS driving         | Speed ≥4.1m/s + distance >10m for 3s  | As soon as GPS confirms
+|
+
+  ---
+Complete State Flow
+
+Unknown
+├─ GPS driving (speed ≥4.1m/s + dist >10m for 3s) → Driving
+└─ Stay in Unknown
+
+Driving
+├─ GPS parked + Acc still → StoppedCandidate
+└─ Stay in Driving
+
+StoppedCandidate
+├─ Gyro spike (>0.8 rad/s) → ParkingDetected ⚡ INSTANT
+├─ BT disconnect + stopped → ParkingDetected (instant)
+├─ 60s timeout + stopped → ParkingDetected
+├─ GPS driving → Driving (revert)
+└─ Stay in StoppedCandidate
+
+ParkingDetected
+├─ User "Yes" → Parked
+├─ User "No" → Driving
+├─ GPS driving → Driving (auto-revert)
+└─ Stay in ParkingDetected (dialog open)
+
+Parked
+└─ Manual reset only → Unknown

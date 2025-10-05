@@ -33,9 +33,6 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
   // Configuration - Entry to StoppedCandidate
   static const Duration _stillnessWindow = Duration(seconds: 3); // Ts
 
-  // Configuration - Gyro spike handling (SIMPLIFIED)
-  static const Duration _freezeWindow = Duration(seconds: 3); // T_freeze: short freeze after spike detection
-
   // Configuration - Revert hysteresis
   static const Duration _sustainedHighSpeedDuration = Duration(seconds: 3); // vOut sustained
   static const Duration _sustainedMotionDuration = Duration(seconds: 4); // Clear motion sustained
@@ -65,6 +62,7 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
     on<UpdateSensorVote>(_onUpdateSensorVote);
     on<UserConfirmedParking>(_onUserConfirmedParking);
     on<ResetParking>(_onResetParking);
+    on<RevertToDriving>(_onRevertToDriving);
     on<CandidateProgressTick>(_onCandidateProgressTick);
 
     _initializeSensorListeners();
@@ -119,13 +117,14 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
     // Update sensor votes
     final updatedVotes = Map<String, SensorVote>.from(state.sensorVotes);
 
-    // CONDITIONAL GYRO VOTING: Ignore gyro "parked" vote unless in StoppedCandidate or later
+    // CONDITIONAL GYRO VOTING: Only use gyro in StoppedCandidate state
     if (event.sensorName == 'gyroscope' && event.vote == SensorVote.parked) {
-      if (state is! StoppedCandidate && state is! ParkingDetected && state is! Parked) {
-        // Ignore gyro spike during Driving/Unknown - prevents red light false positives
-        updatedVotes[event.sensorName] = SensorVote.unknown;
-      } else {
+      if (state is StoppedCandidate) {
+        // Only accept gyro spike in StoppedCandidate - triggers immediate promotion
         updatedVotes[event.sensorName] = event.vote;
+      } else {
+        // Ignore gyro spike in all other states (Unknown/Driving/ParkingDetected/Parked)
+        updatedVotes[event.sensorName] = SensorVote.unknown;
       }
     } else {
       updatedVotes[event.sensorName] = event.vote;
@@ -211,7 +210,7 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
           drivingVotes: drivingVotes,
           parkedVotes: parkedVotes,
           candidateStartTime: now,
-          latchedGyroSpikeTime: hasGyroSpike ? now : null, // Latch immediately if spike present
+          latchedGyroSpikeTime: null, // No longer used (no freeze mechanism)
         );
       }
     }
@@ -251,38 +250,14 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
         );
       }
 
-      // 3. SIMPLIFIED GYRO SPIKE LOGIC: Spike + Freeze → Instant Promotion
-      if (candidateState.latchedGyroSpikeTime != null) {
-        final timeSinceSpike = now.difference(candidateState.latchedGyroSpikeTime!);
-
-        // After freeze window (3s), promote immediately to ParkingDetected
-        if (timeSinceSpike >= _freezeWindow) {
-          _cancelCandidateProgressTimer();
-          // No auto-confirm timer - stay in ParkingDetected until user confirms
-          return ParkingDetected(
-            sensorVotes: sensorVotes,
-            drivingVotes: drivingVotes,
-            parkedVotes: parkedVotes,
-          );
-        }
-
-        // Still in freeze window, update spike if new one detected
-        final updatedSpikeTime = hasGyroSpike ? now : candidateState.latchedGyroSpikeTime;
-        return StoppedCandidate(
+      // 3. GYRO SPIKE LOGIC: Instant Promotion (no freeze window)
+      if (hasGyroSpike) {
+        _cancelCandidateProgressTimer();
+        // Immediate promotion to ParkingDetected on gyro spike
+        return ParkingDetected(
           sensorVotes: sensorVotes,
           drivingVotes: drivingVotes,
           parkedVotes: parkedVotes,
-          candidateStartTime: candidateState.candidateStartTime,
-          latchedGyroSpikeTime: updatedSpikeTime,
-        );
-      } else if (hasGyroSpike) {
-        // New spike detected, latch it
-        return StoppedCandidate(
-          sensorVotes: sensorVotes,
-          drivingVotes: drivingVotes,
-          parkedVotes: parkedVotes,
-          candidateStartTime: candidateState.candidateStartTime,
-          latchedGyroSpikeTime: now,
         );
       }
 
@@ -305,7 +280,7 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
         drivingVotes: drivingVotes,
         parkedVotes: parkedVotes,
         candidateStartTime: candidateState.candidateStartTime,
-        latchedGyroSpikeTime: candidateState.latchedGyroSpikeTime,
+        latchedGyroSpikeTime: null, // No longer used
       );
     }
 
@@ -464,6 +439,22 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
 
     // Reset to unknown state
     emit(const ParkingUnknown());
+  }
+
+  void _onRevertToDriving(
+      RevertToDriving event,
+      Emitter<ParkingState> emit,
+      ) {
+    _cancelParkingDetectionTimer();
+    _cancelCandidateProgressTimer();
+    _resetRevertTracking();
+
+    // Revert to Driving state (don't reset sensor blocs)
+    emit(Driving(
+      sensorVotes: state.sensorVotes,
+      drivingVotes: state.drivingVotes,
+      parkedVotes: state.parkedVotes,
+    ));
   }
 
   @override

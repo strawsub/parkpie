@@ -165,9 +165,9 @@ class _HomeContainerState extends State<HomeContainer> {
             ),
             TextButton(
               onPressed: () {
-                // Revert to Driving state (not Unknown)
+                // Revert to Driving state
                 final parkingBloc = parentContext.read<ParkingBloc>();
-                parkingBloc.add(const ResetParking());
+                parkingBloc.add(const RevertToDriving());
                 Navigator.of(parentContext).pop();
               },
               child: const Text("No"),
