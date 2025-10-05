@@ -19,6 +19,7 @@ class GpsSpeedConfig {
   final double dWindowGood;   // Displacement window (good GPS)
   final double dWindowMedium; // Displacement window (medium GPS)
   final double dWindowPoor;   // Displacement window (poor GPS)
+  final double dDrivingThreshold; // Linear distance for driving confirmation (15 meters)
 
   // GPS accuracy thresholds in meters
   final double maxAccuracyThreshold; // Reject GPS readings worse than this (relaxed during cold start)
@@ -47,9 +48,9 @@ class GpsSpeedConfig {
     this.vInGood = 1.2,                   // 1.2 m/s (~4.3 km/h) - good GPS
     this.vInMedium = 1.3,                 // 1.3 m/s (~4.7 km/h) - medium GPS
     this.vInPoor = 1.5,                   // 1.5 m/s (~5.4 km/h) - poor GPS
-    this.vOutGood = 2.5,                  // 2.5 m/s (~9.0 km/h) - good GPS (raised to reduce revert frequency)
-    this.vOutMedium = 2.5,                // 2.5 m/s (~9.0 km/h) - medium GPS
-    this.vOutPoor = 2.5,                  // 2.5 m/s (~9.0 km/h) - poor GPS
+    this.vOutGood = 4.1,                  // 4.1 m/s (~14.8 km/h) - good GPS
+    this.vOutMedium = 4.1,                // 4.1 m/s (~14.8 km/h) - medium GPS
+    this.vOutPoor = 4.1,                  // 4.1 m/s (~14.8 km/h) - poor GPS
 
     // Scenario-based time thresholds
     this.tCandidateGood = 3.0,            // 3.0 seconds - good GPS
@@ -63,6 +64,7 @@ class GpsSpeedConfig {
     this.dWindowGood = 12.0,              // 12.0 meters - good GPS (widened from 8)
     this.dWindowMedium = 16.0,            // 16.0 meters - medium GPS (widened from 10)
     this.dWindowPoor = 20.0,              // 20.0 meters - poor GPS (widened from 15)
+    this.dDrivingThreshold = 10.0,        // 10.0 meters - linear distance for driving confirmation
 
     // GPS accuracy scenario boundaries
     this.maxAccuracyThreshold = 50.0,     // 50 meters - relaxed for cold start

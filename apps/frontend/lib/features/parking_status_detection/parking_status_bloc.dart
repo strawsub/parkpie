@@ -188,13 +188,15 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
     // UNKNOWN → DRIVING
     // ------------------------------
     if (state is ParkingUnknown) {
-      if (drivingVotes >= 2 || gpsVote == SensorVote.driving) {
+      // Only GPS detection: speed ≥ 4.1 m/s AND distance > 10m for 3s
+      if (gpsVote == SensorVote.driving) {
         return Driving(
           sensorVotes: sensorVotes,
           drivingVotes: drivingVotes,
           parkedVotes: parkedVotes,
         );
       }
+      // Stay in Unknown until GPS confirms driving
     }
 
     // ------------------------------
@@ -241,7 +243,7 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
       // 2. CHECK FOR BT DISCONNECT (instant promotion in StoppedCandidate)
       if (hasBtDisconnect && (isLowSpeed || isStill)) {
         _cancelCandidateProgressTimer();
-        _startParkingDetectionTimer();
+        // No auto-confirm timer - stay in ParkingDetected until user confirms
         return ParkingDetected(
           sensorVotes: sensorVotes,
           drivingVotes: drivingVotes,
@@ -256,7 +258,7 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
         // After freeze window (3s), promote immediately to ParkingDetected
         if (timeSinceSpike >= _freezeWindow) {
           _cancelCandidateProgressTimer();
-          _startParkingDetectionTimer();
+          // No auto-confirm timer - stay in ParkingDetected until user confirms
           return ParkingDetected(
             sensorVotes: sensorVotes,
             drivingVotes: drivingVotes,
@@ -289,7 +291,7 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
       if (candidateDuration >= _candidateTimeout && (isLowSpeed || isGpsStale)) {
         // After 60s with no gyro spike but still stopped, promote to ParkingDetected
         _cancelCandidateProgressTimer();
-        _startParkingDetectionTimer();
+        // No auto-confirm timer - stay in ParkingDetected until user confirms
         return ParkingDetected(
           sensorVotes: sensorVotes,
           drivingVotes: drivingVotes,
@@ -308,7 +310,7 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
     }
 
     // ------------------------------
-    // PARKING DETECTED → PARKED (auto-confirm) or DRIVING (resume motion)
+    // PARKING DETECTED → PARKED (user confirms) or DRIVING (resume motion)
     // ------------------------------
     if (state is ParkingDetected) {
       // Check for revert with hysteresis
@@ -320,7 +322,6 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
       );
 
       if (shouldRevert) {
-        _cancelParkingDetectionTimer();
         _resetRevertTracking();
         return Driving(
           sensorVotes: sensorVotes,
@@ -329,7 +330,7 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
         );
       }
 
-      // Stay in ParkingDetected (timer will auto-transition to Parked)
+      // Stay in ParkingDetected until user confirms or exits app
       return ParkingDetected(
         sensorVotes: sensorVotes,
         drivingVotes: drivingVotes,
@@ -357,6 +358,7 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
   }
 
   // Check revert conditions with hysteresis
+  // Same logic as Unknown → Driving: GPS votes "driving" (speed ≥ 4.1 m/s AND distance > 10m)
   bool _checkRevertConditions(
       Map<String, SensorVote> sensorVotes,
       double currentAccRMS,
@@ -365,42 +367,10 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
       ) {
     final gpsVote = sensorVotes['gps_speed'] ?? SensorVote.unknown;
 
-    // When GPS is stale, ignore gyro and use acc-only revert logic
-    if (isGpsStale) {
-      // Check for sustained clear motion (acc RMS > 0.10 for 3-4s)
-      if (currentAccRMS > 0.10) {
-        _clearMotionStartTime ??= now;
-        final motionDuration = now.difference(_clearMotionStartTime!);
-        if (motionDuration >= _sustainedMotionDuration) {
-          return true; // REVERT based on acc alone
-        }
-      } else {
-        _clearMotionStartTime = null;
-      }
-      _highSpeedStartTime = null; // Reset speed tracking when GPS stale
-      return false;
-    }
-
-    // GPS is fresh: check for sustained high speed (v >= vOut for 3s)
+    // Only revert if GPS votes "driving" (speed ≥ 4.1 m/s AND distance > 10m for 3s)
+    // No GPS stale handling, no accelerometer-only revert
     if (gpsVote == SensorVote.driving) {
-      _highSpeedStartTime ??= now;
-      final highSpeedDuration = now.difference(_highSpeedStartTime!);
-      if (highSpeedDuration >= _sustainedHighSpeedDuration) {
-        return true; // REVERT
-      }
-    } else {
-      _highSpeedStartTime = null;
-    }
-
-    // Check for sustained clear motion (acc RMS > 0.10 for 3-4s)
-    if (currentAccRMS > 0.10) {
-      _clearMotionStartTime ??= now;
-      final motionDuration = now.difference(_clearMotionStartTime!);
-      if (motionDuration >= _sustainedMotionDuration) {
-        return true; // REVERT
-      }
-    } else {
-      _clearMotionStartTime = null;
+      return true; // REVERT to Driving
     }
 
     return false; // Don't revert
@@ -470,9 +440,7 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
       UserConfirmedParking event,
       Emitter<ParkingState> emit,
       ) {
-    _cancelParkingDetectionTimer();
-
-    // Transition to Parked state
+    // Transition to Parked state (no timer to cancel)
     emit(Parked(
       sensorVotes: state.sensorVotes,
       drivingVotes: state.drivingVotes,

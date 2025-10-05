@@ -166,7 +166,6 @@ class _HomeContainerState extends State<HomeContainer> {
             TextButton(
               onPressed: () {
                 // Revert to Driving state (not Unknown)
-                // Add all sensor blocs and then transition to Driving
                 final parkingBloc = parentContext.read<ParkingBloc>();
                 parkingBloc.add(const ResetParking());
                 Navigator.of(parentContext).pop();
@@ -176,12 +175,7 @@ class _HomeContainerState extends State<HomeContainer> {
           ],
         ),
       ),
-    ).then((_) {
-      // Auto-confirm if dialog was somehow dismissed without button press
-      // This handles edge cases where dialog might be closed programmatically
-      if (parentContext.read<ParkingBloc>().state is ParkingDetected) {
-        parentContext.read<ParkingBloc>().add(const UserConfirmedParking());
-      }
-    });
+    );
+    // No auto-confirm logic - dialog stays until user explicitly chooses or exits app
   }
 }

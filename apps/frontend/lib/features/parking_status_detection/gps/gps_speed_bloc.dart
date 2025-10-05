@@ -44,6 +44,10 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
   DateTime? _drivingCandidateStartTime;
   DateTime? _lastUpdateTime; // Track last update for minimum interval
 
+  // Linear distance tracking for driving confirmation
+  LocationSample? _drivingDistanceStartSample; // First sample when speed >= vOut
+  double _drivingLinearDistance = 0.0; // Accumulated linear distance during driving candidate
+
   // Initialization tracking
   DateTime? _startTime;
   bool _isInitializing = true;
@@ -378,14 +382,31 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
     }
 
     // Check for driving speed (exit parking - above vOut threshold)
+    // Requires BOTH speed >= vOut AND linear distance > 15m
     if (speed >= vOut) {
       _parkedCandidateStartTime = null;
 
       // Start or continue driving candidate
       _drivingCandidateStartTime ??= timestamp;
+
+      // Track linear distance from start of driving candidate
+      if (_drivingDistanceStartSample == null && _window.isNotEmpty) {
+        _drivingDistanceStartSample = _window.last;
+        _drivingLinearDistance = 0.0;
+      } else if (_drivingDistanceStartSample != null && _window.isNotEmpty) {
+        // Calculate linear distance from start sample to current sample
+        _drivingLinearDistance = _calculateDistance(
+          _drivingDistanceStartSample!.latitude,
+          _drivingDistanceStartSample!.longitude,
+          _window.last.latitude,
+          _window.last.longitude,
+        );
+      }
+
       final durDriving = timestamp.difference(_drivingCandidateStartTime!).inMilliseconds / 1000.0;
 
-      if (durDriving >= tCandidate) {
+      // Vote driving if BOTH conditions met: time >= tCandidate AND distance > 15m
+      if (durDriving >= tCandidate && _drivingLinearDistance > _config.dDrivingThreshold) {
         return SensorVote.driving;
       }
       return SensorVote.unknown;
@@ -394,6 +415,8 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
     // Check for parked: BOTH low speed AND small displacement required (scenario-aware)
     if (speed <= vIn && displacement <= dWindow) {
       _drivingCandidateStartTime = null;
+      _drivingDistanceStartSample = null;
+      _drivingLinearDistance = 0.0;
 
       // Start or continue parked candidate
       _parkedCandidateStartTime ??= timestamp;
@@ -413,6 +436,8 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
   void _resetCandidates() {
     _parkedCandidateStartTime = null;
     _drivingCandidateStartTime = null;
+    _drivingDistanceStartSample = null;
+    _drivingLinearDistance = 0.0;
   }
 
   /// Calculate distance between two GPS coordinates using Haversine formula
