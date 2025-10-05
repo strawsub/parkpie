@@ -82,6 +82,7 @@ class HomeContainer extends StatefulWidget {
 }
 
 class _HomeContainerState extends State<HomeContainer> {
+  bool _isParkingDialogShowing = false;
 
   void _handleNavTap(BuildContext context, int index, int currentIndex) {
     if (index == 2) {
@@ -114,7 +115,7 @@ class _HomeContainerState extends State<HomeContainer> {
   Widget build(BuildContext context) {
     return BlocListener<ParkingBloc, ParkingState>(
       listener: (context, state) {
-        if (state is ParkingDetected) {
+        if (state is ParkingDetected && !_isParkingDialogShowing) {
           _showParkingDialog(context);
         }
       },
@@ -146,6 +147,7 @@ class _HomeContainerState extends State<HomeContainer> {
 
   void _showParkingDialog(BuildContext context) {
     final parentContext = context;
+    _isParkingDialogShowing = true;
 
     showDialog(
       context: context,
@@ -158,24 +160,29 @@ class _HomeContainerState extends State<HomeContainer> {
           actions: [
             TextButton(
               onPressed: () {
-                parentContext.read<ParkingBloc>().add(const UserConfirmedParking());
+                _isParkingDialogShowing = false;
                 Navigator.of(parentContext).pop();
+                parentContext.read<ParkingBloc>().add(const UserConfirmedParking());
               },
               child: const Text("Yes"),
             ),
             TextButton(
               onPressed: () {
+                _isParkingDialogShowing = false;
+                Navigator.of(parentContext).pop();
                 // Revert to Driving state
                 final parkingBloc = parentContext.read<ParkingBloc>();
                 parkingBloc.add(const RevertToDriving());
-                Navigator.of(parentContext).pop();
               },
               child: const Text("No"),
             ),
           ],
         ),
       ),
-    );
+    ).then((_) {
+      // Reset flag if dialog is dismissed by other means
+      _isParkingDialogShowing = false;
+    });
     // No auto-confirm logic - dialog stays until user explicitly chooses or exits app
   }
 }

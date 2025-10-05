@@ -292,27 +292,11 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
     }
 
     // ------------------------------
-    // PARKING DETECTED → PARKED (user confirms) or DRIVING (resume motion)
+    // PARKING DETECTED → PARKED (user confirms)
     // ------------------------------
     if (state is ParkingDetected) {
-      // Check for revert with hysteresis
-      final shouldRevert = _checkRevertConditions(
-        sensorVotes,
-        currentAccRMS,
-        isGpsStale,
-        now,
-      );
-
-      if (shouldRevert) {
-        _resetRevertTracking();
-        return Driving(
-          sensorVotes: sensorVotes,
-          drivingVotes: drivingVotes,
-          parkedVotes: parkedVotes,
-        );
-      }
-
-      // Stay in ParkingDetected until user confirms or exits app
+      // No automatic revert - user must explicitly confirm or deny parking
+      // Stay in ParkingDetected until user confirms or denies
       return ParkingDetected(
         sensorVotes: sensorVotes,
         drivingVotes: drivingVotes,
