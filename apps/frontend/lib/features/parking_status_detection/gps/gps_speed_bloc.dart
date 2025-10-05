@@ -44,9 +44,10 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
   DateTime? _drivingCandidateStartTime;
   DateTime? _lastUpdateTime; // Track last update for minimum interval
 
-  // Linear distance tracking for driving confirmation
+  // Linear distance tracking for driving confirmation (piecewise segments)
   LocationSample? _drivingDistanceStartSample; // First sample when speed >= vOut
-  double _drivingLinearDistance = 0.0; // Accumulated linear distance during driving candidate
+  double _drivingLinearDistance = 0.0; // Accumulated piecewise segment distances
+  LocationSample? _lastDrivingSegmentSample; // Last sample used for piecewise distance
 
   // Initialization tracking
   DateTime? _startTime;
@@ -192,11 +193,23 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
     // Smooth speed using Kalman filter
     final kalmanSpeed = _speedFilter.filter(rawSpeed);
 
-    // Apply EMA filter for additional smoothing at low velocities
+    // Apply adaptive EMA filter for additional smoothing
     if (_emaSpeed == null) {
       _emaSpeed = kalmanSpeed; // Initialize with first Kalman-filtered value
     } else {
-      _emaSpeed = _config.emaAlpha * kalmanSpeed + (1.0 - _config.emaAlpha) * _emaSpeed!;
+      // Adaptive alpha: fast response during transitions, smooth during steady-state
+      double alpha;
+      if (rawSpeed > _config.vOutGood + _config.rawSpeedMargin) {
+        // Acceleration detected (rawSpeed > 4.6 m/s)
+        alpha = _config.emaAlphaFast; // 0.75 (fast response)
+      } else if (rawSpeed < _config.vInGood - _config.rawSpeedMargin) {
+        // Deceleration detected (rawSpeed < 0.7 m/s)
+        alpha = _config.emaAlphaFast; // 0.75 (fast decay)
+      } else {
+        // Steady-state
+        alpha = _config.emaAlpha; // 0.35 (smooth)
+      }
+      _emaSpeed = alpha * kalmanSpeed + (1.0 - alpha) * _emaSpeed!;
     }
     final filteredSpeed = _emaSpeed!;
 
@@ -206,8 +219,14 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
     // Determine accuracy scenario
     final accuracyScenario = _determineAccuracyScenario(event.horizAcc);
 
-    // Determine vote based on filtered speed, weighted displacement, and scenario
-    final vote = _determineVote(filteredSpeed, windowStats.displacement, event.timestamp, accuracyScenario);
+    // Determine vote using BOTH rawSpeed (for candidate start) and filteredSpeed (for confirmation)
+    final vote = _determineVote(
+      rawSpeed,           // Use raw for early candidate detection
+      filteredSpeed,      // Use filtered for confirmation
+      windowStats.displacement,
+      event.timestamp,
+      accuracyScenario,
+    );
 
     // Calculate candidate seconds
     final candidateSeconds = _getCandidateSeconds(event.timestamp);
@@ -352,7 +371,13 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
     return 0.0;
   }
 
-  SensorVote _determineVote(double speed, double displacement, DateTime timestamp, String scenario) {
+  SensorVote _determineVote(
+    double rawSpeed,
+    double filteredSpeed,
+    double displacement,
+    DateTime timestamp,
+    String scenario,
+  ) {
     // Select thresholds based on accuracy scenario
     final double vIn, vOut, tCandidate, tConfirm, dWindow;
 
@@ -381,41 +406,49 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
         break;
     }
 
-    // Check for driving speed (exit parking - above vOut threshold)
-    // Requires BOTH speed >= vOut AND linear distance > 15m
-    if (speed >= vOut) {
+    // Check for driving speed using RAW speed for early candidate start
+    // Use FILTERED speed for confirmation to avoid false positives
+
+    // START candidate if RAW speed crosses threshold (fast response)
+    if (rawSpeed >= vOut + _config.rawSpeedMargin) {  // 4.6 m/s with margin
       _parkedCandidateStartTime = null;
 
       // Start or continue driving candidate
       _drivingCandidateStartTime ??= timestamp;
 
-      // Track linear distance from start of driving candidate
+      // Track piecewise linear distance (sum of segments, not single chord)
       if (_drivingDistanceStartSample == null && _window.isNotEmpty) {
         _drivingDistanceStartSample = _window.last;
+        _lastDrivingSegmentSample = _window.last;
         _drivingLinearDistance = 0.0;
-      } else if (_drivingDistanceStartSample != null && _window.isNotEmpty) {
-        // Calculate linear distance from start sample to current sample
-        _drivingLinearDistance = _calculateDistance(
-          _drivingDistanceStartSample!.latitude,
-          _drivingDistanceStartSample!.longitude,
+      } else if (_lastDrivingSegmentSample != null && _window.isNotEmpty) {
+        // Add this segment's distance to total
+        final segmentDistance = _calculateDistance(
+          _lastDrivingSegmentSample!.latitude,
+          _lastDrivingSegmentSample!.longitude,
           _window.last.latitude,
           _window.last.longitude,
         );
+        _drivingLinearDistance += segmentDistance;
+        _lastDrivingSegmentSample = _window.last;
       }
 
       final durDriving = timestamp.difference(_drivingCandidateStartTime!).inMilliseconds / 1000.0;
 
-      // Vote driving if BOTH conditions met: time >= tCandidate AND distance > 15m
-      if (durDriving >= tCandidate && _drivingLinearDistance > _config.dDrivingThreshold) {
+      // CONFIRM with FILTERED speed and distance (avoid noise spikes)
+      if (durDriving >= tCandidate &&
+          filteredSpeed >= vOut &&
+          _drivingLinearDistance > _config.dDrivingThreshold) {
         return SensorVote.driving;
       }
       return SensorVote.unknown;
     }
 
     // Check for parked: BOTH low speed AND small displacement required (scenario-aware)
-    if (speed <= vIn && displacement <= dWindow) {
+    if (filteredSpeed <= vIn && displacement <= dWindow) {
       _drivingCandidateStartTime = null;
       _drivingDistanceStartSample = null;
+      _lastDrivingSegmentSample = null;
       _drivingLinearDistance = 0.0;
 
       // Start or continue parked candidate
@@ -428,8 +461,35 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
       return SensorVote.unknown;
     }
 
-    // Speed/displacement in middle range, or conditions don't match
-    _resetCandidates();
+    // Speed in middle range (between vIn and vOut)
+    // KEEP driving candidate alive if it exists (don't reset)
+    // This prevents oscillation when speed fluctuates while driving
+    if (_drivingCandidateStartTime != null) {
+      // Continue tracking piecewise distance if we have a driving candidate
+      if (_lastDrivingSegmentSample != null && _window.isNotEmpty) {
+        // Add this segment's distance to total
+        final segmentDistance = _calculateDistance(
+          _lastDrivingSegmentSample!.latitude,
+          _lastDrivingSegmentSample!.longitude,
+          _window.last.latitude,
+          _window.last.longitude,
+        );
+        _drivingLinearDistance += segmentDistance;
+        _lastDrivingSegmentSample = _window.last;
+      }
+
+      final durDriving = timestamp.difference(_drivingCandidateStartTime!).inMilliseconds / 1000.0;
+
+      // Check if we've met the driving criteria (use filtered speed for confirmation)
+      if (durDriving >= tCandidate &&
+          filteredSpeed >= vOut &&
+          _drivingLinearDistance > _config.dDrivingThreshold) {
+        return SensorVote.driving;
+      }
+      return SensorVote.unknown;
+    }
+
+    // No active candidates, speed in middle range
     return SensorVote.unknown;
   }
 
@@ -437,6 +497,7 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
     _parkedCandidateStartTime = null;
     _drivingCandidateStartTime = null;
     _drivingDistanceStartSample = null;
+    _lastDrivingSegmentSample = null;
     _drivingLinearDistance = 0.0;
   }
 

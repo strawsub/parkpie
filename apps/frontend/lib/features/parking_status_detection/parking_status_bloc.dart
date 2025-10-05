@@ -213,6 +213,13 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
           latchedGyroSpikeTime: null, // No longer used (no freeze mechanism)
         );
       }
+
+      // Stay in Driving state (don't fall through to Unknown)
+      return Driving(
+        sensorVotes: sensorVotes,
+        drivingVotes: drivingVotes,
+        parkedVotes: parkedVotes,
+      );
     }
 
     // ------------------------------

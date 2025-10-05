@@ -30,8 +30,10 @@ class GpsSpeedConfig {
   final double processNoise;
   final double measurementNoise;
 
-  // EMA (Exponential Moving Average) smoothing parameter for speed
-  final double emaAlpha; // 0.0 (no smoothing) to 1.0 (no filtering); 0.3-0.4 recommended
+  // EMA (Exponential Moving Average) smoothing parameters for speed
+  final double emaAlpha; // Base alpha for steady-state: 0.35
+  final double emaAlphaFast; // Alpha during acceleration/deceleration: 0.75
+  final double rawSpeedMargin; // Margin for detecting transitions: 0.5 m/s
 
   // Accuracy weighting parameters
   final double accuracyWeightThreshold; // Accuracy above this reduces sample weight
@@ -75,8 +77,10 @@ class GpsSpeedConfig {
     this.processNoise = 0.01,             // Process noise
     this.measurementNoise = 0.5,          // Measurement noise
 
-    // EMA smoothing
-    this.emaAlpha = 0.35,                 // 35% new sample, 65% history (balanced)
+    // EMA smoothing (adaptive)
+    this.emaAlpha = 0.35,                 // Base: 35% new sample, 65% history (steady-state)
+    this.emaAlphaFast = 0.75,             // Fast: 75% new sample (during transitions)
+    this.rawSpeedMargin = 0.5,            // 0.5 m/s margin for transition detection
 
     // Accuracy weighting
     this.accuracyWeightThreshold = 15.0,  // Start reducing weight above 15m accuracy
@@ -86,6 +90,6 @@ class GpsSpeedConfig {
     this.initializationDuration = 15.0,   // 15 seconds of dense sampling
     this.distanceFilterInitialization = 0, // No distance filter during init (max density)
     this.distanceFilterNormal = 1,        // 1 meter after initialization
-    this.minUpdateInterval = 1.5,         // Minimum 1.5s between updates for timer progress
+    this.minUpdateInterval = 1.0,         // Minimum 1.0s between updates (reduced for faster response)
   });
 }
