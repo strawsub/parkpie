@@ -13,6 +13,9 @@ import 'package:frontend/features/parking_status_detection/parking_status_state.
 import 'package:frontend/features/parking_status_detection/bluetooth/audio_bluetooth_service.dart';
 import 'package:frontend/features/parking_status_detection/gps/gps_speed_bloc.dart';
 import 'package:frontend/features/parking_status_detection/gps/gps_speed_state.dart';
+import 'package:frontend/features/parking_status_detection/accelerometer/acc_bloc.dart';
+import 'package:frontend/features/parking_status_detection/accelerometer/acc_state.dart';
+import 'package:frontend/features/parking_status_detection/utils.dart';
 
 // Helper: safely read a Provider/Bloc; returns null if not found (no exception)
 T? maybeReadBloc<T>(BuildContext context) {
@@ -72,7 +75,7 @@ class _DebugScreenState extends State<DebugScreen> {
         if (_magBuf.length > _winN) _magBuf.removeAt(0);
       });
     });
-    
+
     // Initialize Bluetooth service
     _bluetoothService.initialize();
   }
@@ -127,14 +130,30 @@ class _DebugScreenState extends State<DebugScreen> {
               bloc: parkingBloc, // bind the instance explicitly
               builder: (context, state) {
                 String label = state.runtimeType.toString();
+                String details = '';
                 Color c = Colors.blueGrey;
+
                 if (state is ParkingUnknown) c = Colors.blueGrey;
                 if (state is Driving) c = Colors.orange;
+                if (state is StoppedCandidate) {
+                  c = Colors.yellow;
+                  final duration = DateTime.now().difference(state.candidateStartTime).inSeconds;
+
+                  // Check gyro spike status (simplified)
+                  String gyroStatus = '⭕ No spike';
+                  if (state.latchedGyroSpikeTime != null) {
+                    final spikeAge = DateTime.now().difference(state.latchedGyroSpikeTime!).inSeconds;
+                    gyroStatus = '🟢 Spike latched (${spikeAge}s) - freeze active';
+                  }
+
+                  details = '\nDuration: ${duration}s | $gyroStatus';
+                }
                 if (state is ParkingDetected) c = Colors.purple;
                 if (state is Parked) c = Colors.green;
+
                 return ListTile(
                   title: const Text('ParkingBloc State'),
-                  subtitle: Text(label),
+                  subtitle: Text('$label$details'),
                   trailing: Container(
                     width: 12,
                     height: 12,
@@ -164,14 +183,43 @@ class _DebugScreenState extends State<DebugScreen> {
 
           const SizedBox(height: 16),
 
-          // Sensor readout
+          // Sensor readout - Local debug readings
           Card(
             child: ListTile(
-              title: const Text('Accelerometer (user)'),
+              title: const Text('Accelerometer (debug raw)'),
               subtitle: Text(
                 'ax=${_ax.toStringAsFixed(3)}, ay=${_ay.toStringAsFixed(3)}, az=${_az.toStringAsFixed(3)}\n'
-                    'RMS≈${_rms.toStringAsFixed(3)} (window $_winN)',
+                    'Local RMS≈${_rms.toStringAsFixed(3)} (window $_winN)',
               ),
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          // Accelerometer Stillness Details (from AccBloc)
+          Card(
+            child: BlocBuilder<AccBloc, AccState>(
+              builder: (context, accState) {
+                if (accState is AccReading) {
+                  final rms = accState.currentRMS ?? 0.0;
+                  final quietRatio = accState.quietRatio ?? 0.0;
+                  final isStill = accState.vote == SensorVote.parked;
+                  final stillIcon = isStill ? '🟢' : '🔴';
+
+                  return ListTile(
+                    title: Text('Accelerometer Stillness $stillIcon'),
+                    subtitle: Text(
+                      'RMS: ${rms.toStringAsFixed(3)} [Enter ≤0.07, Exit ≥0.10]\n'
+                          'Quiet Ratio: ${(quietRatio * 100).toStringAsFixed(0)}% [Need ≥70%]\n'
+                          'Status: ${isStill ? "STILL (parked)" : "MOVING (driving)"}',
+                    ),
+                  );
+                }
+                return const ListTile(
+                  title: Text('Accelerometer Stillness'),
+                  subtitle: Text('Initializing...'),
+                );
+              },
             ),
           ),
 
@@ -201,7 +249,7 @@ class _DebugScreenState extends State<DebugScreen> {
                 final bluetoothIcon = status.isBluetoothConnected ? '🛜' : '📱';
                 final routeText = status.isBluetoothConnected ? 'Bluetooth Audio' : 'Phone Audio';
                 final currentRouteInfo = 'Current: ${status.currentRouteName} (${status.currentRouteType})';
-                final availableInfo = status.bluetoothDeviceNames.isNotEmpty 
+                final availableInfo = status.bluetoothDeviceNames.isNotEmpty
                     ? 'Available Bluetooth: ${status.bluetoothDeviceNames.join(', ')}'
                     : 'No Bluetooth audio devices available';
 
@@ -269,12 +317,12 @@ class _DebugScreenState extends State<DebugScreen> {
                   return ListTile(
                     title: Text('🛰️ GPS Speed Sensor $voteIcon'),
                     subtitle: Text(
-                      'Vote: $vote | Scenario: $scenario $scenarioIcon\n'
-                      'Speed: ${filteredSpeedKmh.toStringAsFixed(1)} km/h (filtered) | ${rawSpeedKmh.toStringAsFixed(1)} km/h (raw)\n'
-                      'Thresholds: vIn=${vIn}m/s, vOut=${vOut}m/s\n'
-                      'Displacement: ${displacement.toStringAsFixed(1)} m [dWindow=${dWindow}m]\n'
-                      'Candidate: ${candidateSec.toStringAsFixed(1)} s [tCand=${tCandidate}s, tConf=${tConfirm}s]\n'
-                      'Accuracy: ${accuracy.toStringAsFixed(1)} m'
+                        'Vote: $vote | Scenario: $scenario $scenarioIcon\n'
+                            'Speed: ${filteredSpeedKmh.toStringAsFixed(1)} km/h (filtered) | ${rawSpeedKmh.toStringAsFixed(1)} km/h (raw)\n'
+                            'Thresholds: vIn=${vIn}m/s, vOut=${vOut}m/s\n'
+                            'Displacement: ${displacement.toStringAsFixed(1)} m [dWindow=${dWindow}m]\n'
+                            'Candidate: ${candidateSec.toStringAsFixed(1)} s [tCand=${tCandidate}s, tConf=${tConfirm}s]\n'
+                            'Accuracy: ${accuracy.toStringAsFixed(1)} m'
                     ),
                   );
                 }
@@ -303,24 +351,26 @@ class _DebugScreenState extends State<DebugScreen> {
                 final drivingVotes = votes.values.where((v) => v.toString().contains('driving')).length;
                 final parkedVotes = votes.values.where((v) => v.toString().contains('parked')).length;
 
-                // Build individual sensor vote display
+                // Build individual sensor vote display (only active sensors)
                 List<String> sensorLines = [];
-                
-                // Check each possible sensor
+
+                // Accelerometer
                 if (votes.containsKey('accelerometer')) {
                   final vote = votes['accelerometer'].toString().split('.').last;
                   sensorLines.add('• accelerometer → $vote ${vote == 'driving' ? '✅' : '🅿️'}');
                 } else {
                   sensorLines.add('• accelerometer → (no vote) ⚪');
                 }
-                
+
+                // Gyroscope
                 if (votes.containsKey('gyroscope')) {
                   final vote = votes['gyroscope'].toString().split('.').last;
                   sensorLines.add('• gyroscope → $vote ${vote == 'driving' ? '✅' : '🅿️'}');
                 } else {
                   sensorLines.add('• gyroscope → (no vote) ⚪');
                 }
-                
+
+                // Bluetooth
                 if (votes.containsKey('bluetooth')) {
                   final vote = votes['bluetooth'].toString().split('.').last;
                   sensorLines.add('• bluetooth → $vote ${vote == 'driving' ? '✅' : '🅿️'}');
@@ -328,6 +378,7 @@ class _DebugScreenState extends State<DebugScreen> {
                   sensorLines.add('• bluetooth → (no vote) ⚪');
                 }
 
+                // GPS Speed
                 if (votes.containsKey('gps_speed')) {
                   final vote = votes['gps_speed'].toString().split('.').last;
                   sensorLines.add('• gps_speed → $vote ${vote == 'driving' ? '✅' : vote == 'parked' ? '🅿️' : '❓'}');
@@ -335,11 +386,13 @@ class _DebugScreenState extends State<DebugScreen> {
                   sensorLines.add('• gps_speed → (no vote) ⚪');
                 }
 
+                // Note: Pedometer/Walking not implemented (removed by linter)
+
                 final voteCountText = 'Driving: $drivingVotes | Parked: $parkedVotes';
                 final sensorText = sensorLines.join('\n');
 
                 return ListTile(
-                  title: const Text('🗳️ Sensor Votes'),
+                  title: const Text('🗳️ Sensor Votes (4 active)'),
                   subtitle: Text('$voteCountText\n$sensorText'),
                 );
               },

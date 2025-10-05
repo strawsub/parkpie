@@ -28,3 +28,7 @@ class UserConfirmedParking extends ParkingEvent {
 class ResetParking extends ParkingEvent {
   const ResetParking();
 }
+
+class CandidateProgressTick extends ParkingEvent {
+  const CandidateProgressTick();
+}
