@@ -242,11 +242,10 @@ emit(Parked(...));  // Terminal state
 Outcome B: User Clicks "No" (parking_status_bloc.dart:471-485):
 emit(Driving(...));  // Revert to Driving without resetting sensors
 
-Outcome C: Automatic Revert (parking_status_bloc.dart:317-333):
-// If GPS detects driving motion while dialog is open
-if (gpsVote == SensorVote.driving) {
-return Driving(...);
-}
+Outcome C: No Automatic Revert (UPDATED)
+// ParkingDetected no longer auto-reverts on GPS
+// User must explicitly click "Yes" or "No"
+// This prevents GPS noise from dismissing the dialog
 
   ---
 State 5: Parked (Terminal)
@@ -317,8 +316,7 @@ StoppedCandidate
 ParkingDetected
 ├─ User "Yes" → Parked
 ├─ User "No" → Driving
-├─ GPS driving → Driving (auto-revert)
-└─ Stay in ParkingDetected (dialog open)
+└─ Stay in ParkingDetected (dialog open, no auto-revert)
 
 Parked
 └─ Manual reset only → Unknown
