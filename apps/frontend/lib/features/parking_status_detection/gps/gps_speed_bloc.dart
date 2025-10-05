@@ -183,35 +183,55 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
 
     final rawSpeed = distance / timeDiff;
 
-    // Discard outliers
-    if (rawSpeed < _minReasonableSpeed || rawSpeed > _maxReasonableSpeed) {
-      debugPrint('GPS speed outlier discarded: ${rawSpeed.toStringAsFixed(2)} m/s');
+    // Discard outliers (stricter check for unrealistic speeds)
+    // Also check: if accuracy is very poor, lower the max reasonable speed
+    final maxSpeedForAccuracy = (event.horizAcc != null && event.horizAcc! > 30.0)
+        ? 15.0  // Poor GPS (>30m accuracy): max 15 m/s (~54 km/h)
+        : _maxReasonableSpeed;  // Good GPS: max 50 m/s (~180 km/h)
+
+    if (rawSpeed < _minReasonableSpeed || rawSpeed > maxSpeedForAccuracy) {
+      debugPrint('GPS speed outlier discarded: ${rawSpeed.toStringAsFixed(2)} m/s (accuracy: ${event.horizAcc?.toStringAsFixed(1) ?? "null"}m)');
       _window.removeLast(); // Remove the outlier sample
       return;
     }
 
     // Smooth speed using Kalman filter
-    final kalmanSpeed = _speedFilter.filter(rawSpeed);
+    double kalmanSpeed = _speedFilter.filter(rawSpeed);
 
-    // Apply adaptive EMA filter for additional smoothing
-    if (_emaSpeed == null) {
-      _emaSpeed = kalmanSpeed; // Initialize with first Kalman-filtered value
-    } else {
-      // Adaptive alpha: fast response during transitions, smooth during steady-state
-      double alpha;
-      if (rawSpeed > _config.vOutGood + _config.rawSpeedMargin) {
-        // Acceleration detected (rawSpeed > 4.6 m/s)
-        alpha = _config.emaAlphaFast; // 0.75 (fast response)
-      } else if (rawSpeed < _config.vInGood - _config.rawSpeedMargin) {
-        // Deceleration detected (rawSpeed < 0.7 m/s)
-        alpha = _config.emaAlphaFast; // 0.75 (fast decay)
-      } else {
-        // Steady-state
-        alpha = _config.emaAlpha; // 0.35 (smooth)
-      }
-      _emaSpeed = alpha * kalmanSpeed + (1.0 - alpha) * _emaSpeed!;
+    // Zero-speed detection: Suppress GPS drift when stationary
+    // If speed is very low AND GPS accuracy is poor, force speed to 0
+    if (kalmanSpeed < _config.zeroSpeedThreshold &&
+        (event.horizAcc == null || event.horizAcc! > _config.zeroSpeedAccuracyThreshold)) {
+      kalmanSpeed = 0.0; // Force to zero (GPS drift, not real movement)
     }
-    final filteredSpeed = _emaSpeed!;
+
+    // Apply conditional EMA with hysteresis to prevent oscillation
+    // High speed: Kalman-only (fast), Low speed: Kalman+EMA (stable)
+    final double filteredSpeed;
+
+    // Hysteresis logic: different thresholds for entering/exiting EMA mode
+    final bool shouldUseEMA;
+    if (_emaSpeed == null) {
+      // First time: use EMA if below LOW threshold
+      shouldUseEMA = kalmanSpeed <= _config.emaSpeedThresholdLow;
+    } else {
+      // Already using EMA: exit only if above HIGH threshold
+      shouldUseEMA = kalmanSpeed < _config.emaSpeedThresholdHigh;
+    }
+
+    if (shouldUseEMA) {
+      // Low speed mode: Apply EMA for stable parking transitions
+      if (_emaSpeed == null) {
+        _emaSpeed = kalmanSpeed; // Safe initialization
+      } else {
+        _emaSpeed = _config.emaAlpha * kalmanSpeed + (1.0 - _config.emaAlpha) * _emaSpeed!;
+      }
+      filteredSpeed = _emaSpeed!;
+    } else {
+      // High speed mode: Use Kalman only (fast response, no EMA lag)
+      filteredSpeed = kalmanSpeed;
+      _emaSpeed = null; // Reset EMA for next low-speed period
+    }
 
     // Calculate accuracy-weighted window displacement
     final windowStats = _calculateWeightedWindowStats();

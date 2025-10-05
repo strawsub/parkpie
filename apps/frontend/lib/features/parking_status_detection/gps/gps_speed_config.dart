@@ -30,10 +30,15 @@ class GpsSpeedConfig {
   final double processNoise;
   final double measurementNoise;
 
-  // EMA (Exponential Moving Average) smoothing parameters for speed
-  final double emaAlpha; // Base alpha for steady-state: 0.35
-  final double emaAlphaFast; // Alpha during acceleration/deceleration: 0.75
+  // EMA (Exponential Moving Average) smoothing parameter for speed
+  final double emaAlpha; // 0.35 (only applied at low speeds for parking stability)
   final double rawSpeedMargin; // Margin for detecting transitions: 0.5 m/s
+  final double emaSpeedThresholdHigh; // Exit EMA (enter Kalman-only) at: 2.2 m/s
+  final double emaSpeedThresholdLow; // Enter EMA (exit Kalman-only) at: 1.8 m/s
+
+  // Zero-speed detection (stationary phone)
+  final double zeroSpeedThreshold; // Force speed to 0 if below this: 0.5 m/s (~1.8 km/h)
+  final double zeroSpeedAccuracyThreshold; // Only apply zero-speed if accuracy worse than: 20m
 
   // Accuracy weighting parameters
   final double accuracyWeightThreshold; // Accuracy above this reduces sample weight
@@ -77,10 +82,15 @@ class GpsSpeedConfig {
     this.processNoise = 0.01,             // Process noise
     this.measurementNoise = 0.5,          // Measurement noise
 
-    // EMA smoothing (adaptive)
-    this.emaAlpha = 0.35,                 // Base: 35% new sample, 65% history (steady-state)
-    this.emaAlphaFast = 0.75,             // Fast: 75% new sample (during transitions)
-    this.rawSpeedMargin = 0.5,            // 0.5 m/s margin for transition detection
+    // EMA smoothing (conditional - only at low speeds, with hysteresis)
+    this.emaAlpha = 0.35,                 // 35% new sample, 65% history
+    this.rawSpeedMargin = 0.5,            // 0.5 m/s margin for rawSpeed candidate start
+    this.emaSpeedThresholdHigh = 2.2,     // Exit EMA at ≥2.2 m/s (enter Kalman-only)
+    this.emaSpeedThresholdLow = 1.8,      // Enter EMA at ≤1.8 m/s (exit Kalman-only)
+
+    // Zero-speed detection (GPS drift suppression)
+    this.zeroSpeedThreshold = 0.5,        // Force to 0 if speed <0.5 m/s (~1.8 km/h)
+    this.zeroSpeedAccuracyThreshold = 20.0, // Only apply if accuracy >20m (poor GPS)
 
     // Accuracy weighting
     this.accuracyWeightThreshold = 15.0,  // Start reducing weight above 15m accuracy
