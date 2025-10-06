@@ -34,22 +34,84 @@ Return strict JSON only.
     required String apiKey,
   }) async {
     final model = GenerativeModel(
-      model: 'gemini-1.5-pro-latest',
+      model: 'gemini-2.5-flash-lite',
       apiKey: apiKey,
       systemInstruction: Content.text(_systemInstruction),
     );
-    final content = [
-      Content.text(
-        'sign_text:\n$signText\n\nlocation: {"lat": $lat, "lng": $lng}',
-      ),
-    ];
-    final resp = await model.generateContent(content);
-    var raw = resp.text ?? '';
-    final start = raw.indexOf('{');
-    final end = raw.lastIndexOf('}');
-    if (start >= 0 && end > start) raw = raw.substring(start, end + 1);
-    final data = jsonDecode(raw) as Map<String, dynamic>;
-    return data;
+    
+    const maxRetries = 3;
+    String? lastError;
+    
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        final prompt = attempt == 1
+            ? 'sign_text:\n$signText\n\nlocation: {"lat": $lat, "lng": $lng}'
+            : '''
+PREVIOUS ATTEMPT FAILED - STRICT JSON REQUIRED!
+
+sign_text:
+$signText
+
+location: {"lat": $lat, "lng": $lng}
+
+CRITICAL: You MUST respond with ONLY valid JSON matching the exact schema. No markdown, no prose, no extra text. Start with { and end with }. Previous error: $lastError
+
+REQUIRED JSON FORMAT:
+{"location": {"lat": $lat, "lng": $lng}, "restrictions": [{"day_of_week": 1, "start_time": "HH:mm", "end_time": "HH:mm", "maximum_stay_minutes": 120}]}''';
+
+        final content = [Content.text(prompt)];
+        final resp = await model.generateContent(content);
+        var raw = resp.text ?? '';
+        
+        // Clean up response - extract JSON if wrapped in markdown or other text
+        var jsonStr = raw.trim();
+        if (jsonStr.contains('```')) {
+          // Remove markdown code blocks
+          jsonStr = jsonStr.replaceAll(RegExp(r'```(?:json)?'), '');
+        }
+        
+        final start = jsonStr.indexOf('{');
+        final end = jsonStr.lastIndexOf('}');
+        if (start >= 0 && end > start) {
+          jsonStr = jsonStr.substring(start, end + 1);
+        }
+        
+        // Attempt to parse JSON
+        final data = jsonDecode(jsonStr) as Map<String, dynamic>;
+        
+        // Validate basic structure before returning
+        _validateBasicJsonStructure(data);
+        
+        return data;
+        
+      } catch (e) {
+        lastError = e.toString();
+        if (attempt == maxRetries) {
+          throw Exception('Failed to extract valid JSON after $maxRetries attempts. Last error: $lastError');
+        }
+        // Wait briefly before retry
+        await Future.delayed(Duration(milliseconds: 500 * attempt));
+      }
+    }
+    
+    throw Exception('Unexpected error in extractSignJson');
+  }
+  
+  void _validateBasicJsonStructure(Map<String, dynamic> data) {
+    // Quick validation before full validation - check essential structure
+    if (!data.containsKey('location') || !data.containsKey('restrictions')) {
+      throw Exception('Missing required fields: location or restrictions');
+    }
+    
+    final location = data['location'];
+    if (location is! Map<String, dynamic> || !location.containsKey('lat') || !location.containsKey('lng')) {
+      throw Exception('Invalid location structure');
+    }
+    
+    final restrictions = data['restrictions'];
+    if (restrictions is! List || restrictions.isEmpty) {
+      throw Exception('Invalid restrictions structure - must be non-empty array');
+    }
   }
 
   bool _isValidTime(String s) => RegExp(r'^[0-2][0-9]:[0-5][0-9]$').hasMatch(s);
@@ -129,7 +191,7 @@ Return strict JSON only.
     required String apiKey,
   }) async {
     final model = GenerativeModel(
-      model: 'gemini-1.5-flash-latest',
+      model: 'gemini-2.5-flash-lite',
       apiKey: apiKey,
       systemInstruction: Content.text(
         'You translate structured parking rules into a concise explanation for drivers.',

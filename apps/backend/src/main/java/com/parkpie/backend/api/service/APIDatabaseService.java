@@ -117,23 +117,25 @@ public class APIDatabaseService {
     private List<Map<String, Object>> allPin = new ArrayList<>();
 
     public List<Map<String, Object>> getSignForPin() {
-
-
-        int dowNo = LocalDate.now().getDayOfWeek().getValue();
         String sql = """
-                SELECT
-                    ps.id                         AS id,
+                SELECT 
+                    ps.zone_number                AS id,
                     ST_Y(ps.location::geometry)   AS lat,
                     ST_X(ps.location::geometry)   AS lng,
-                    ps.day_of_week,
-                    ps.occupancy_percent,
-                    ps.start_time,
-                    ps.end_time,
-                    ps.maximum_stay_minutes,
                     ps.zone_number,
+                    -- Get ONE occupancy per zone (not duplicated per restriction)
+                    MAX(ps.occupancy_percent)     AS occupancy_percent,
+                    MAX(ps.updated_at)            AS updated_at,
                     nb.description                AS description,
-                    nb.kerbside_id                AS kerbside_id,
-                    nb.distance_m                 AS distance_m
+                    -- Aggregate all restrictions for this zone as JSON
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'day_of_week', ps.day_of_week,
+                            'start_time', ps.start_time,
+                            'end_time', ps.end_time,
+                            'maximum_stay_minutes', ps.maximum_stay_minutes
+                        ) ORDER BY ps.day_of_week, ps.start_time
+                    ) AS restrictions
                 FROM public.parking_signs ps
                 LEFT JOIN LATERAL (
                         SELECT
@@ -144,11 +146,12 @@ public class APIDatabaseService {
                         ORDER BY ps.location <-> pb.location
                         LIMIT 1
                 ) nb ON TRUE
-                WHERE ps.day_of_week = ?
-                ORDER BY ps.id;
+                WHERE ps.zone_number IS NOT NULL
+                GROUP BY ps.zone_number, ST_Y(ps.location::geometry), ST_X(ps.location::geometry), nb.description
+                ORDER BY ps.zone_number;
                         """;
         
-        allPin = jdbc.queryForList(sql, dowNo);
+        allPin = jdbc.queryForList(sql);
         return allPin;
     }
 

@@ -189,7 +189,13 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
         lng: position.longitude,
         apiKey: apiKey,
       );
-      _signService.validatePayload(parsed);
+      
+      try {
+        _signService.validatePayload(parsed);
+      } catch (validationError) {
+        emit(CameraError("Sign validation failed: ${validationError.toString()}"));
+        return;
+      }
 
       final restrictionMaps = (parsed['restrictions'] as List<dynamic>)
           .cast<Map<String, dynamic>>();
