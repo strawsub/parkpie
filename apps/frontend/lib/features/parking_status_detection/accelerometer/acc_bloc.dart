@@ -199,10 +199,10 @@ class AccConfig {
   final double confirmStillDuration;
 
   const AccConfig({
-    this.stillRmsThresholdIn = 0.07,      
-    this.stillRmsThresholdOut = 0.1,    
-    this.drivingRmsThreshold = 0.2,      
-    this.quietEpsilon = 0.15,             
+    this.stillRmsThresholdIn = 0.40,      // Changed from 0.07 to 0.40
+    this.stillRmsThresholdOut = 0.45,     // Changed from 0.1 to 0.45 (maintain hysteresis gap)
+    this.drivingRmsThreshold = 0.5,       // Changed from 0.2 to 0.5
+    this.quietEpsilon = 0.50,             // Changed from 0.15 to 0.50
     this.quietRatioThresholdIn = 0.7,
     this.quietRatioThresholdOut = 0.58,
     this.stillForCandidateDuration = 3.0, // lower so it triggers faster

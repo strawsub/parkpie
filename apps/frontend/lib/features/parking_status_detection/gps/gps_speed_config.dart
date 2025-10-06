@@ -19,6 +19,7 @@ class GpsSpeedConfig {
   final double dWindowGood;   // Displacement window (good GPS)
   final double dWindowMedium; // Displacement window (medium GPS)
   final double dWindowPoor;   // Displacement window (poor GPS)
+  final double dDrivingThreshold; // Linear distance for driving confirmation (15 meters)
 
   // GPS accuracy thresholds in meters
   final double maxAccuracyThreshold; // Reject GPS readings worse than this (relaxed during cold start)
@@ -30,7 +31,14 @@ class GpsSpeedConfig {
   final double measurementNoise;
 
   // EMA (Exponential Moving Average) smoothing parameter for speed
-  final double emaAlpha; // 0.0 (no smoothing) to 1.0 (no filtering); 0.3-0.4 recommended
+  final double emaAlpha; // 0.35 (only applied at low speeds for parking stability)
+  final double rawSpeedMargin; // Margin for detecting transitions: 0.5 m/s
+  final double emaSpeedThresholdHigh; // Exit EMA (enter Kalman-only) at: 2.2 m/s
+  final double emaSpeedThresholdLow; // Enter EMA (exit Kalman-only) at: 1.8 m/s
+
+  // Zero-speed detection (stationary phone)
+  final double zeroSpeedThreshold; // Force speed to 0 if below this: 0.5 m/s (~1.8 km/h)
+  final double zeroSpeedAccuracyThreshold; // Only apply zero-speed if accuracy worse than: 20m
 
   // Accuracy weighting parameters
   final double accuracyWeightThreshold; // Accuracy above this reduces sample weight
@@ -47,9 +55,9 @@ class GpsSpeedConfig {
     this.vInGood = 1.2,                   // 1.2 m/s (~4.3 km/h) - good GPS
     this.vInMedium = 1.3,                 // 1.3 m/s (~4.7 km/h) - medium GPS
     this.vInPoor = 1.5,                   // 1.5 m/s (~5.4 km/h) - poor GPS
-    this.vOutGood = 2.2,                  // 2.2 m/s (~7.9 km/h) - good GPS
-    this.vOutMedium = 2.3,                // 2.3 m/s (~8.3 km/h) - medium GPS
-    this.vOutPoor = 2.5,                  // 2.5 m/s (~9.0 km/h) - poor GPS
+    this.vOutGood = 4.1,                  // 4.1 m/s (~14.8 km/h) - good GPS
+    this.vOutMedium = 4.1,                // 4.1 m/s (~14.8 km/h) - medium GPS
+    this.vOutPoor = 4.1,                  // 4.1 m/s (~14.8 km/h) - poor GPS
 
     // Scenario-based time thresholds
     this.tCandidateGood = 3.0,            // 3.0 seconds - good GPS
@@ -60,9 +68,10 @@ class GpsSpeedConfig {
     this.tConfirmPoor = 6.0,              // 6.0 seconds - poor GPS (increased for stability)
 
     // Scenario-based displacement thresholds
-    this.dWindowGood = 8.0,               // 8.0 meters - good GPS (tightened)
-    this.dWindowMedium = 10.0,            // 10.0 meters - medium GPS
-    this.dWindowPoor = 15.0,              // 15.0 meters - poor GPS (relaxed)
+    this.dWindowGood = 12.0,              // 12.0 meters - good GPS (widened from 8)
+    this.dWindowMedium = 16.0,            // 16.0 meters - medium GPS (widened from 10)
+    this.dWindowPoor = 20.0,              // 20.0 meters - poor GPS (widened from 15)
+    this.dDrivingThreshold = 10.0,        // 10.0 meters - linear distance for driving confirmation
 
     // GPS accuracy scenario boundaries
     this.maxAccuracyThreshold = 50.0,     // 50 meters - relaxed for cold start
@@ -73,8 +82,15 @@ class GpsSpeedConfig {
     this.processNoise = 0.01,             // Process noise
     this.measurementNoise = 0.5,          // Measurement noise
 
-    // EMA smoothing
-    this.emaAlpha = 0.35,                 // 35% new sample, 65% history (balanced)
+    // EMA smoothing (conditional - only at low speeds, with hysteresis)
+    this.emaAlpha = 0.35,                 // 35% new sample, 65% history
+    this.rawSpeedMargin = 0.5,            // 0.5 m/s margin for rawSpeed candidate start
+    this.emaSpeedThresholdHigh = 2.2,     // Exit EMA at ≥2.2 m/s (enter Kalman-only)
+    this.emaSpeedThresholdLow = 1.8,      // Enter EMA at ≤1.8 m/s (exit Kalman-only)
+
+    // Zero-speed detection (GPS drift suppression)
+    this.zeroSpeedThreshold = 0.5,        // Force to 0 if speed <0.5 m/s (~1.8 km/h)
+    this.zeroSpeedAccuracyThreshold = 20.0, // Only apply if accuracy >20m (poor GPS)
 
     // Accuracy weighting
     this.accuracyWeightThreshold = 15.0,  // Start reducing weight above 15m accuracy
@@ -84,6 +100,6 @@ class GpsSpeedConfig {
     this.initializationDuration = 15.0,   // 15 seconds of dense sampling
     this.distanceFilterInitialization = 0, // No distance filter during init (max density)
     this.distanceFilterNormal = 1,        // 1 meter after initialization
-    this.minUpdateInterval = 1.5,         // Minimum 1.5s between updates for timer progress
+    this.minUpdateInterval = 1.0,         // Minimum 1.0s between updates (reduced for faster response)
   });
 }

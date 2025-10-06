@@ -32,6 +32,28 @@ class Driving extends ParkingState {
   });
 }
 
+class StoppedCandidate extends ParkingState {
+  final DateTime candidateStartTime;
+  final DateTime? latchedGyroSpikeTime; // Simplified: just track spike time
+
+  const StoppedCandidate({
+    required super.sensorVotes,
+    required super.drivingVotes,
+    required super.parkedVotes,
+    required this.candidateStartTime,
+    this.latchedGyroSpikeTime,
+  });
+
+  @override
+  List<Object?> get props => [
+    sensorVotes,
+    drivingVotes,
+    parkedVotes,
+    candidateStartTime,
+    latchedGyroSpikeTime,
+  ];
+}
+
 class ParkingDetected extends ParkingState {
   const ParkingDetected({
     required super.sensorVotes,

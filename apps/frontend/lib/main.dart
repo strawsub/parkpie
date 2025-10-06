@@ -12,9 +12,6 @@ import 'features/gps_correction/location_bloc.dart';
 
 import 'features/camera/camera_screen.dart';
 import 'features/camera/camera_bloc.dart';
-import 'services/api_config.dart';
-import 'services/sign_ingest_service.dart';
-import 'services/sign_zone_storage.dart';
 
 import 'features/parking_status_detection/parking_status_bloc.dart';
 import 'features/parking_status_detection/parking_status_state.dart';
@@ -46,20 +43,12 @@ class ParkPieApp extends StatelessWidget {
       bluetoothBloc: bluetoothBloc,
       gpsSpeedBloc: gpsSpeedBloc,
     );
-    final apiBase = resolveApiBaseUrl();
-    final signZoneStorage = SignZoneStorage();
-    final signIngestService = SignIngestService(backendBaseUrl: apiBase);
 
     return MultiBlocProvider(
       providers: [
         BlocProvider(create: (_) => NavigationCubit()),
         BlocProvider(create: (_) => FilterTriggerCubit()),
-        BlocProvider(
-          create: (_) => CameraBloc(
-            signIngestService: signIngestService,
-            zoneStorage: signZoneStorage,
-          ),
-        ),
+        BlocProvider(create: (_) => CameraBloc()),
         BlocProvider(create: (_) => PinCubit()..loadPins()),
         BlocProvider<SearchCubit>(create: (context) => SearchCubit()),
         BlocProvider<AccBloc>.value(value: accBloc),
@@ -67,7 +56,8 @@ class ParkPieApp extends StatelessWidget {
         BlocProvider<BluetoothBloc>.value(value: bluetoothBloc),
         BlocProvider<GpsSpeedBloc>.value(value: gpsSpeedBloc),
         BlocProvider<ParkingBloc>.value(value: parkingBloc),
-        BlocProvider(create: (_) => LocationCubit()),
+        BlocProvider(create: (_) => LocationCubit(),),
+
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -92,6 +82,8 @@ class HomeContainer extends StatefulWidget {
 }
 
 class _HomeContainerState extends State<HomeContainer> {
+  bool _isParkingDialogShowing = false;
+
   void _handleNavTap(BuildContext context, int index, int currentIndex) {
     if (index == 2) {
       // Filter tapped - stay on parking screen (index 0) and trigger filter
@@ -123,7 +115,7 @@ class _HomeContainerState extends State<HomeContainer> {
   Widget build(BuildContext context) {
     return BlocListener<ParkingBloc, ParkingState>(
       listener: (context, state) {
-        if (state is ParkingDetected) {
+        if (state is ParkingDetected && !_isParkingDialogShowing) {
           _showParkingDialog(context);
         }
       },
@@ -142,8 +134,7 @@ class _HomeContainerState extends State<HomeContainer> {
                     right: 0,
                     child: BottomNavBar(
                       currentIndex: selectedIndex,
-                      onTap: (index) =>
-                          _handleNavTap(context, index, selectedIndex),
+                      onTap: (index) => _handleNavTap(context, index, selectedIndex),
                     ),
                   ),
               ],
@@ -156,29 +147,42 @@ class _HomeContainerState extends State<HomeContainer> {
 
   void _showParkingDialog(BuildContext context) {
     final parentContext = context;
+    _isParkingDialogShowing = true;
 
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Are you parked?"),
-        content: const Text("It looks like you might be parked."),
-        actions: [
-          TextButton(
-            onPressed: () {
-              parentContext.read<ParkingBloc>().add(UserConfirmedParking());
-              Navigator.of(parentContext).pop();
-            },
-            child: const Text("Yes"),
-          ),
-          TextButton(
-            onPressed: () {
-              parentContext.read<ParkingBloc>().add(ResetParking());
-              Navigator.of(parentContext).pop();
-            },
-            child: const Text("No"),
-          ),
-        ],
+      barrierDismissible: false, // Prevent dismissing by tapping outside
+      builder: (_) => WillPopScope(
+        onWillPop: () async => false, // Prevent back button dismiss
+        child: AlertDialog(
+          title: const Text("Are you parked?"),
+          content: const Text("It looks like you might be parked."),
+          actions: [
+            TextButton(
+              onPressed: () {
+                _isParkingDialogShowing = false;
+                Navigator.of(parentContext).pop();
+                parentContext.read<ParkingBloc>().add(const UserConfirmedParking());
+              },
+              child: const Text("Yes"),
+            ),
+            TextButton(
+              onPressed: () {
+                _isParkingDialogShowing = false;
+                Navigator.of(parentContext).pop();
+                // Revert to Driving state
+                final parkingBloc = parentContext.read<ParkingBloc>();
+                parkingBloc.add(const RevertToDriving());
+              },
+              child: const Text("No"),
+            ),
+          ],
+        ),
       ),
-    );
+    ).then((_) {
+      // Reset flag if dialog is dismissed by other means
+      _isParkingDialogShowing = false;
+    });
+    // No auto-confirm logic - dialog stays until user explicitly chooses or exits app
   }
 }
