@@ -152,8 +152,8 @@ class _HomeContainerState extends State<HomeContainer> {
     showDialog(
       context: context,
       barrierDismissible: false, // Prevent dismissing by tapping outside
-      builder: (_) => WillPopScope(
-        onWillPop: () async => false, // Prevent back button dismiss
+      builder: (_) => PopScope(
+        canPop: false, // Prevent back button dismiss
         child: AlertDialog(
           title: const Text("Are you parked?"),
           content: const Text("It looks like you might be parked."),

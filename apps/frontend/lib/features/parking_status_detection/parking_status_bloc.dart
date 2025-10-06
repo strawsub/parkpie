@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:frontend/features/parking_status_detection/accelerometer/acc_bloc.dart';
 import 'package:frontend/features/parking_status_detection/accelerometer/acc_state.dart';
@@ -30,28 +29,13 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
   StreamSubscription<BluetoothState>? _bluetoothSubscription;
   StreamSubscription<GpsSpeedState>? _gpsSpeedSubscription;
 
-  // Configuration - Entry to StoppedCandidate
-  static const Duration _stillnessWindow = Duration(seconds: 3); // Ts
-
-  // Configuration - Revert hysteresis
-  static const Duration _sustainedHighSpeedDuration = Duration(seconds: 3); // vOut sustained
-  static const Duration _sustainedMotionDuration = Duration(seconds: 4); // Clear motion sustained
-
   // Configuration - Timers
   static const Duration _periodicTickInterval = Duration(milliseconds: 1500); // Wall-clock timer
   static const Duration _candidateTimeout = Duration(seconds: 60); // T_limit: auto-promote after 60s
-  static const Duration _parkingDetectionDuration = Duration(seconds: 3); // Auto-confirm reduced to 3s
-
-  // Configuration - GPS staleness
-  static const Duration _gpsStalenessThreshold = Duration(seconds: 5);
 
   // Timers
   Timer? _parkingDetectionTimer;
   Timer? _candidateProgressTimer;
-
-  // Revert hysteresis tracking
-  DateTime? _highSpeedStartTime;
-  DateTime? _clearMotionStartTime;
 
   ParkingBloc({
     required this.gyroBloc,
@@ -343,21 +327,10 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
   }
 
   void _resetRevertTracking() {
-    _highSpeedStartTime = null;
-    _clearMotionStartTime = null;
+    // Reset revert tracking logic removed - no longer tracking hysteresis
   }
 
   // Removed old complex _processGyroSpikeLogic - now using simplified spike+freeze logic inline
-
-  void _startParkingDetectionTimer() {
-    _cancelParkingDetectionTimer();
-    _parkingDetectionTimer = Timer(_parkingDetectionDuration, () {
-      // Auto-transition to Parked after detection duration
-      if (state is ParkingDetected) {
-        add(const UserConfirmedParking());
-      }
-    });
-  }
 
   void _cancelParkingDetectionTimer() {
     _parkingDetectionTimer?.cancel();
