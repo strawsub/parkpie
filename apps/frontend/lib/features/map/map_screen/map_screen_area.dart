@@ -157,6 +157,14 @@ extension MapScreenAreaLogic on MapScreenCubit {
     return polys;
   }
 
+  void toggleAreasDebug() {
+    final on = !state.showAreasDebug;
+    final polys = on ? _buildPolygonsForAreas(state.areas) : <Polygon>{};
+
+    _emitState(state.copyWith(showAreasDebug: on, areaPolygons: polys));
+    _rebuildMarkers();
+  }
+
   LatLng _computeCentroid(List<Pin> pins) {
     double lat = 0, lng = 0;
     int n = 0;

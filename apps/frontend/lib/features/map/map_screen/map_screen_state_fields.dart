@@ -110,7 +110,7 @@ class MapScreenState {
     pinZoomThreshold: 15,
     hysteresis: 0.5,
     initialPosition: const LatLng(-37.8035820, 144.9593280),
-    showAreasDebug: false,
+    showAreasDebug: true, // DEBUGGER!!!
     commands: const [],
   );
 
@@ -138,6 +138,11 @@ class MapScreenState {
     double? renderZoom,
     double? liveZoom,
     List<MapScreenCommand>? commands,
+
+    double? pinZoomThreshold,
+    double? hysteresis,
+    LatLng? initialPosition,
+    bool? showAreasDebug,
   }) {
     return MapScreenState(
       markers: markers ?? this.markers,
@@ -166,10 +171,12 @@ class MapScreenState {
       isAnimating: isAnimating ?? this.isAnimating,
       renderZoom: renderZoom ?? this.renderZoom,
       liveZoom: liveZoom ?? this.liveZoom,
-      pinZoomThreshold: pinZoomThreshold,
-      hysteresis: hysteresis,
-      initialPosition: initialPosition,
-      showAreasDebug: showAreasDebug,
+
+      pinZoomThreshold: pinZoomThreshold ?? this.pinZoomThreshold,
+      hysteresis: hysteresis ?? this.hysteresis,
+      initialPosition: initialPosition ?? this.initialPosition,
+      showAreasDebug: showAreasDebug ?? this.showAreasDebug,
+
       commands: commands ?? this.commands,
     );
   }

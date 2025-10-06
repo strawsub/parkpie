@@ -310,6 +310,13 @@ class _MapScreenViewState extends State<_MapScreenView> {
             tooltip: 'Debug',
             child: const Icon(Icons.bug_report),
           ),
+          FloatingActionButton(
+            heroTag: 'areas-debug',
+            mini: true,
+            tooltip: 'areas-debug',
+            child: const Icon(Icons.remove_red_eye),
+            onPressed: () => context.read<MapScreenCubit>().toggleAreasDebug(),
+          ),
         ],
       ),
     );
