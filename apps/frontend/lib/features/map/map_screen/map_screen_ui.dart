@@ -66,6 +66,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
                   children: [
                     _buildGoogleMap(context, mapState),
                     _buildSearchBar(context, mapState),
+                    _buildTimerBadge(context),
                   ],
                 );
               },
@@ -409,6 +410,69 @@ class _MapScreenViewState extends State<_MapScreenView> {
         maximumStayMinutes: pin.maximumStayMinutes,
         description: pin.description,
       ),
+    );
+  }
+
+  Widget _buildTimerBadge(BuildContext context) {
+    return BlocBuilder<TimerBloc, timer.TimerState>(
+      builder: (context, timerState) {
+        if (timerState is! timer.TimerRunning) {
+          return const SizedBox.shrink();
+        }
+
+        final elapsed = timerState.elapsed;
+        final hours = elapsed.inHours;
+        final minutes = elapsed.inMinutes.remainder(60);
+        final seconds = elapsed.inSeconds.remainder(60);
+
+        final timeString = hours > 0
+            ? '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}'
+            : '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+
+        return Positioned(
+          top: 120,
+          left: 20,
+          child: GestureDetector(
+            onTap: () {
+              context.read<NavigationCubit>().setIndex(2);
+            },
+            child: Material(
+              elevation: 4,
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: lottie.Lottie.asset(
+                        'assets/car-animate.json',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      timeString,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF7FAC58),
+                        fontFeatures: [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

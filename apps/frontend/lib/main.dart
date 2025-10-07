@@ -13,6 +13,10 @@ import 'features/gps_correction/location_bloc.dart';
 import 'features/camera/camera_screen.dart';
 import 'features/camera/camera_bloc.dart';
 
+import 'features/timer/timer_screen.dart';
+import 'features/timer/timer_bloc.dart';
+import 'features/timer/timer_event.dart';
+
 import 'features/parking_status_detection/parking_status_bloc.dart';
 import 'features/parking_status_detection/parking_status_state.dart';
 import 'features/parking_status_detection/parking_status_event.dart';
@@ -56,8 +60,8 @@ class ParkPieApp extends StatelessWidget {
         BlocProvider<BluetoothBloc>.value(value: bluetoothBloc),
         BlocProvider<GpsSpeedBloc>.value(value: gpsSpeedBloc),
         BlocProvider<ParkingBloc>.value(value: parkingBloc),
-        BlocProvider(create: (_) => LocationCubit(),),
-
+        BlocProvider(create: (_) => LocationCubit()),
+        BlocProvider(create: (_) => TimerBloc()..add(const LoadTimer())),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -85,17 +89,8 @@ class _HomeContainerState extends State<HomeContainer> {
   bool _isParkingDialogShowing = false;
 
   void _handleNavTap(BuildContext context, int index, int currentIndex) {
-    if (index == 2) {
-      // Filter tapped - stay on parking screen (index 0) and trigger filter
-      if (currentIndex != 0) {
-        context.read<NavigationCubit>().setIndex(0);
-      }
-      // Trigger the filter sheet
-      context.read<FilterTriggerCubit>().triggerFilter();
-    } else {
-      // Regular navigation
-      context.read<NavigationCubit>().setIndex(index);
-    }
+    // Regular navigation for all tabs
+    context.read<NavigationCubit>().setIndex(index);
   }
 
   Widget _getSelectedView(int index) {
@@ -105,7 +100,7 @@ class _HomeContainerState extends State<HomeContainer> {
       case 1:
         return const CameraScreen();
       case 2:
-        return MapScreen(); // Filter shows MapScreen but triggers filter sheet
+        return const TimerScreen();
       default:
         return MapScreen(); // fallback
     }
@@ -155,17 +150,18 @@ class _HomeContainerState extends State<HomeContainer> {
       builder: (_) => PopScope(
         canPop: false, // Prevent back button dismiss
         child: AlertDialog(
-          title: const Text("Are you parked?"),
-          content: const Text("It looks like you might be parked."),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Icon(Icons.local_parking, color: const Color(0xFF7FAC58)),
+              const SizedBox(width: 8),
+              const Text("Parking Detected"),
+            ],
+          ),
+          content: const Text(
+            "It looks like you might be parked. Would you like to start tracking your parking time?",
+          ),
           actions: [
-            TextButton(
-              onPressed: () {
-                _isParkingDialogShowing = false;
-                Navigator.of(parentContext).pop();
-                parentContext.read<ParkingBloc>().add(const UserConfirmedParking());
-              },
-              child: const Text("Yes"),
-            ),
             TextButton(
               onPressed: () {
                 _isParkingDialogShowing = false;
@@ -174,7 +170,31 @@ class _HomeContainerState extends State<HomeContainer> {
                 final parkingBloc = parentContext.read<ParkingBloc>();
                 parkingBloc.add(const RevertToDriving());
               },
-              child: const Text("No"),
+              child: Text(
+                "No",
+                style: TextStyle(color: Colors.grey.shade600),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                _isParkingDialogShowing = false;
+                Navigator.of(parentContext).pop();
+                parentContext.read<ParkingBloc>().add(const UserConfirmedParking());
+
+                // Start the timer
+                parentContext.read<TimerBloc>().add(const StartTimer());
+
+                // Navigate to timer screen
+                parentContext.read<NavigationCubit>().setIndex(2);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF7FAC58),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text("Yes, Start Timer"),
             ),
           ],
         ),
@@ -183,6 +203,5 @@ class _HomeContainerState extends State<HomeContainer> {
       // Reset flag if dialog is dismissed by other means
       _isParkingDialogShowing = false;
     });
-    // No auto-confirm logic - dialog stays until user explicitly chooses or exits app
   }
 }

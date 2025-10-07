@@ -69,6 +69,9 @@ dependencies:
   shared_preferences: ^2.3.2
   crypto: ^3.0.3
 
+  # for animations
+  lottie: ^3.1.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -92,6 +95,7 @@ flutter:
   assets:
     - assets/
     - assets/road_segment.geojson
+    - assets/car-animate.json
 
 
   uses-material-design: true

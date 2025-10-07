@@ -47,6 +47,11 @@ class BottomNavBar extends StatelessWidget {
                 iconPath: 'assets/contribute_nav.svg',
                 label: 'Scan',
               ),
+              _buildNavItem(
+                index: 2,
+                iconPath: 'assets/timer_nav.svg',
+                label: 'Timer',
+              ),
             ],
           ),
         ),
@@ -60,15 +65,11 @@ class BottomNavBar extends StatelessWidget {
     required String label,
   }) {
     final isSelected = index == currentIndex;
-    final bool isCenterButton = index == 1;
-    final Color iconColor = isCenterButton
-        ? Colors.white
-        : (isSelected ? const Color(0xFF7FAC58) : Colors.grey.shade600);
+    final Color iconColor = isSelected ? const Color(0xFF7FAC58) : Colors.grey.shade600;
     final Color textColor = isSelected
         ? const Color(0xFF7FAC58)
         : Colors.grey.shade600;
-    final double containerSize = isCenterButton ? 48 : 36;
-    final double iconSize = isCenterButton ? 26 : 22;
+    const double iconSize = 22;
     const double labelSpacing = 4;
 
     return Semantics(
@@ -82,23 +83,11 @@ class BottomNavBar extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: containerSize,
-              height: containerSize,
-              decoration: isCenterButton
-                  ? BoxDecoration(
-                      color: const Color(0xFF7FAC58),
-                      borderRadius: BorderRadius.circular(containerSize / 2),
-                    )
-                  : null,
-              child: Center(
-                child: SvgPicture.asset(
-                  iconPath,
-                  width: iconSize,
-                  height: iconSize,
-                  colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
-                ),
-              ),
+            SvgPicture.asset(
+              iconPath,
+              width: iconSize,
+              height: iconSize,
+              colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
             ),
             const SizedBox(height: labelSpacing),
             Text(
