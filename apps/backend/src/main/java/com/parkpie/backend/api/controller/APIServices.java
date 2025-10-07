@@ -101,5 +101,13 @@ public class APIServices {
             @RequestParam(defaultValue = "100") double radius) {
         return dbService.getAllRestrictionsForLocation(lat, lng, radius);
     }
+
+    
+    @ResponseBody
+    @GetMapping("/api/segment/getlocationforsegment")
+    public List<Map<String, Object>> getLocationForSegment()
+           {
+        return dbService.getLocationForSegment();
+    }
 }
 

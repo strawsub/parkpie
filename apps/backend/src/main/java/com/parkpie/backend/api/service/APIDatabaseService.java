@@ -263,9 +263,9 @@ public class APIDatabaseService {
                     : LocalTime.parse(startTime); // expects "HH:mm:ss"
 
             String insertSql = """
-                INSERT INTO public.parking_session (location, start_parking_time, parking_signs_id)
+                INSERT INTO public.parking_session (location, start_parking_time, parking_sign_id)
                 VALUES (ST_SetSRID(ST_MakePoint(?, ?), 4326), ?, ?)
-                RETURNING id
+                RETURNING session_id
                 """;
 
             Integer sessionId = jdbc.queryForObject(
@@ -411,6 +411,37 @@ public class APIDatabaseService {
             """;
 
         return jdbc.queryForList(sql, lng, lat, lng, lat, radius);
+    }
+
+
+    public List<Map<String, Object>> getLocationForSegment() {
+
+        String sql_user_session = """
+            SELECT
+                ST_Y(ps.location::geometry) AS lat,
+                ST_X(ps.location::geometry) AS lng
+            FROM public.parking_session AS ps;
+            """;
+
+        List<Map<String, Object>> rows_us = jdbc.queryForList(sql_user_session);
+
+        String sql_city_sensor = """
+            SELECT
+                ST_Y(pb.location::geometry) AS lat,
+                ST_X(pb.location::geometry) AS lng
+            FROM public.parking_bay_realtime pbr
+            LEFT JOIN public.parking_bays pb
+                ON pb.kerbside_id = pbr.kerbsideid
+            WHERE pbr.status_description = 'Present'
+            """;
+
+        List<Map<String, Object>> rows_cs = jdbc.queryForList(sql_city_sensor);
+
+        List<Map<String, Object>> merged = new ArrayList<>();
+        merged.addAll(rows_us);
+        merged.addAll(rows_cs);
+
+        return merged;
     }
 }
 
