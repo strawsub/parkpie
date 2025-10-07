@@ -263,9 +263,9 @@ public class APIDatabaseService {
                     : LocalTime.parse(startTime); // expects "HH:mm:ss"
 
             String insertSql = """
-                INSERT INTO public.parking_session (location, start_parking_time, parking_signs_id)
+                INSERT INTO public.parking_session (location, start_parking_time, parking_sign_id)
                 VALUES (ST_SetSRID(ST_MakePoint(?, ?), 4326), ?, ?)
-                RETURNING id
+                RETURNING session_id
                 """;
 
             Integer sessionId = jdbc.queryForObject(
