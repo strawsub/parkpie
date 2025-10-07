@@ -307,7 +307,7 @@ public class APIDatabaseService {
         try {
             int id = Integer.parseInt(sessionID);
 
-            String sql = "DELETE FROM public.parking_session WHERE id = ?";
+            String sql = "DELETE FROM public.parking_session WHERE session_id = ?";
             int rows = jdbc.update(sql, id);
 
             resp.put("deleted", rows > 0);
