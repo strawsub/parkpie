@@ -420,15 +420,15 @@ public class APIDatabaseService {
             SELECT
                 ST_Y(ps.location::geometry) AS lat,
                 ST_X(ps.location::geometry) AS lng
-            FROM public.parking_session
+            FROM public.parking_session AS ps;
             """;
 
         List<Map<String, Object>> rows_us = jdbc.queryForList(sql_user_session);
 
         String sql_city_sensor = """
             SELECT
-                ST_Y(pbr.location::geometry) AS lat,
-                ST_X(pbr.location::geometry) AS lng
+                ST_Y(pb.location::geometry) AS lat,
+                ST_X(pb.location::geometry) AS lng
             FROM public.parking_bay_realtime pbr
             LEFT JOIN public.parking_bays pb
                 ON pb.kerbside_id = pbr.kerbsideid
