@@ -118,7 +118,7 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
   }
 
   // Get day abbreviations
-  List<String> get dayAbbreviations => ['MON', 'TUES', 'WED', 'THURS', 'FRI', 'SAT', 'SUN'];
+  List<String> get dayAbbreviations => ['MON', 'TUES', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 
   // Get current restrictions for selected day
   List<ParkingRestriction> get currentDayRestrictions {

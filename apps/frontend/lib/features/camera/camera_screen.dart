@@ -268,272 +268,426 @@ class _CameraViewState extends State<CameraView> {
     final restrictions = state.restrictions;
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black),
-          onPressed: () {
-            context.read<CameraBloc>().add(CameraClosed());
-            context.read<NavigationCubit>().setIndex(0);
-          },
-        ),
-        title: const Text(
-          'Sign Summary',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
-        ),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: double.infinity,
-              height: 200,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                image: DecorationImage(
-                  image: FileImage(File(state.imagePath)),
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            _buildZoneInfoCard(state),
-            const SizedBox(height: 16),
-            _buildExplanationCard(state),
-            const SizedBox(height: 20),
-            const Text(
-              'Restrictions',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.black,
-              ),
-            ),
-            const SizedBox(height: 10),
-            if (restrictions.isEmpty)
-              const Text('No restrictions found for this sign.'),
-            for (final r in restrictions) _buildRestrictionTile(context, r),
-            const SizedBox(height: 20),
-            _buildRawTextSection(state.rawText),
-            const SizedBox(height: 30),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      context.read<CameraBloc>().add(PhotoRetaken());
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey.shade300,
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+      body: Column(
+        children: [
+          // Custom AppBar
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(
+                      Icons.arrow_back_ios_new,
+                      color: Colors.black,
                     ),
-                    child: const Text('Retake Photo'),
-                  ),
-                ),
-                const SizedBox(width: 15),
-                Expanded(
-                  child: ElevatedButton(
                     onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Manual zone ${state.zoneNumber} saved to ParkPie.',
-                          ),
-                        ),
-                      );
                       context.read<CameraBloc>().add(CameraClosed());
                       context.read<NavigationCubit>().setIndex(0);
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF7FAC58),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                  ),
+                  const Expanded(
+                    child: Text(
+                      'Sign Summary',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 18,
                       ),
                     ),
-                    child: const Text('Done'),
                   ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildZoneInfoCard(SignAnalysisSuccess state) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: const Color(0xFFE7F2D9),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Manual zone ${state.zoneNumber}',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF3D5A24),
+                  const SizedBox(width: 48), // Balance the back button
+                ],
               ),
             ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 12,
-              runSpacing: 8,
-              children: [
-                _buildInfoChip(
-                  Icons.storage,
-                  '${state.restrictionsSaved} window(s) synced',
-                ),
-                if (state.replacedPrevious > 0)
-                  _buildInfoChip(
-                    Icons.refresh,
-                    '${state.replacedPrevious} old window(s) replaced',
+          ),
+
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Image Preview
+                  Container(
+                    width: double.infinity,
+                    height: 200,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      image: DecorationImage(
+                        image: FileImage(File(state.imagePath)),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
                   ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Location: ${state.latitude.toStringAsFixed(5)}, ${state.longitude.toStringAsFixed(5)}',
-              style: const TextStyle(color: Colors.black87),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+                  const SizedBox(height: 20),
 
-  Widget _buildExplanationCard(SignAnalysisSuccess state) {
-    final text = state.explanation.trim().isEmpty
-        ? 'Gemini could not summarise this sign. Please review the restrictions below.'
-        : state.explanation.trim();
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: const [
-                Icon(Icons.lightbulb_outline, color: Color(0xFF7FAC58)),
-                SizedBox(width: 8),
-                Text(
-                  'Gemini explanation',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              text,
-              style: const TextStyle(fontSize: 15, color: Colors.black87),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+                  // Zone Header
+                  Center(
+                    child: Text(
+                      'Zone Added',
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
 
-  Widget _buildInfoChip(IconData icon, String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFB7D3A6)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: const Color(0xFF7FAC58)),
-          const SizedBox(width: 6),
-          Text(
-            text,
-            style: const TextStyle(color: Color(0xFF3D5A24), fontSize: 13),
+                  // Stats Badge
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF7FAC58),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.check_circle_outline,
+                            size: 16,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${state.restrictionsSaved} restriction${state.restrictionsSaved != 1 ? 's' : ''} synced',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  if (state.replacedPrevious > 0) ...[
+                    const SizedBox(height: 8),
+                    Center(
+                      child: Text(
+                        '${state.replacedPrevious} old restriction${state.replacedPrevious != 1 ? 's' : ''} replaced',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 20),
+
+                  // Gemini Explanation Card
+                  Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: const Color.fromRGBO(127, 172, 88, 0.4),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: const [
+                            Icon(
+                              Icons.lightbulb_outline,
+                              color: Color(0xFF7FAC58),
+                              size: 20,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'Gemini explanation',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                                color: Colors.black54,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          state.explanation.trim().isEmpty
+                              ? 'Gemini could not summarise this sign. Please review the restrictions below.'
+                              : state.explanation.trim(),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Restrictions Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '${restrictions.length} Restriction${restrictions.length != 1 ? 's' : ''}',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Restrictions List
+                  if (restrictions.isEmpty)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          'No restrictions found for this sign.',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    ...restrictions.map(
+                      (r) => _buildRestrictionCard(context, r),
+                    ),
+
+                  const SizedBox(height: 20),
+
+                  // Extracted Text Section
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: ExpansionTile(
+                      tilePadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      title: const Text(
+                        'Extracted text',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              state.rawText.isEmpty
+                                  ? 'No text available.'
+                                  : state.rawText,
+                              style: const TextStyle(
+                                color: Colors.black87,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Location Info
+                  Center(
+                    child: Text(
+                      'Location: ${state.latitude.toStringAsFixed(5)}, ${state.longitude.toStringAsFixed(5)}',
+                      style: const TextStyle(
+                        color: Colors.black54,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 30),
+
+                  // Action Buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            context.read<CameraBloc>().add(PhotoRetaken());
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.grey.shade300,
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            'Retake Photo',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Manual zone ${state.zoneNumber} saved to ParkPie.',
+                                ),
+                              ),
+                            );
+                            context.read<CameraBloc>().add(CameraClosed());
+                            context.read<NavigationCubit>().setIndex(0);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF7FAC58),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            'Done',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildRestrictionTile(
+  Widget _buildRestrictionCard(
     BuildContext context,
     SignRestriction restriction,
   ) {
     final start = _formatTime(context, restriction.startTime);
     final end = _formatTime(context, restriction.endTime);
     final stay = _formatStayDuration(restriction.maximumStayMinutes);
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: const Color(0xFF7FAC58).withValues(alpha: 0.2),
-          child: Text(
-            restriction.dayLabel.substring(0, 3).toUpperCase(),
-            style: const TextStyle(
-              color: Color(0xFF3D5A24),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        title: Text(
-          restriction.dayLabel,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('$start - $end'),
-              const SizedBox(height: 4),
-              Text(stay),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
-  Widget _buildRawTextSection(String rawText) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ExpansionTile(
-        tilePadding: const EdgeInsets.symmetric(horizontal: 16),
-        title: const Text(
-          'Extracted text',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                rawText.isEmpty ? 'No text available.' : rawText,
-                style: const TextStyle(color: Colors.black87),
-              ),
-            ),
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            offset: const Offset(0, 4),
+            blurRadius: 10,
           ),
         ],
+        border: Border.all(
+          color: const Color.fromRGBO(127, 172, 88, 0.4),
+          width: 1.5,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Day Circle
+            Container(
+              width: 56,
+              height: 56,
+              decoration: const BoxDecoration(
+                color: Color(0xFF7FAC58),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  restriction.dayLabel.substring(0, 3).toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+
+            // Restriction Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    restriction.dayLabel,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.access_time,
+                        size: 16,
+                        color: Colors.black54,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '$start - $end',
+                        style: const TextStyle(
+                          color: Colors.black87,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.timer_outlined,
+                        size: 16,
+                        color: Colors.black54,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        stay,
+                        style: const TextStyle(
+                          color: Colors.black87,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -547,21 +701,18 @@ class _CameraViewState extends State<CameraView> {
   }
 
   String _formatStayDuration(int? minutes) {
-    if (minutes == null) {
-      return 'No maximum stay stated';
-    }
-    if (minutes <= 0) {
+    if (minutes == null || minutes <= 0) {
       return 'No maximum stay stated';
     }
     final hours = minutes ~/ 60;
     final mins = minutes % 60;
     if (mins == 0) {
-      return hours == 1 ? '1 hour maximum stay' : '$hours hours maximum stay';
+      return hours == 1 ? '1 hour max' : '$hours hours max';
     }
     if (hours == 0) {
-      return '$minutes minutes maximum stay';
+      return '$minutes minutes max';
     }
-    return '$hours h $mins m maximum stay';
+    return '$hours h $mins m max';
   }
 
   @override
