@@ -32,3 +32,12 @@ class ResetTimer extends TimerEvent {
 class TimerTick extends TimerEvent {
   const TimerTick();
 }
+
+class UpdateRestrictionDuration extends TimerEvent {
+  final int durationMinutes;
+
+  const UpdateRestrictionDuration(this.durationMinutes);
+
+  @override
+  List<Object?> get props => [durationMinutes];
+}

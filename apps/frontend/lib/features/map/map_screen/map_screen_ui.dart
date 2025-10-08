@@ -420,12 +420,21 @@ class _MapScreenViewState extends State<_MapScreenView> {
           return const SizedBox.shrink();
         }
 
+        // Get restriction duration and calculate remaining
+        final restrictionDuration = Duration(
+          minutes: timerState.restrictionDurationMinutes,
+        );
         final elapsed = timerState.elapsed;
-        final hours = elapsed.inHours;
-        final minutes = elapsed.inMinutes.remainder(60);
-        final seconds = elapsed.inSeconds.remainder(60);
+        final remaining = restrictionDuration - elapsed;
 
-        final timeString = hours > 0
+        final isOvertime = remaining.isNegative;
+        final displayRemaining = isOvertime ? -remaining : remaining;
+
+        final hours = displayRemaining.inHours;
+        final minutes = displayRemaining.inMinutes.remainder(60);
+        final seconds = displayRemaining.inSeconds.remainder(60);
+
+        final remainingString = hours > 0
             ? '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}'
             : '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
 
@@ -440,7 +449,10 @@ class _MapScreenViewState extends State<_MapScreenView> {
               elevation: 4,
               borderRadius: BorderRadius.circular(20),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
@@ -449,21 +461,23 @@ class _MapScreenViewState extends State<_MapScreenView> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     SizedBox(
-                      width: 20,
-                      height: 20,
+                      width: 36,
+                      height: 36,
                       child: lottie.Lottie.asset(
                         'assets/car-animate.json',
                         fit: BoxFit.contain,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 10),
                     Text(
-                      timeString,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF7FAC58),
-                        fontFeatures: [FontFeature.tabularFigures()],
+                      remainingString,
+                      style: TextStyle(
+                        fontSize: 20, // bigger font
+                        fontWeight: FontWeight.bold,
+                        color: isOvertime
+                            ? Colors.red
+                            : const Color(0xFF7FAC58),
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
                   ],

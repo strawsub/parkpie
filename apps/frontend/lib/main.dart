@@ -113,6 +113,11 @@ class _HomeContainerState extends State<HomeContainer> {
         if (state is ParkingDetected && !_isParkingDialogShowing) {
           _showParkingDialog(context);
         }
+
+        if (state is Parked) {
+          context.read<TimerBloc>().add(const StartTimer());
+          context.read<NavigationCubit>().setIndex(2);
+        }
       },
       child: BlocBuilder<NavigationCubit, int>(
         builder: (context, selectedIndex) {

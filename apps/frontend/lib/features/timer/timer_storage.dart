@@ -5,6 +5,7 @@ class TimerStorage {
   static const String _keyIsRunning = 'parking_timer_is_running';
   static const String _keyZoneNumber = 'parking_timer_zone_number';
   static const String _keyZoneName = 'parking_timer_zone_name';
+  static const String _keyRestrictionDuration = 'parking_timer_restriction_duration';
 
   Future<void> saveStartTime(DateTime startTime) async {
     final prefs = await SharedPreferences.getInstance();
@@ -54,11 +55,22 @@ class TimerStorage {
     };
   }
 
+    Future<void> saveRestrictionDuration(int minutes) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_keyRestrictionDuration, minutes);
+  }
+
+  Future<int> getRestrictionDuration() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_keyRestrictionDuration) ?? 0;
+  }
+
   Future<void> clear() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keyStartTime);
     await prefs.remove(_keyIsRunning);
     await prefs.remove(_keyZoneNumber);
     await prefs.remove(_keyZoneName);
+    await prefs.remove(_keyRestrictionDuration); // clear new key too
   }
 }

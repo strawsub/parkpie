@@ -15,7 +15,7 @@ class TimerScreen extends StatelessWidget {
       body: SafeArea(
         child: BlocBuilder<TimerBloc, TimerState>(
           builder: (context, state) {
-            return Padding(
+            return SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -28,11 +28,16 @@ class TimerScreen extends StatelessWidget {
                   _buildTimerDisplay(state),
                   const SizedBox(height: 16),
                   if (state.zoneNumber != null) _buildZoneInfo(state),
-                  const Spacer(),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 90),
-                    child: _buildButtons(context, state),
-                  ),
+                  const SizedBox(height: 16),
+
+                  // Restriction Card always visible
+                  if (state is TimerRunning || state is TimerStopped)
+                    _buildRestrictionCard(context, state),
+
+                  const SizedBox(height: 16),
+
+                  // Start/End buttons
+                  _buildButtons(context, state),
                 ],
               ),
             );
@@ -44,7 +49,7 @@ class TimerScreen extends StatelessWidget {
 
   Widget _buildTitle() {
     return Text(
-      'Start Park Time Tracking',
+      'Parking Timer',
       style: TextStyle(
         fontSize: 24,
         fontWeight: FontWeight.bold,
@@ -56,10 +61,7 @@ class TimerScreen extends StatelessWidget {
   Widget _buildAnimation() {
     return SizedBox(
       height: 240,
-      child: Lottie.asset(
-        'assets/car-animate.json',
-        fit: BoxFit.contain,
-      ),
+      child: Lottie.asset('assets/car-animate.json', fit: BoxFit.contain),
     );
   }
 
@@ -109,18 +111,16 @@ class TimerScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF7FAC58).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF7FAC58).withValues(alpha: 0.3)),
+        border: Border.all(
+          color: const Color(0xFF7FAC58).withValues(alpha: 0.3),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                Icons.location_on,
-                color: const Color(0xFF7FAC58),
-                size: 18,
-              ),
+              Icon(Icons.location_on, color: const Color(0xFF7FAC58), size: 18),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
@@ -139,10 +139,223 @@ class TimerScreen extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'Check parking restrictions for this zone',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade700,
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRestrictionCard(BuildContext context, TimerState state) {
+    // Dummy data for restriction (replace with API call later)
+    final restrictionMinutes = state.restrictionDurationMinutes ?? 0;
+    final restrictionDuration = Duration(minutes: restrictionMinutes);
+
+    final elapsed = state.elapsed;
+    final remaining = restrictionDuration - elapsed;
+    final isOvertime = remaining.isNegative;
+    final displayRemaining = isOvertime ? -remaining : remaining;
+
+    final remainingHours = displayRemaining.inHours;
+    final remainingMinutes = displayRemaining.inMinutes.remainder(60);
+    final remainingSeconds = displayRemaining.inSeconds.remainder(60);
+
+    final restrictionHours = restrictionDuration.inHours;
+    final restrictionMins = restrictionDuration.inMinutes.remainder(60);
+
+    final restrictionText = restrictionHours > 0
+        ? '${restrictionHours}h ${restrictionMins}m'
+        : '${restrictionMins}m';
+
+    final remainingText = remainingHours > 0
+        ? '${remainingHours}h ${remainingMinutes}m ${remainingSeconds}s'
+        : '${remainingMinutes}m ${remainingSeconds}s';
+
+    final backgroundColor = isOvertime
+        ? const Color(0x1AFF4757) // 0x1A = 26 in decimal (~10% opacity)
+        : Colors.white;
+
+    final borderColor = isOvertime
+        ? const Color(0x4DFF4757) // 0x4D = 77 in decimal (~30% opacity)
+        : Color(0xFF7FAC58);
+
+    final iconColor = isOvertime
+        ? const Color(0xFFFF4757)
+        : Color(0xFF7FAC58);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    isOvertime ? Icons.warning_rounded : Icons.timer_outlined,
+                    color: iconColor,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Parking Restriction',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+              IconButton(
+                icon: Icon(Icons.edit, size: 20, color: Colors.grey.shade600),
+                onPressed: () {
+                  _showEditRestrictionDialog(context, restrictionMinutes);
+                },
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Duration',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      restrictionText,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(width: 1, height: 40, color: Colors.grey.shade300),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isOvertime ? 'Overtime' : 'Remaining',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      isOvertime ? '+$remainingText' : remainingText,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isOvertime
+                            ? const Color(0xFFFF4757)
+                            : const Color(0xFF7FAC58),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditRestrictionDialog(BuildContext context, int currentMinutes) {
+    final hoursController = TextEditingController(
+      text: (currentMinutes ~/ 60).toString(),
+    );
+    final minutesController = TextEditingController(
+      text: (currentMinutes % 60).toString(),
+    );
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Edit Restriction Duration'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Set the parking time limit for this location',
+              style: TextStyle(fontSize: 14),
             ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: hoursController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'Hours',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: minutesController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'Minutes',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final hours = int.tryParse(hoursController.text) ?? 0;
+              final minutes = int.tryParse(minutesController.text) ?? 0;
+              final totalMinutes = (hours * 60) + minutes;
+
+              if (totalMinutes > 0) {
+                context.read<TimerBloc>().add(
+                  UpdateRestrictionDuration(totalMinutes),
+                );
+                Navigator.of(dialogContext).pop();
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF7FAC58),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Save'),
           ),
         ],
       ),
@@ -162,7 +375,9 @@ class TimerScreen extends StatelessWidget {
             textColor: Colors.white,
             onPressed: isRunning
                 ? null
-                : () => _showStartDialog(context),
+                : () {
+                    context.read<TimerBloc>().add(const StartTimer());
+                  },
           ),
         ),
         const SizedBox(width: 16),
@@ -208,10 +423,7 @@ class TimerScreen extends StatelessWidget {
         ),
         child: Text(
           label,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -260,11 +472,11 @@ class TimerScreen extends StatelessWidget {
               Navigator.of(dialogContext).pop();
               // Start with test zone info
               context.read<TimerBloc>().add(
-                    const StartTimer(
-                      zoneNumber: -9999,
-                      zoneName: 'Test Zone - 2P (Mon-Fri 9AM-5PM)',
-                    ),
-                  );
+                const StartTimer(
+                  zoneNumber: -9999,
+                  zoneName: 'Test Zone - 2P (Mon-Fri 9AM-5PM)',
+                ),
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF7FAC58),
