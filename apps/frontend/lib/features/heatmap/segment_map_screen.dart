@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:http/http.dart' as http;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter/services.dart' show rootBundle;
 
 class SegmentMapScreen extends StatefulWidget {
   const SegmentMapScreen({super.key});
@@ -12,16 +13,17 @@ class SegmentMapScreen extends StatefulWidget {
 }
 
 class _SegmentMapScreenState extends State<SegmentMapScreen> {
+  //GoogleMapController? _mapController;
   List<List<LatLng>> _segments = [];
-  final List<LatLng> _parkingPoints = [];
+  List<LatLng> _parkingPoints = [];
   Set<Polygon> _polygons = {};
   static const LatLng _initialPosition = LatLng(-37.8136, 144.9631);
 
   @override
   void initState() {
     super.initState();
-    _loadSegmentsFromGeoJson().then((_) {
-      _generateRandomParkingPoints();
+    _loadSegmentsFromGeoJson().then((_) async {
+      await _loadParkingPointsFromApi(); 
       _assignCountsToSegments();
     });
   }
@@ -36,8 +38,7 @@ class _SegmentMapScreenState extends State<SegmentMapScreen> {
       if (feature['geometry']['type'] == 'MultiPolygon') {
         List coordsList = feature['geometry']['coordinates'];
         for (var polyCoords in coordsList) {
-          // polyCoords[0] 是外框
-          List outer = polyCoords[0];
+          List outer = polyCoords[0]; 
           List<LatLng> line = outer.map<LatLng>((c) {
             double lng = (c[0] as num).toDouble();
             double lat = (c[1] as num).toDouble();
@@ -53,12 +54,27 @@ class _SegmentMapScreenState extends State<SegmentMapScreen> {
     });
   }
 
-  void _generateRandomParkingPoints() {
-    final rand = Random();
-    for (int i = 0; i < 100; i++) {
-      double lat = -37.818 + rand.nextDouble() * 0.005;
-      double lng = 144.961 + rand.nextDouble() * 0.007;
-      _parkingPoints.add(LatLng(lat, lng));
+  Future<void> _loadParkingPointsFromApi() async {
+    final url = Uri.parse('https://parkpie-90018.azurewebsites.net/api/segment/getlocationforsegment');
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final List data = json.decode(response.body);
+
+      final List<LatLng> points = data
+          .where((item) => item['lat'] != null && item['lng'] != null) 
+          .map<LatLng>((item) {
+            return LatLng(
+              (item['lat'] as num).toDouble(),
+              (item['lng'] as num).toDouble(),
+            );
+          }).toList();
+
+      setState(() {
+        _parkingPoints = points;
+      });
+    } else {
+      debugPrint('Failed to load parking points from API');
     }
   }
 
@@ -98,7 +114,7 @@ class _SegmentMapScreenState extends State<SegmentMapScreen> {
     setState(() {
       _polygons = _segments.map((seg) {
         int count = segmentCounts[seg] ?? 0;
-        double t = max(0.05, count / maxCount); // 確保 count = 0 也有淡色
+        double t = max(0.05, count / maxCount); // count = 0 也有淡色
         Color color = Color.lerp(Colors.blue.withValues(alpha: 0.2), Colors.red, t)!;
         return Polygon(
           polygonId: PolygonId(seg.hashCode.toString()),
@@ -111,11 +127,16 @@ class _SegmentMapScreenState extends State<SegmentMapScreen> {
     });
   }
 
+  /*void _onMapCreated(GoogleMapController controller) {
+    _mapController = controller;
+  }*/
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Segment Map Heat')),
       body: GoogleMap(
+        //onMapCreated: _onMapCreated,
         initialCameraPosition: const CameraPosition(
           target: _initialPosition,
           zoom: 15,
@@ -129,5 +150,3 @@ class _SegmentMapScreenState extends State<SegmentMapScreen> {
     );
   }
 }
-
-
