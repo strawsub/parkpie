@@ -8,7 +8,6 @@ import 'features/navigation/filter_trigger_cubit.dart';
 import 'features/map/map_screen.dart';
 import 'features/map/pin/pin_cubit.dart';
 import 'features/map/search/search_cubit.dart';
-import 'features/gps_correction/location_bloc.dart';
 
 import 'features/camera/camera_screen.dart';
 import 'features/camera/camera_bloc.dart';
@@ -60,7 +59,6 @@ class ParkPieApp extends StatelessWidget {
         BlocProvider<BluetoothBloc>.value(value: bluetoothBloc),
         BlocProvider<GpsSpeedBloc>.value(value: gpsSpeedBloc),
         BlocProvider<ParkingBloc>.value(value: parkingBloc),
-        BlocProvider(create: (_) => LocationCubit()),
         BlocProvider(create: (_) => TimerBloc()..add(const LoadTimer())),
       ],
       child: MaterialApp(

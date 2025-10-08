@@ -7,7 +7,6 @@ import 'package:frontend/features/camera/camera_event.dart';
 import 'package:frontend/features/camera/camera_state.dart';
 import 'package:frontend/features/camera/sign_restriction.dart';
 import 'package:frontend/features/navigation/navigation_cubit.dart';
-import 'package:frontend/features/gps_correction/history_map_screen.dart';
 
 class CameraScreen extends StatelessWidget {
   const CameraScreen({super.key});
@@ -105,28 +104,6 @@ class _CameraViewState extends State<CameraView> {
                       ),
                     ),
                     // Map button
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const HistoryMapScreen(),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.3),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Icon(
-                          Icons.map,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
