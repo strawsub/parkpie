@@ -11,6 +11,7 @@ import 'features/map/search/search_cubit.dart';
 
 import 'features/camera/camera_screen.dart';
 import 'features/camera/camera_bloc.dart';
+import 'features/gps_correction/location_cubit.dart';
 
 import 'features/timer/timer_screen.dart';
 import 'features/timer/timer_bloc.dart';
@@ -51,7 +52,12 @@ class ParkPieApp extends StatelessWidget {
       providers: [
         BlocProvider(create: (_) => NavigationCubit()),
         BlocProvider(create: (_) => FilterTriggerCubit()),
-        BlocProvider(create: (_) => CameraBloc()),
+        BlocProvider(create: (_) => LocationCubit()),
+        BlocProvider(
+          create: (context) => CameraBloc(
+            locationCubit: context.read<LocationCubit>(),
+          ),
+        ),
         BlocProvider(create: (_) => PinCubit()..loadPins()),
         BlocProvider<SearchCubit>(create: (context) => SearchCubit()),
         BlocProvider<AccBloc>.value(value: accBloc),

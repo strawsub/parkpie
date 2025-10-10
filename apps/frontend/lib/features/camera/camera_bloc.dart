@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:frontend/features/camera/camera_event.dart';
 import 'package:frontend/features/camera/camera_state.dart';
 import 'package:frontend/features/camera/sign_restriction.dart';
+import 'package:frontend/features/gps_correction/location_cubit.dart';
 import 'package:frontend/services/api_config.dart';
 import 'package:frontend/services/sign_ingest_service.dart';
 import 'package:frontend/services/sign_zone_storage.dart';
@@ -20,11 +21,13 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
   final GenerativeModel _ocrModel;
   final SignIngestService _signService;
   final SignZoneStorage _zoneStorage;
+  final LocationCubit _locationCubit;
 
   CameraController? _cameraController;
   List<CameraDescription>? _cameras;
 
   CameraBloc({
+    required LocationCubit locationCubit,
     GenerativeModel? ocrModel,
     SignIngestService? signIngestService,
     SignZoneStorage? zoneStorage,
@@ -35,6 +38,7 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
            signIngestService ??
            SignIngestService(backendBaseUrl: resolveApiBaseUrl()),
        _zoneStorage = zoneStorage ?? SignZoneStorage(),
+       _locationCubit = locationCubit,
        super(CameraInitial()) {
     on<CameraOpened>(_onCameraOpened);
     on<PhotoCaptured>(_onPhotoCaptured);
@@ -48,6 +52,7 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
   @override
   Future<void> close() {
     _cameraController?.dispose();
+    _locationCubit.stopTracking();
     return super.close();
   }
 
@@ -56,6 +61,7 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
     Emitter<CameraState> emit,
   ) async {
     try {
+      await _locationCubit.startTracking();
       emit(CameraLoading());
 
       try {
@@ -182,11 +188,18 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
       }
 
       final position = await _obtainPosition();
+      final filteredPosition = _locationCubit.state.filteredPosition;
+      final latitude = filteredPosition != null && filteredPosition.length >= 2
+          ? filteredPosition[0]
+          : position.latitude;
+      final longitude = filteredPosition != null && filteredPosition.length >= 2
+          ? filteredPosition[1]
+          : position.longitude;
 
       final parsed = await _signService.extractSignJson(
         signText: rawText,
-        lat: position.latitude,
-        lng: position.longitude,
+        lat: latitude,
+        lng: longitude,
         apiKey: apiKey,
       );
       
@@ -204,13 +217,14 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
           .toList(growable: false);
 
       final fingerprint = _fingerprint(
-        position.latitude,
-        position.longitude,
+        latitude,
+        longitude,
         restrictions,
       );
       final cachedZone = await _zoneStorage.readZone(fingerprint);
 
-      final payload = Map<String, dynamic>.from(parsed);
+      final payload = Map<String, dynamic>.from(parsed)
+        ..['location'] = {'lat': latitude, 'lng': longitude};
       if (cachedZone != null) {
         payload['zone_number'] = cachedZone;
       }
@@ -222,8 +236,8 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
       try {
         explanation = await _signService.generateExplanation(
           restrictions: restrictionMaps,
-          lat: position.latitude,
-          lng: position.longitude,
+          lat: latitude,
+          lng: longitude,
           rawText: rawText,
           apiKey: apiKey,
         );
@@ -240,8 +254,8 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
           zoneNumber: ingestResult.zoneNumber,
           restrictionsSaved: ingestResult.restrictionsSaved,
           replacedPrevious: ingestResult.replacedPrevious,
-          latitude: position.latitude,
-          longitude: position.longitude,
+          latitude: latitude,
+          longitude: longitude,
         ),
       );
     } catch (e) {
@@ -253,6 +267,7 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
     _cameraController?.dispose();
     _cameraController = null;
     _cameras = null;
+    _locationCubit.stopTracking();
     emit(CameraInitial());
   }
 
