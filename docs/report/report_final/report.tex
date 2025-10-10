@@ -1,0 +1,59 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+
+% Code listing style
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    backgroundcolor=\color{gray!10}
+}
+
+% Header and footer
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{Software Project Assignment 2}
+\lhead{[Your Name/Team Name]}
+\rfoot{Page \thepage}
+
+\title{\textbf{Software Project Assignment 2}\\
+\large Mobile Application Development Report}
+\author{Team Member 1\\Team Member 2\\Team Member 3}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+
+% Abstract
+\input{sections/abstract}
+
+\newpage
+\tableofcontents
+\newpage
+
+% Main sections
+\input{sections/summary}
+\input{sections/overview}
+\input{sections/implementation}
+\input{sections/ui_design}
+\input{sections/innovation}
+\input{sections/development}
+\input{sections/testing}
+\input{sections/future_work}
+\input{sections/conclusion}
+
+\newpage
+\input{sections/appendices}
+
+\end{document}
