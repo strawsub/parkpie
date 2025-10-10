@@ -1,25 +1,41 @@
 package com.parkpie.backend.api.controller;
 
-import java.util.List;
-import java.util.Map;
-
+import com.parkpie.backend.api.dto.RestrictionDurationApiResponse;
+import com.parkpie.backend.api.service.APIDatabaseService;
+import com.parkpie.backend.api.service.AvailabilityJobRunner;
+import com.parkpie.backend.parking.dto.RestrictionDurationResult;
+import com.parkpie.backend.parking.service.ParkingRestrictionDurationService;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.server.ResponseStatusException;
 
-import com.parkpie.backend.api.service.APIDatabaseService;
-import com.parkpie.backend.api.service.AvailabilityJobRunner;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
+import java.util.List;
+import java.util.Map;
 
 @Controller
 public class APIServices {
+    private static final ZoneId DEFAULT_ZONE = ParkingRestrictionDurationService.MELBOURNE_ZONE;
+
     private final APIDatabaseService dbService;
     private final AvailabilityJobRunner runner;
+    private final ParkingRestrictionDurationService restrictionDurationService;
 
-    public APIServices(APIDatabaseService dbService, AvailabilityJobRunner runner) {
+    public APIServices(
+            APIDatabaseService dbService,
+            AvailabilityJobRunner runner,
+            ParkingRestrictionDurationService restrictionDurationService
+    ) {
         this.dbService = dbService;
         this.runner = runner;
+        this.restrictionDurationService = restrictionDurationService;
     }
 
     @GetMapping("/api/updateavailability")
@@ -102,12 +118,54 @@ public class APIServices {
         return dbService.getAllRestrictionsForLocation(lat, lng, radius);
     }
 
-    
+    @ResponseBody
+    @GetMapping("/api/map/restrictionduration")
+    public RestrictionDurationApiResponse getRestrictionDuration(
+            @RequestParam("lat") double lat,
+            @RequestParam("lng") double lng,
+            @RequestParam("startTime") String startTimeRaw
+    ) {
+        OffsetDateTime startTime = parseStartTime(startTimeRaw);
+        return restrictionDurationService.calculateDuration(lat, lng, startTime)
+                .map(this::toApiResponse)
+                .orElse(null);
+    }
+
     @ResponseBody
     @GetMapping("/api/segment/getlocationforsegment")
     public List<Map<String, Object>> getLocationForSegment()
            {
         return dbService.getLocationForSegment();
     }
-}
 
+    private RestrictionDurationApiResponse toApiResponse(RestrictionDurationResult result) {
+        return new RestrictionDurationApiResponse(
+                result.durationMinutes(),
+                result.scenario().name(),
+                result.maxStayMinutes(),
+                result.zoneNumber(),
+                result.distanceMeters(),
+                result.restrictionWindowEnd() != null ? result.restrictionWindowEnd().toOffsetDateTime() : null,
+                result.nextRestrictionStart() != null ? result.nextRestrictionStart().toOffsetDateTime() : null
+        );
+    }
+
+    private OffsetDateTime parseStartTime(String raw) {
+        if (raw == null || raw.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startTime is required");
+        }
+        try {
+            return OffsetDateTime.parse(raw);
+        } catch (DateTimeParseException first) {
+            try {
+                return LocalDateTime.parse(raw).atZone(DEFAULT_ZONE).toOffsetDateTime();
+            } catch (DateTimeParseException second) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Invalid startTime format. Use ISO-8601, e.g. 2025-10-10T15:00:00+10:00",
+                        second
+                );
+            }
+        }
+    }
+}

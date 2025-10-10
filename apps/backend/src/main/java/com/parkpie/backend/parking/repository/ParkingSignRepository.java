@@ -16,6 +16,15 @@ public interface ParkingSignRepository extends JpaRepository<ParkingSign, Long> 
         double getLng();
     }
 
+    interface RestrictionWindowView {
+        Integer getZoneNumber();
+        Integer getDayOfWeek();
+        java.time.LocalTime getStartTime();
+        java.time.LocalTime getEndTime();
+        Integer getMaximumStayMinutes();
+        double getDistanceMeters();
+    }
+
     @Query(value = """
         SELECT id, ('Zone ' || COALESCE(zone_number::text,'')) AS text,
                ST_Y(location)::float8 AS lat, ST_X(location)::float8 AS lng
@@ -23,6 +32,30 @@ public interface ParkingSignRepository extends JpaRepository<ParkingSign, Long> 
         WHERE ST_DWithin(location::geography, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography, :meters)
         """, nativeQuery = true)
     List<NearView> findNear(@Param("lat") double lat, @Param("lng") double lng, @Param("meters") double meters);
+
+    @Query(value = """
+        SELECT
+            zone_number AS zoneNumber,
+            day_of_week AS dayOfWeek,
+            start_time AS startTime,
+            end_time AS endTime,
+            maximum_stay_minutes AS maximumStayMinutes,
+            ST_Distance(
+                location::geography,
+                ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography
+            )::float8 AS distanceMeters
+        FROM parking_signs
+        WHERE ST_DWithin(
+            location::geography,
+            ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography,
+            :meters
+        )
+        ORDER BY distanceMeters ASC, zone_number ASC, day_of_week ASC, start_time ASC
+        """, nativeQuery = true)
+    List<RestrictionWindowView> findRestrictionWindowsNear(
+            @Param("lat") double lat,
+            @Param("lng") double lng,
+            @Param("meters") double meters);
 
     @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true, flushAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
