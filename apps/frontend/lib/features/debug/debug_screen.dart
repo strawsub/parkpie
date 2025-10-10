@@ -11,6 +11,8 @@ import 'package:frontend/features/parking_status_detection/parking_status_bloc.d
 import 'package:frontend/features/parking_status_detection/parking_status_event.dart';
 import 'package:frontend/features/parking_status_detection/parking_status_state.dart';
 import 'package:frontend/features/parking_status_detection/bluetooth/audio_bluetooth_service.dart';
+import 'package:frontend/features/parking_status_detection/bluetooth/bluetooth_bloc.dart';
+import 'package:frontend/features/parking_status_detection/bluetooth/bluetooth_state.dart';
 import 'package:frontend/features/parking_status_detection/gps/gps_speed_bloc.dart';
 import 'package:frontend/features/parking_status_detection/gps/gps_speed_state.dart';
 import 'package:frontend/features/parking_status_detection/accelerometer/acc_bloc.dart';
@@ -111,6 +113,7 @@ class _DebugScreenState extends State<DebugScreen> {
     // Safely read providers in build; return null if missing
     final PinCubit? pinCubit = maybeReadBloc<PinCubit>(context);
     final ParkingBloc? parkingBloc = maybeReadBloc<ParkingBloc>(context);
+    final BluetoothBloc? bluetoothBloc = maybeReadBloc<BluetoothBloc>(context);
     final GpsSpeedBloc? gpsSpeedBloc = maybeReadBloc<GpsSpeedBloc>(context);
 
     return Scaffold(
@@ -243,6 +246,41 @@ class _DebugScreenState extends State<DebugScreen> {
                 return const ListTile(
                   title: Text('Gyroscope Rotation'),
                   subtitle: Text('Initializing...'),
+                );
+              },
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          // Bluetooth sensor (from BluetoothBloc)
+          Card(
+            child: (bluetoothBloc == null)
+                ? const ListTile(
+              title: Text('Bluetooth Sensor'),
+              subtitle: Text('⚠️ BluetoothBloc provider not found'),
+            )
+                : BlocBuilder<BluetoothBloc, BluetoothState>(
+              bloc: bluetoothBloc,
+              builder: (context, state) {
+                if (state is BluetoothInitial) {
+                  return const ListTile(
+                    title: Text('Bluetooth Sensor'),
+                    subtitle: Text('Waiting for first status update...'),
+                  );
+                }
+
+                final voteLabel = state.vote.toString().split('.').last;
+                final statusLabel = state.isConnected ? 'Connected' : 'Disconnected';
+                final deviceLabel = state.deviceName ?? 'Unknown device';
+                final hasHistory = state is BluetoothConnectionStatus && state.wasConnected;
+                final historyLine = hasHistory
+                    ? 'Device has connected earlier in this session.'
+                    : 'No previous connections detected.';
+
+                return ListTile(
+                  title: Text('Bluetooth Sensor ($statusLabel)'),
+                  subtitle: Text('Vote: $voteLabel\nDevice: $deviceLabel\n$historyLine'),
                 );
               },
             ),
