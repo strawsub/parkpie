@@ -25,13 +25,16 @@ public class CsvImportService {
     private final ParkingBayRepository parkingBayRepository;
     private final PayStayZoneLinkRepository payStayZoneLinkRepository;
     private final PayStayRestrictionRepository payStayRestrictionRepository;
+    private final ParkingSegmentBootstrapService parkingSegmentBootstrapService;
 
     public CsvImportService(ParkingBayRepository parkingBayRepository,
                             PayStayZoneLinkRepository payStayZoneLinkRepository,
-                            PayStayRestrictionRepository payStayRestrictionRepository) {
+                            PayStayRestrictionRepository payStayRestrictionRepository,
+                            ParkingSegmentBootstrapService parkingSegmentBootstrapService) {
         this.parkingBayRepository = parkingBayRepository;
         this.payStayZoneLinkRepository = payStayZoneLinkRepository;
         this.payStayRestrictionRepository = payStayRestrictionRepository;
+        this.parkingSegmentBootstrapService = parkingSegmentBootstrapService;
     }
 
     // Convenience overloads (safe if called synchronously)
@@ -194,6 +197,7 @@ public class CsvImportService {
         } catch (Exception e) {
             throw new RuntimeException("Failed to import Restrictions: " + e.getMessage(), e);
         }
+        parkingSegmentBootstrapService.ensureStaticTables();
         String summary = upserts + " rows upserted, " + skipped + " rows skipped";
         if (firstErrors.length() > 0) {
             summary += " | sample errors:\n" + firstErrors;

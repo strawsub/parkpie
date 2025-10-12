@@ -29,6 +29,8 @@ public class APIDatabaseService {
     private final JdbcTemplate jdbc;
     private final ParkingBayRealtimeRepository realtimeRepo;
 
+    private static final double STREET_DESCRIPTION_MAX_DISTANCE_METERS = 100.0;
+
     public APIDatabaseService(JdbcTemplate jdbc, ParkingBayRealtimeRepository realtimeRepo) {
         this.jdbc = jdbc;
         this.realtimeRepo = realtimeRepo;
@@ -117,6 +119,7 @@ public class APIDatabaseService {
     private List<Map<String, Object>> allPin = new ArrayList<>();
 
     public List<Map<String, Object>> getSignForPin() {
+        double descriptionRadius = STREET_DESCRIPTION_MAX_DISTANCE_METERS;
         String sql = """
                 SELECT 
                     ps.zone_number                AS id,
@@ -126,7 +129,7 @@ public class APIDatabaseService {
                     -- Get ONE occupancy per zone (not duplicated per restriction)
                     MAX(ps.occupancy_percent)     AS occupancy_percent,
                     MAX(ps.updated_at)            AS updated_at,
-                    nb.description                AS description,
+                    COALESCE(MAX(nb.description), 'N/A') AS description,
                     -- Aggregate all restrictions for this zone as JSON
                     JSON_AGG(
                         JSON_BUILD_OBJECT(
@@ -143,15 +146,20 @@ public class APIDatabaseService {
                         pb.kerbside_id,
                         ST_Distance(ps.location::geography, pb.location::geography) AS distance_m
                         FROM public.parking_bays pb
+                        WHERE ST_DWithin(
+                            pb.location::geography,
+                            ps.location::geography,
+                            ?
+                        )
                         ORDER BY ps.location <-> pb.location
                         LIMIT 1
                 ) nb ON TRUE
                 WHERE ps.zone_number IS NOT NULL
-                GROUP BY ps.zone_number, ST_Y(ps.location::geometry), ST_X(ps.location::geometry), nb.description
+                GROUP BY ps.zone_number, ST_Y(ps.location::geometry), ST_X(ps.location::geometry)
                 ORDER BY ps.zone_number;
                         """;
         
-        allPin = jdbc.queryForList(sql);
+        allPin = jdbc.queryForList(sql, descriptionRadius);
         return allPin;
     }
 
@@ -444,7 +452,6 @@ public class APIDatabaseService {
         return merged;
     }
 }
-
 
 
 
