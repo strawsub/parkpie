@@ -35,7 +35,7 @@ parkpie/ (root)
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/EnderFr0zen/parkpie.git
+git clone https://github.com/Cynwell-Liao/parkpie.git
 cd parkpie
 ```
 
