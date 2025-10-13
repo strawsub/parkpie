@@ -1,9 +1,11 @@
 package com.parkpie.backend.api.service;
 
+import com.google.gson.Gson;
 import com.parkpie.backend.parking.repository.ParkingBayRealtimeRepository;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +21,7 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.sql.Time;
@@ -449,8 +452,154 @@ public class APIDatabaseService {
         merged.addAll(rows_us);
         merged.addAll(rows_cs);
 
-        return merged;
+        List<Map<String, Object>> features = loadGeoJson();
+
+        Map<String, List<List<double[]>>> segmentRings = new LinkedHashMap<>();
+
+        int fallbackIdx = 0;
+        for (Map<String, Object> feature : features) {
+            Map<String, Object> props = (Map<String, Object>) feature.get("properties");
+            Map<String, Object> geom  = (Map<String, Object>) feature.get("geometry");
+            if (geom == null) continue;
+
+            String type = String.valueOf(geom.get("type"));
+            String segId = firstNonNull(
+                    asString(props, "seg_id"),
+                    asString(props, "segment_id"),
+                    asString(props, "id"),
+                    "seg_" + (fallbackIdx++)
+            );
+
+            Object coordsObj = geom.get("coordinates");
+            if (coordsObj == null) continue;
+
+            List<List<double[]>> ringsForSeg = new ArrayList<>();
+
+            if ("MultiPolygon".equalsIgnoreCase(type)) {
+                List<Object> multi = (List<Object>) coordsObj;
+                for (Object polyObj : multi) {
+                    List<Object> polygon = (List<Object>) polyObj;
+                    if (polygon.isEmpty()) continue;
+                    // outer ring
+                    List<Object> outer = (List<Object>) polygon.get(0);
+                    ringsForSeg.add(toLngLatRing(outer));
+                }
+            } else if ("Polygon".equalsIgnoreCase(type)) {
+                List<Object> polygon = (List<Object>) coordsObj;
+                if (!polygon.isEmpty()) {
+                    List<Object> outer = (List<Object>) polygon.get(0);
+                    ringsForSeg.add(toLngLatRing(outer));
+                }
+            } else {
+                continue;
+            }
+
+            if (!ringsForSeg.isEmpty()) {
+                segmentRings.put(segId, ringsForSeg);
+            }
+        }
+
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        for (Map<String, Object> row : merged) {
+            Double lat = toDouble(row.get("lat"));
+            Double lng = toDouble(row.get("lng"));
+            if (lat == null || lng == null) continue;
+
+            for (Map.Entry<String, List<List<double[]>>> e : segmentRings.entrySet()) {
+                String segId = e.getKey();
+                List<List<double[]>> rings = e.getValue();
+
+                boolean insideAny = false;
+                for (List<double[]> ring : rings) {
+                    if (pointInPolygon(lng, lat, ring)) {
+                        insideAny = true;
+                        break;
+                    }
+                }
+                if (insideAny) {
+                    counts.merge(segId, 1, Integer::sum);
+                    break;
+                }
+            }
+        }
+
+        List<Map<String, Object>> result = new ArrayList<>(counts.size());
+        for (Map.Entry<String, Integer> e : counts.entrySet()) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("seg_id", e.getKey());
+            m.put("count", e.getValue());
+            result.add(m);
+        }
+        return result;
     }
+
+
+    public List<Map<String, Object>> loadGeoJson() {
+        try {
+            ClassPathResource resource = new ClassPathResource("assets/road_segment.geojson");
+            InputStreamReader reader = new InputStreamReader(resource.getInputStream());
+
+            Map<String, Object> geoJson = new Gson().fromJson(reader, Map.class);
+            reader.close();
+
+            List<Map<String, Object>> features = (List<Map<String, Object>>) geoJson.get("features");
+            return features;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private static String asString(Map<String, Object> m, String key) {
+        if (m == null) return null;
+        Object v = m.get(key);
+        return (v == null) ? null : String.valueOf(v);
+    }
+
+    private static Double toDouble(Object o) {
+        if (o == null) return null;
+        if (o instanceof Number) return ((Number) o).doubleValue();
+        try { return Double.parseDouble(o.toString()); } catch (Exception ignore) { return null; }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<double[]> toLngLatRing(List<Object> coords) {
+        List<double[]> ring = new ArrayList<>(coords.size());
+        for (Object ptObj : coords) {
+            List<Object> pt = (List<Object>) ptObj;
+            if (pt.size() < 2) continue;
+            Double lng = toDouble(pt.get(0));
+            Double lat = toDouble(pt.get(1));
+            if (lng != null && lat != null) {
+                ring.add(new double[]{lng, lat});
+            }
+        }
+        return ring;
+    }
+
+    private static boolean pointInPolygon(double x, double y, List<double[]> ring) {
+        boolean inside = false;
+        int n = ring.size();
+        if (n < 3) return false;
+
+        for (int i = 0, j = n - 1; i < n; j = i++) {
+            double xi = ring.get(i)[0], yi = ring.get(i)[1];
+            double xj = ring.get(j)[0], yj = ring.get(j)[1];
+
+            boolean intersect = ((yi > y) != (yj > y)) &&
+                    (x < (xj - xi) * (y - yi) / ((yj - yi) == 0 ? 1e-12 : (yj - yi)) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
+    }
+
+    private static <T> T firstNonNull(T... vals) {
+        for (T v : vals) if (v != null) return v;
+        return null;
+    }
+
+
+    
 }
 
 
