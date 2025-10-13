@@ -58,6 +58,17 @@ class PinCubit extends Cubit<PinState> {
     return file.lastModified();
   }
 
+  Future<void> _deleteCache() async {
+    try {
+      final file = await _cacheFile();
+      if (file != null && await file.exists()) {
+        await file.delete();
+      }
+    } catch (_) {
+      // Ignore cache delete errors; a fresh fetch will still run.
+    }
+  }
+
   List<Pin> _pinsFromJsonList(List<Map<String, dynamic>> list) {
     return list
         .map((e) => Pin.fromJson(e))
@@ -66,13 +77,19 @@ class PinCubit extends Cubit<PinState> {
   }
   // --------------------------------
 
-  Future<void> loadPins({Duration ttl = const Duration(minutes: 5)}) async {
+  Future<void> loadPins({
+    Duration ttl = const Duration(minutes: 5),
+    bool forceRefresh = false,
+  }) async {
     emit(PinLoading());
 
     try {
+      if (forceRefresh) {
+        await _deleteCache();
+      }
       final file = await _cacheFile();
       if (kDebugMode) print('[PinCubit] Cache file: ${file?.path}');
-      final lastMod = await _cacheLastModified();
+      final lastMod = forceRefresh ? null : await _cacheLastModified();
       if (kDebugMode) print('[PinCubit] Cache lastModified: $lastMod');
 
       final isFresh =

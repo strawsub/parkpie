@@ -284,7 +284,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
               final mapCubit = context.read<MapScreenCubit>();
               mapCubit.clearFilter();
               context.read<SearchCubit>().clearSearch();
-              context.read<PinCubit>().loadPins();
+              context.read<PinCubit>().loadPins(forceRefresh: true);
             },
             icon: const Icon(Icons.refresh),
             label: const Text('Reload'),
