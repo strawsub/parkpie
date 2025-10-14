@@ -27,6 +27,7 @@ import 'features/parking_status_detection/gps/gps_speed_bloc.dart';
 
 import 'l10n/app_localizations.dart';
 import 'widgets/nav_bar.dart';
+import 'widgets/parking_detected_bottom_sheet.dart';
 
 void main() {
   runApp(const ParkPieApp());
@@ -151,66 +152,43 @@ class _HomeContainerState extends State<HomeContainer> {
 
   void _showParkingDialog(BuildContext context) {
     final parentContext = context;
+    final parkingBloc = context.read<ParkingBloc>();
     _isParkingDialogShowing = true;
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      barrierDismissible: false, // Prevent dismissing by tapping outside
-      builder: (_) => PopScope(
-        canPop: false, // Prevent back button dismiss
-        child: AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            children: [
-              Icon(Icons.local_parking, color: const Color(0xFF7FAC58)),
-              const SizedBox(width: 8),
-              const Text("Parking Detected"),
-            ],
-          ),
-          content: const Text(
-            "It looks like you might be parked. Would you like to start tracking your parking time?",
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                _isParkingDialogShowing = false;
-                Navigator.of(parentContext).pop();
-                // Revert to Driving state
-                final parkingBloc = parentContext.read<ParkingBloc>();
-                parkingBloc.add(const RevertToDriving());
-              },
-              child: Text(
-                "No",
-                style: TextStyle(color: Colors.grey.shade600),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                _isParkingDialogShowing = false;
-                Navigator.of(parentContext).pop();
-                parentContext.read<ParkingBloc>().add(const UserConfirmedParking());
+      isDismissible: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ParkingDetectedBottomSheet(
+        onConfirm: (selectedMinutes) {
+          _isParkingDialogShowing = false;
+          Navigator.of(parentContext).pop();
+          parkingBloc.add(const UserConfirmedParking());
 
-                // Start the timer
-                parentContext.read<TimerBloc>().add(const StartTimer());
+          // Start the timer with optional duration
+          if (selectedMinutes != null) {
+            parentContext.read<TimerBloc>().add(UpdateRestrictionDuration(selectedMinutes));
+          }
+          parentContext.read<TimerBloc>().add(const StartTimer());
 
-                // Navigate to timer screen
-                parentContext.read<NavigationCubit>().setIndex(2);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF7FAC58),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text("Yes, Start Timer"),
-            ),
-          ],
-        ),
+          // Navigate to timer screen
+          parentContext.read<NavigationCubit>().setIndex(2);
+        },
+        onCancel: () {
+          _isParkingDialogShowing = false;
+          Navigator.of(parentContext).pop();
+          // Revert to Driving state
+          parkingBloc.add(const RevertToDriving());
+        },
       ),
     ).then((_) {
-      // Reset flag if dialog is dismissed by other means
+      // Handle dismissal by swipe down (or any other dismissal method)
       _isParkingDialogShowing = false;
+      // Revert to Driving state if dialog was dismissed without confirming
+      if (parkingBloc.state is ParkingDetected) {
+        parkingBloc.add(const RevertToDriving());
+      }
     });
   }
 }
