@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:lottie/lottie.dart';
 import '../pin/pin_model.dart';
 import '../../../services/mock_parking_service.dart';
 
@@ -251,19 +252,18 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
                               ),
                               if (restrictions.isNotEmpty)
                                 Container(
-                                  margin: const EdgeInsets.only(left: 2, top: 2), // Reduced margins
-                                  width: 20,
-                                  height: 20,
-                                  decoration: const BoxDecoration(
+                                  margin: const EdgeInsets.only(left: 4, top: 2),
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
                                     color: primaryGreen,
-                                    shape: BoxShape.circle,
+                                    borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Center(
                                     child: Text(
-                                      '${currentRestrictionIndex + 1}',
+                                      '${currentRestrictionIndex + 1}/${restrictions.length}',
                                       style: const TextStyle(
                                         color: Colors.white,
-                                        fontSize: 11,
+                                        fontSize: 10,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -307,122 +307,119 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
                           Expanded(
                             child: Text(
                               widget.description ?? 'Parking Location',
-                              style: const TextStyle(fontSize: 16),
+                              style: const TextStyle(fontSize: 14),
                             ),
                           ),
                         ],
                       ),
 
-                      const SizedBox(height: 16),
-
-                      // Restriction count badge - CENTERED
-                      if (restrictions.isNotEmpty)
-                        Center(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: primaryGreen,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.calendar_today,
-                                  size: 16,
-                                  color: Colors.white,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  '${restrictions.length} Restriction${restrictions.length > 1 ? 's' : ''}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
                       const SizedBox(height: 20),
 
-                      // Information blocks - improved proportions
+                      // Information blocks - NEW LAYOUT WITH RESTRICTION BADGE
                       if (restriction != null) ...[
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Hours block - wider and flexible height
-                            Expanded(
-                              flex: 3,
-                              child: Container(
-                                constraints: const BoxConstraints(
-                                  minHeight: 160, 
-                                  maxHeight: 200, 
-                                ),
-                                padding: const EdgeInsets.all(18),
-                                decoration: BoxDecoration(
-                                  color: lightGreen,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  mainAxisSize: MainAxisSize.min, // Important: minimize size
-                                  children: [
-                                    const Text(
-                                      'Hour',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.black54,
+                        IntrinsicHeight(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // Hours block - LEFT SIDE (matches right column height)
+                              Expanded(
+                                flex: 3,
+                                child: Container(
+                                  padding: const EdgeInsets.all(18),
+                                  decoration: BoxDecoration(
+                                    color: lightGreen,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      const Text(
+                                        'Hour',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.black54,
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    const Icon(
-                                      Icons.access_time,
-                                      size: 22,
-                                      color: Colors.black54,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      restriction.formattedStartTime,
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
+                                      const SizedBox(height: 8),
+                                      SizedBox(
+                                        width: 32,
+                                        height: 32,
+                                        child: Lottie.asset(
+                                          'assets/Waiting.json',
+                                          fit: BoxFit.contain,
+                                        ),
                                       ),
-                                    ),
-                                    Container(
-                                      height: 2,
-                                      width: 25,
-                                      margin: const EdgeInsets.symmetric(vertical: 8),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black54,
-                                        borderRadius: BorderRadius.circular(1),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        restriction.formattedStartTime,
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
-                                    ),
-                                    Text(
-                                      restriction.formattedEndTime,
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
+                                      Container(
+                                        height: 2,
+                                        width: 25,
+                                        margin: const EdgeInsets.symmetric(vertical: 8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black54,
+                                          borderRadius: BorderRadius.circular(1),
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                      Text(
+                                        restriction.formattedEndTime,
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
+                              const SizedBox(width: 12),
 
-                            // Right column - FIXED layout cascade issue
-                            Expanded(
-                              flex: 2,
-                              child: IntrinsicHeight( // CRITICAL: This fixes the layout cascade
+                              // Right column - RESTRICTION BADGE + MAX STAY + OCCUPANCY
+                              Expanded(
+                                flex: 2,
                                 child: Column(
                                   children: [
-                                    // Max stay block - Safe fixed approach
-                                    Flexible(
-                                      fit: FlexFit.tight,
+                                    // Restriction count badge at top
+                                    if (restrictions.isNotEmpty)
+                                      Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        decoration: BoxDecoration(
+                                          color: primaryGreen,
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            const Icon(
+                                              Icons.calendar_today,
+                                              size: 14,
+                                              color: Colors.white,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              '${restrictions.length} Restriction${restrictions.length > 1 ? 's' : ''}',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    const SizedBox(height: 8),
+
+                                    // Max stay block
+                                    Expanded(
                                       child: Container(
                                         width: double.infinity,
                                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -433,7 +430,6 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
                                         child: Column(
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           crossAxisAlignment: CrossAxisAlignment.center,
-                                          mainAxisSize: MainAxisSize.min,
                                           children: [
                                             const Text(
                                               'Max stay',
@@ -444,7 +440,7 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
                                               ),
                                               maxLines: 1,
                                             ),
-                                            const SizedBox(height: 2),
+                                            const SizedBox(height: 4),
                                             FittedBox(
                                               fit: BoxFit.scaleDown,
                                               child: Text(
@@ -469,9 +465,8 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
                                     ),
                                     const SizedBox(height: 8),
 
-                                    // Occupancy block - Safe fixed approach
-                                    Flexible(
-                                      fit: FlexFit.tight,
+                                    // Occupancy block
+                                    Expanded(
                                       child: Container(
                                         width: double.infinity,
                                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -482,7 +477,6 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
                                         child: Column(
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           crossAxisAlignment: CrossAxisAlignment.center,
-                                          mainAxisSize: MainAxisSize.min,
                                           children: [
                                             const Text(
                                               'Occupacy',
@@ -493,7 +487,7 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
                                               ),
                                               maxLines: 1,
                                             ),
-                                            const SizedBox(height: 2),
+                                            const SizedBox(height: 4),
                                             FittedBox(
                                               fit: BoxFit.scaleDown,
                                               child: Text(
@@ -521,8 +515,8 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
                                   ],
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
 
                         const SizedBox(height: 24),
