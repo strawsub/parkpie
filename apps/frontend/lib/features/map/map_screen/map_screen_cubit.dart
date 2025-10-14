@@ -127,4 +127,11 @@ class MapScreenCubit extends Cubit<MapScreenState> {
   }) {
     emit(newState.copyWith(commands: commands));
   }
+
+  void storeFilter(FilterConfig config) {
+    emit(state.copyWith(
+      lastFilterConfig: config,
+      filterActive: true,
+    ));
+  }
 }

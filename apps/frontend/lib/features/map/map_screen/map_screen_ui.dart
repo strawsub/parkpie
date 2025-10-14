@@ -238,7 +238,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
               IconButton(
                 icon: Icon(
                   Icons.filter_list,
-                  color: mapState.filterActive ? Colors.blue : null,
+                  color: mapState.filterActive ? Color(0xFF7FAC58) : null,
                 ),
                 tooltip: 'Filter parking spots',
                 onPressed: () => _openFilterSheet(context),
@@ -398,7 +398,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
       }
 
       if (result is FilterConfig) {
-        await mapCubit.applyFilterWithSearch(result);
+        mapCubit.storeFilter(result);
       }
     } finally {
       if (mounted) {

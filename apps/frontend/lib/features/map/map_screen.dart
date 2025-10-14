@@ -29,7 +29,7 @@ import 'package:lottie/lottie.dart' as lottie;
 part 'map_screen/map_screen_state_fields.dart';
 part 'map_screen/map_screen_area.dart';
 part 'map_screen/map_screen_filter.dart';
-part 'map_screen/map_screen_map.dart';
+part 'map_screen/map_screen_cubit.dart';
 part 'map_screen/map_screen_search.dart';
 part 'map_screen/map_screen_ui.dart';
 
