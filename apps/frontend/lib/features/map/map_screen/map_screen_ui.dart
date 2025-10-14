@@ -298,13 +298,14 @@ class _MapScreenViewState extends State<_MapScreenView> {
             backgroundColor: Colors.orange,
             onPressed: () {
               // Trigger the parking detection event to show the popup
-              context.read<ParkingBloc>().add(const TriggerTestParkingDetection());
+              context.read<ParkingBloc>().add(
+                const TriggerTestParkingDetection(),
+              );
             },
             tooltip: 'Test Parking Popup',
             child: const Icon(Icons.local_parking),
           ),
 
-      
           const SizedBox(height: 12),
           FloatingActionButton(
             heroTag: 'debugFab',
@@ -417,15 +418,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
       useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => ParkingInfoSheet(
-        location: location,
-        id: pin.id,
-        occupancyPercent: pin.occupancyPercent,
-        startTime: pin.startTime,
-        endTime: pin.endTime,
-        maximumStayMinutes: pin.maximumStayMinutes,
-        description: pin.description,
-      ),
+      builder: (context) => ParkingInfoSheet(pin: pin),
     );
   }
 
