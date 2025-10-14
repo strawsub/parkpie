@@ -97,7 +97,7 @@ class _ParkingDetectedBottomSheetState extends State<ParkingDetectedBottomSheet>
 
           // Description
           Text(
-            'Select a time limit to count down or ignore to count up',
+            'Select a time limit or ignore to use the nearest restriction',
             style: TextStyle(
               fontSize: 11,
               color: Colors.grey.shade600,
@@ -109,11 +109,11 @@ class _ParkingDetectedBottomSheetState extends State<ParkingDetectedBottomSheet>
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildDurationBadge('15 mins', 15),
-              const SizedBox(width: 12),
               _buildDurationBadge('30 mins', 30),
               const SizedBox(width: 12),
               _buildDurationBadge('60 mins', 60),
+              const SizedBox(width: 12),
+              _buildDurationBadge('120 mins', 120),
             ],
           ),
           const SizedBox(height: 32),

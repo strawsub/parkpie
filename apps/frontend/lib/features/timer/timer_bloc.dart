@@ -1,16 +1,28 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:frontend/services/api_config.dart';
 import 'timer_event.dart';
 import 'timer_state.dart';
 import 'timer_storage.dart';
+import 'package:frontend/services/timer_service.dart';
+import 'package:frontend/features/gps_correction/location_cubit.dart';
+import 'package:geolocator/geolocator.dart';
 
 class TimerBloc extends Bloc<TimerEvent, TimerState> {
   final TimerStorage _storage;
+  final TimerService _timerService;
+  final LocationCubit _locationCubit;
   Timer? _ticker;
 
-  TimerBloc({TimerStorage? storage})
-    : _storage = storage ?? TimerStorage(),
-      super(const TimerInitial()) {
+  TimerBloc({
+    TimerStorage? storage,
+    TimerService? timerService,
+    required LocationCubit locationCubit,
+  }) : _storage = storage ?? TimerStorage(),
+       _timerService =
+           timerService ?? TimerService(backendBaseUrl: resolveApiBaseUrl()),
+       _locationCubit = locationCubit,
+       super(const TimerInitial()) {
     on<LoadTimer>(_onLoadTimer);
     on<StartTimer>(_onStartTimer);
     on<StopTimer>(_onStopTimer);
@@ -71,11 +83,44 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
   Future<void> _onStartTimer(StartTimer event, Emitter<TimerState> emit) async {
     final startTime = DateTime.now();
 
+    // Save local info first
     await _storage.saveStartTime(startTime);
     await _storage.saveIsRunning(true);
     await _storage.saveZoneInfo(event.zoneNumber, event.zoneName);
 
-    final restrictionMinutes = await _storage.getRestrictionDuration();
+    int? restrictionMinutes;
+
+    try {
+      double latitude;
+      double longitude;
+
+      final filteredPosition = _locationCubit.state.filteredPosition;
+      if (filteredPosition != null && filteredPosition.length >= 2) {
+        latitude = filteredPosition[0];
+        longitude = filteredPosition[1];
+      } else {
+        // Fallback to raw GPS hardware
+        final position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.best,
+          ),
+        );
+        latitude = position.latitude;
+        longitude = position.longitude;
+      }
+
+      restrictionMinutes = await _timerService.fetchRestrictionDuration(
+        lat: latitude,
+        lng: longitude,
+        startTime: startTime,
+      );
+
+      restrictionMinutes ??= await _storage.getRestrictionDuration();
+    } catch (e) {
+      restrictionMinutes = await _storage.getRestrictionDuration();
+    }
+
+    await _storage.saveRestrictionDuration(restrictionMinutes!);
 
     emit(
       TimerRunning(

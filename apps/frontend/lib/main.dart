@@ -55,9 +55,8 @@ class ParkPieApp extends StatelessWidget {
         BlocProvider(create: (_) => FilterTriggerCubit()),
         BlocProvider(create: (_) => LocationCubit()),
         BlocProvider(
-          create: (context) => CameraBloc(
-            locationCubit: context.read<LocationCubit>(),
-          ),
+          create: (context) =>
+              CameraBloc(locationCubit: context.read<LocationCubit>()),
         ),
         BlocProvider(create: (_) => PinCubit()..loadPins()),
         BlocProvider<SearchCubit>(create: (context) => SearchCubit()),
@@ -66,7 +65,11 @@ class ParkPieApp extends StatelessWidget {
         BlocProvider<BluetoothBloc>.value(value: bluetoothBloc),
         BlocProvider<GpsSpeedBloc>.value(value: gpsSpeedBloc),
         BlocProvider<ParkingBloc>.value(value: parkingBloc),
-        BlocProvider(create: (_) => TimerBloc()..add(const LoadTimer())),
+        BlocProvider(
+          create: (context) => TimerBloc(
+            locationCubit: context.read<LocationCubit>(),
+          )..add(const LoadTimer()),
+        ),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -139,7 +142,8 @@ class _HomeContainerState extends State<HomeContainer> {
                     right: 0,
                     child: BottomNavBar(
                       currentIndex: selectedIndex,
-                      onTap: (index) => _handleNavTap(context, index, selectedIndex),
+                      onTap: (index) =>
+                          _handleNavTap(context, index, selectedIndex),
                     ),
                   ),
               ],
@@ -168,7 +172,9 @@ class _HomeContainerState extends State<HomeContainer> {
 
           // Start the timer with optional duration
           if (selectedMinutes != null) {
-            parentContext.read<TimerBloc>().add(UpdateRestrictionDuration(selectedMinutes));
+            parentContext.read<TimerBloc>().add(
+              UpdateRestrictionDuration(selectedMinutes),
+            );
           }
           parentContext.read<TimerBloc>().add(const StartTimer());
 
