@@ -48,6 +48,7 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
     on<ResetParking>(_onResetParking);
     on<RevertToDriving>(_onRevertToDriving);
     on<CandidateProgressTick>(_onCandidateProgressTick);
+    on<TriggerTestParkingDetection>(_onTriggerTestParkingDetection);
 
     _initializeSensorListeners();
   }
@@ -415,6 +416,19 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
 
     // Revert to Driving state (don't reset sensor blocs)
     emit(Driving(
+      sensorVotes: state.sensorVotes,
+      drivingVotes: state.drivingVotes,
+      parkedVotes: state.parkedVotes,
+    ));
+  }
+
+  // TEST EVENT HANDLER: Directly trigger ParkingDetected state for UI testing
+  void _onTriggerTestParkingDetection(
+      TriggerTestParkingDetection event,
+      Emitter<ParkingState> emit,
+      ) {
+    // Emit ParkingDetected state to trigger the popup dialog
+    emit(ParkingDetected(
       sensorVotes: state.sensorVotes,
       drivingVotes: state.drivingVotes,
       parkedVotes: state.parkedVotes,
