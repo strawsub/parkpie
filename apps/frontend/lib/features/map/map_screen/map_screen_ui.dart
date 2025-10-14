@@ -290,6 +290,22 @@ class _MapScreenViewState extends State<_MapScreenView> {
             label: const Text('Reload'),
           ),
           const SizedBox(height: 12),
+
+          // TEST BUTTON: Trigger parking detection popup
+          FloatingActionButton(
+            heroTag: 'testParkingFab',
+            mini: true,
+            backgroundColor: Colors.orange,
+            onPressed: () {
+              // Trigger the parking detection event to show the popup
+              context.read<ParkingBloc>().add(const TriggerTestParkingDetection());
+            },
+            tooltip: 'Test Parking Popup',
+            child: const Icon(Icons.local_parking),
+          ),
+
+      
+          const SizedBox(height: 12),
           FloatingActionButton(
             heroTag: 'debugFab',
             mini: true,
