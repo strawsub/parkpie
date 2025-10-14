@@ -209,7 +209,10 @@ public class APIDatabaseService {
                         ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography,
                         ?
                     )
-                    AND ps.day_of_week = ?
+                    AND (
+                        ps.day_of_week = ?
+                        OR (ps.day_of_week = ? AND ps.end_time < ps.start_time)
+                    )
                 """);
 
         LocalDate filterDate = LocalDate.now();
@@ -219,7 +222,10 @@ public class APIDatabaseService {
             } catch (DateTimeParseException ignored) {
             }
         }
-        int dowNo = filterDate.getDayOfWeek().getValue();
+
+        // 1..7 (Mon..Sun)
+        int dowNo   = filterDate.getDayOfWeek().getValue();
+        int prevDow = (dowNo == 1) ? 7 : (dowNo - 1);
 
         List<Object> params = new ArrayList<>();
         // PostGIS: ST_MakePoint(lng, lat)
@@ -227,31 +233,83 @@ public class APIDatabaseService {
         params.add(lng); params.add(lat);
         params.add(radius);
         params.add(dowNo);
+        params.add(prevDow);
 
-        if (duration != null) {
-            sql.append(" AND (ps.maximum_stay_minutes IS NULL OR ps.maximum_stay_minutes = 0 OR ps.maximum_stay_minutes >= ?) ");
-            params.add(duration);
-        }
-
-        if (restrictionTime != null && !restrictionTime.isBlank()) {
+        // Enforce duration only when inside the active window.
+        // If duration exceeds remaining time to end_time, IGNORE duration (allow row).
+        if (restrictionTime != null && !restrictionTime.isBlank() && duration != null) {
             sql.append("""
                 AND (
                     ps.start_time IS NULL
-                    OR ps.end_time IS NULL
-                    OR (
-                        (ps.end_time >= ps.start_time AND ?::time BETWEEN ps.start_time AND ps.end_time)
-                        OR
-                        (ps.end_time < ps.start_time AND (?::time >= ps.start_time OR ?::time <= ps.end_time))
-                    )
+                    OR ps.end_time   IS NULL
+                    OR CASE
+                        -- Same-day window (e.g., 08:00 -> 19:30). Use exclusive upper bound.
+                        WHEN ps.end_time >= ps.start_time THEN
+                            CASE
+                                WHEN (?::time >= ps.start_time AND ?::time < ps.end_time) THEN
+                                    CASE
+                                        -- If duration is longer than what's left until end_time => ignore duration (TRUE)
+                                        WHEN ? > EXTRACT(EPOCH FROM (ps.end_time - ?::time))/60
+                                            THEN TRUE
+                                        ELSE
+                                            (ps.maximum_stay_minutes IS NULL OR ps.maximum_stay_minutes = 0 OR ps.maximum_stay_minutes >= ?)
+                                    END
+                                ELSE TRUE
+                            END
+                        -- Overnight window (e.g., 18:00 -> 06:00 next day)
+                        ELSE
+                            CASE
+                                WHEN (?::time >= ps.start_time OR ?::time < ps.end_time) THEN
+                                    CASE
+                                        -- Branch A: time >= start_time (evening before midnight)
+                                        WHEN ?::time >= ps.start_time THEN
+                                            CASE
+                                                -- Remaining = (24h - (t - start)) + (end - 00:00)
+                                                WHEN ? > EXTRACT(EPOCH FROM ((interval '24 hours' - (?::time - ps.start_time)) + (ps.end_time - time '00:00')))/60
+                                                    THEN TRUE
+                                                ELSE
+                                                    (ps.maximum_stay_minutes IS NULL OR ps.maximum_stay_minutes = 0 OR ps.maximum_stay_minutes >= ?)
+                                            END
+                                        -- Branch B: time < end_time (after midnight, early morning)
+                                        ELSE
+                                            CASE
+                                                WHEN ? > EXTRACT(EPOCH FROM (ps.end_time - ?::time))/60
+                                                    THEN TRUE
+                                                ELSE
+                                                    (ps.maximum_stay_minutes IS NULL OR ps.maximum_stay_minutes = 0 OR ps.maximum_stay_minutes >= ?)
+                                            END
+                                    END
+                                ELSE TRUE
+                            END
+                    END
                 )
-                """);
-            params.add(restrictionTime);
-            params.add(restrictionTime);
-            params.add(restrictionTime);
+            """);
+
+            // ---- Parameter order for the big CASE above ----
+            // Same-day window check
+            params.add(restrictionTime); // t >= start
+            params.add(restrictionTime); // t < end
+            params.add(duration);        // duration >
+            params.add(restrictionTime); // end - t
+            params.add(duration);        // msm >= duration
+
+            // Overnight: in-window check
+            params.add(restrictionTime); // t >= start
+            params.add(restrictionTime); // t < end
+            params.add(restrictionTime); // branch test: t >= start
+
+            // Overnight, Branch A (t >= start)
+            params.add(duration);        // duration >
+            params.add(restrictionTime); // (t - start)
+            params.add(duration);        // msm >= duration
+
+            // Overnight, Branch B (t < end)
+            params.add(duration);        // duration >
+            params.add(restrictionTime); // end - t
+            params.add(duration);        // msm >= duration
         }
 
         sql.append(" ORDER BY distance ASC ");
-
         return jdbc.queryForList(sql.toString(), params.toArray());
     }
 
