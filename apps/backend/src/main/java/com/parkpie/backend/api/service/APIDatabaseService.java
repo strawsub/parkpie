@@ -522,10 +522,11 @@ public class APIDatabaseService {
 
             String type = String.valueOf(geom.get("type"));
             String segId = firstNonNull(
-                    asString(props, "seg_id"),
-                    asString(props, "segment_id"),
-                    asString(props, "id"),
-                    "seg_" + (fallbackIdx++)
+                asString(props, "segid"),
+                asString(props, "seg_id"),
+                asString(props, "segment_id"),
+                asString(props, "id"),
+                "seg_" + (fallbackIdx++)
             );
 
             Object coordsObj = geom.get("coordinates");
@@ -584,7 +585,7 @@ public class APIDatabaseService {
         List<Map<String, Object>> result = new ArrayList<>(counts.size());
         for (Map.Entry<String, Integer> e : counts.entrySet()) {
             Map<String, Object> m = new HashMap<>();
-            m.put("seg_id", e.getKey());
+            m.put("segid", e.getKey());
             m.put("count", e.getValue());
             result.add(m);
         }
