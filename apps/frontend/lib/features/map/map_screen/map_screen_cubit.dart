@@ -3,14 +3,39 @@ part of 'package:frontend/features/map/map_screen.dart';
 class MapScreenCubit extends Cubit<MapScreenState> {
   MapScreenCubit() : super(MapScreenState.initial());
 
+  final SegmentService _segmentService = SegmentService();
+
+  bool showSegments = true;
   final Map<int, BitmapDescriptor> _clusterIconCache = {};
   Completer<LatLng?>? _pickCompleter;
   List<Pin> _latestPins = const [];
 
-  void initialize() {
+  Future<void> initialize() async {
     _preloadClusterIcons();
     _loadAreasFromApi();
+    await _segmentService.loadSegments('assets/road_segment.geojson');
+    await _segmentService.loadCountsFromApi();
+    _rebuildMarkers();
   }
+
+  void toggleSegments() {
+    showSegments = !showSegments;
+    _rebuildMarkers();
+  }
+
+  void _rebuildMarkers() {
+    final base = _prepareMarkers(_latestPins);
+    final merged = _mergeWithSearch(base);
+
+    emit(state.copyWith(
+      markers: merged,
+      segmentPolygons: (showSegments && state.renderZoom >= state.pinZoomThreshold)
+          ? _segmentService.buildPolygons()
+          : {},
+    ));
+  }
+
+
 
   void clearCommands() {
     if (state.commands.isEmpty) return;
@@ -87,11 +112,6 @@ class MapScreenCubit extends Cubit<MapScreenState> {
     _emitState(state.copyWith(isFilterOpen: false));
   }
 
-  void _rebuildMarkers() {
-    final base = _prepareMarkers(_latestPins);
-    final merged = _mergeWithSearch(base);
-    _emitState(state.copyWith(markers: merged));
-  }
 
   void _animateCamera(LatLng target, {double? zoom, bool animate = true}) {
     final nextState = state.copyWith(

@@ -57,6 +57,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
             return BlocBuilder<MapScreenCubit, MapScreenState>(
               buildWhen: (previous, current) =>
                   previous.markers != current.markers ||
+                  previous.segmentPolygons != current.segmentPolygons ||
                   previous.areaPolygons != current.areaPolygons ||
                   previous.filterActive != current.filterActive ||
                   previous.searchMarker != current.searchMarker ||
@@ -188,7 +189,11 @@ class _MapScreenViewState extends State<_MapScreenView> {
       compassEnabled: true,
       mapToolbarEnabled: false,
       minMaxZoomPreference: const MinMaxZoomPreference(2.0, 20.0),
-      polygons: mapState.areaPolygons,
+      polygons: {
+        ...mapState.areaPolygons,
+        if (cubit.showSegments) ...mapState.segmentPolygons,
+
+      },
       padding: EdgeInsets.only(
         bottom: 86 + MediaQuery.of(context).padding.bottom,
       ),

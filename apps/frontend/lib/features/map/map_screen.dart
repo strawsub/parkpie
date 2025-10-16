@@ -24,6 +24,7 @@ import 'package:frontend/features/parking_status_detection/parking_status_bloc.d
 import 'package:frontend/features/parking_status_detection/parking_status_event.dart';
 import 'package:frontend/features/timer/timer_bloc.dart';
 import 'package:frontend/features/timer/timer_state.dart' as timer;
+import 'package:frontend/services/segment_service.dart';
 import 'package:lottie/lottie.dart' as lottie;
 
 part 'map_screen/map_screen_state_fields.dart';

@@ -39,6 +39,7 @@ class MapScreenDismissFilterSheetCommand extends MapScreenCommand {
 
 class MapScreenState {
   final Set<Marker> markers;
+  final Set<Polygon> segmentPolygons;
   final Set<Marker> filteredRawMarkers;
   final Set<Polygon> areaPolygons;
   final List<AreaRect> areas;
@@ -64,6 +65,7 @@ class MapScreenState {
 
   const MapScreenState({
     required this.markers,
+    required this.segmentPolygons,
     required this.filteredRawMarkers,
     required this.areaPolygons,
     required this.areas,
@@ -90,6 +92,7 @@ class MapScreenState {
 
   factory MapScreenState.initial() => MapScreenState(
     markers: {},
+    segmentPolygons: {},
     filteredRawMarkers: {},
     areaPolygons: {},
     areas: const [],
@@ -117,6 +120,7 @@ class MapScreenState {
   MapScreenState copyWith({
     Set<Marker>? markers,
     Set<Marker>? filteredRawMarkers,
+    Set<Polygon>? segmentPolygons,
     Set<Polygon>? areaPolygons,
     List<AreaRect>? areas,
     Marker? searchMarker,
@@ -146,6 +150,7 @@ class MapScreenState {
   }) {
     return MapScreenState(
       markers: markers ?? this.markers,
+      segmentPolygons: segmentPolygons ?? this.segmentPolygons,
       filteredRawMarkers: filteredRawMarkers ?? this.filteredRawMarkers,
       areaPolygons: areaPolygons ?? this.areaPolygons,
       areas: areas ?? this.areas,
