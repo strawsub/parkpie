@@ -34,8 +34,7 @@ abstract class TimerState extends Equatable {
 }
 
 class TimerInitial extends TimerState {
-  const TimerInitial({int restrictionDurationMinutes = 0})
-      : super(restrictionDurationMinutes: restrictionDurationMinutes);
+  const TimerInitial({super.restrictionDurationMinutes});
 
   @override
   TimerInitial copyWith({
@@ -54,18 +53,12 @@ class TimerInitial extends TimerState {
 
 class TimerRunning extends TimerState {
   const TimerRunning({
-    required Duration elapsed,
-    required DateTime startTime,
-    int? zoneNumber,
-    String? zoneName,
-    int restrictionDurationMinutes = 0,
-  }) : super(
-          elapsed: elapsed,
-          startTime: startTime,
-          zoneNumber: zoneNumber,
-          zoneName: zoneName,
-          restrictionDurationMinutes: restrictionDurationMinutes,
-        );
+    required super.elapsed,
+    required DateTime super.startTime,
+    super.zoneNumber,
+    super.zoneName,
+    super.restrictionDurationMinutes,
+  });
 
   @override
   TimerRunning copyWith({
@@ -88,18 +81,12 @@ class TimerRunning extends TimerState {
 
 class TimerStopped extends TimerState {
   const TimerStopped({
-    required Duration elapsed,
-    DateTime? startTime, // include startTime to match TimerState
-    int? zoneNumber,
-    String? zoneName,
-    int restrictionDurationMinutes = 0,
-  }) : super(
-          elapsed: elapsed,
-          startTime: startTime,
-          zoneNumber: zoneNumber,
-          zoneName: zoneName,
-          restrictionDurationMinutes: restrictionDurationMinutes,
-        );
+    required super.elapsed,
+    super.startTime, // include startTime to match TimerState
+    super.zoneNumber,
+    super.zoneName,
+    super.restrictionDurationMinutes,
+  });
 
   @override
   TimerStopped copyWith({

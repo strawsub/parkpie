@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 
 class TimerService {
   final String backendBaseUrl;
@@ -63,7 +64,7 @@ class TimerService {
       }
       return null;
     } catch (e) {
-      print('Error creating session: $e');
+      debugPrint('Error creating session: $e');
       return null;
     }
   }
