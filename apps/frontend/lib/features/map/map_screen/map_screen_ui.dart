@@ -405,6 +405,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
 
       if (result is FilterConfig) {
         mapCubit.storeFilter(result);
+        mapCubit.applyFilterWithSearch(result);
       }
     } finally {
       if (mounted) {
