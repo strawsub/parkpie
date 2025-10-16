@@ -7,21 +7,26 @@ import 'timer_storage.dart';
 import 'package:frontend/services/timer_service.dart';
 import 'package:frontend/features/gps_correction/location_cubit.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:frontend/services/notification_service.dart';
 
 class TimerBloc extends Bloc<TimerEvent, TimerState> {
   final TimerStorage _storage;
   final TimerService _timerService;
   final LocationCubit _locationCubit;
+  final NotificationService _notificationService;
   Timer? _ticker;
+  bool _notificationSent = false;
 
   TimerBloc({
     TimerStorage? storage,
     TimerService? timerService,
     required LocationCubit locationCubit,
+    NotificationService? notificationService,
   }) : _storage = storage ?? TimerStorage(),
        _timerService =
            timerService ?? TimerService(backendBaseUrl: resolveApiBaseUrl()),
        _locationCubit = locationCubit,
+       _notificationService = notificationService ?? NotificationService(),
        super(const TimerInitial()) {
     on<LoadTimer>(_onLoadTimer);
     on<StartTimer>(_onStartTimer);
@@ -29,6 +34,9 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     on<ResetTimer>(_onResetTimer);
     on<TimerTick>(_onTimerTick);
     on<UpdateRestrictionDuration>(_onUpdateRestrictionDuration);
+    
+    // Initialize notification service
+    _notificationService.initialize();
   }
 
   @override
@@ -46,6 +54,17 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
 
     // Emit updated state with new restriction duration
     emit(state.copyWith(restrictionDurationMinutes: event.durationMinutes));
+    
+    // Reschedule notification if timer is running
+    if (state is TimerRunning) {
+      final currentState = state as TimerRunning;
+      _scheduleNotification(
+        currentState.startTime!,
+        event.durationMinutes,
+        currentState.zoneName,
+        currentState.zoneNumber,
+      );
+    }
   }
 
   Future<void> _onLoadTimer(LoadTimer event, Emitter<TimerState> emit) async {
@@ -77,23 +96,32 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
       ),
     );
 
+    // Schedule notification for remaining time
+    _scheduleNotification(
+      startTime,
+      restrictionMinutes,
+      zoneInfo['zoneName'] as String?,
+      zoneInfo['zoneNumber'] as int?,
+    );
+
     _startTicker();
   }
 
   Future<void> _onStartTimer(StartTimer event, Emitter<TimerState> emit) async {
     final startTime = DateTime.now();
+    _notificationSent = false;
 
     // Save local info first
     await _storage.saveStartTime(startTime);
     await _storage.saveIsRunning(true);
     await _storage.saveZoneInfo(event.zoneNumber, event.zoneName);
 
+    double latitude;
+    double longitude;
     int? restrictionMinutes;
 
     try {
-      double latitude;
-      double longitude;
-
+      // Get location
       final filteredPosition = _locationCubit.state.filteredPosition;
       if (filteredPosition != null && filteredPosition.length >= 2) {
         latitude = filteredPosition[0];
@@ -109,6 +137,22 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
         longitude = position.longitude;
       }
 
+      // Create parking session in database
+      final session = await _timerService.createSession(
+        lat: latitude,
+        lng: longitude,
+        startTime: startTime,
+      );
+
+      if (session != null) {
+        // Save session ID locally
+        await _storage.saveSessionId(session.sessionId);
+        print('Session created: ID ${session.sessionId}');
+      } else {
+        print('Failed to create session in database');
+      }
+
+      // Fetch restriction duration
       restrictionMinutes = await _timerService.fetchRestrictionDuration(
         lat: latitude,
         lng: longitude,
@@ -117,10 +161,11 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
 
       restrictionMinutes ??= await _storage.getRestrictionDuration();
     } catch (e) {
+      print('Error in _onStartTimer: $e');
       restrictionMinutes = await _storage.getRestrictionDuration();
     }
 
-    await _storage.saveRestrictionDuration(restrictionMinutes!);
+    await _storage.saveRestrictionDuration(restrictionMinutes);
 
     emit(
       TimerRunning(
@@ -132,6 +177,14 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
       ),
     );
 
+    // Schedule notification
+    _scheduleNotification(
+      startTime,
+      restrictionMinutes,
+      event.zoneName,
+      event.zoneNumber,
+    );
+
     _startTicker();
   }
 
@@ -140,6 +193,20 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     _ticker = null;
 
     await _storage.saveIsRunning(false);
+    
+    // Cancel scheduled notification
+    await _notificationService.cancelTimerNotification();
+
+    // Delete session from database
+    final sessionId = await _storage.getSessionId();
+    if (sessionId != null) {
+      final deleted = await _timerService.deleteSession(sessionId: sessionId);
+      if (deleted) {
+        print('Session deleted: ID $sessionId');
+      } else {
+        print('Failed to delete session: ID $sessionId');
+      }
+    }
 
     if (state is TimerRunning) {
       final currentState = state as TimerRunning;
@@ -158,7 +225,22 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     _ticker?.cancel();
     _ticker = null;
 
+    // Delete session from database before clearing storage
+    final sessionId = await _storage.getSessionId();
+    if (sessionId != null) {
+      final deleted = await _timerService.deleteSession(sessionId: sessionId);
+      if (deleted) {
+        print('Session deleted: ID $sessionId');
+      } else {
+        print('Failed to delete session: ID $sessionId');
+      }
+    }
+
     await _storage.clear();
+    
+    // Cancel all notifications
+    await _notificationService.cancelTimerNotification();
+    _notificationSent = false;
 
     emit(const TimerInitial());
   }
@@ -177,6 +259,14 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
           restrictionDurationMinutes: currentState.restrictionDurationMinutes,
         ),
       );
+
+      // Check if timer has expired and send immediate notification
+      _checkAndSendExpiredNotification(
+        elapsed,
+        currentState.restrictionDurationMinutes,
+        currentState.zoneName,
+        currentState.zoneNumber,
+      );
     }
   }
 
@@ -186,5 +276,53 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
       const Duration(seconds: 1),
       (_) => add(const TimerTick()),
     );
+  }
+
+  void _scheduleNotification(
+    DateTime startTime,
+    int restrictionMinutes,
+    String? zoneName,
+    int? zoneNumber,
+  ) {
+    final expiryTime = startTime.add(Duration(minutes: restrictionMinutes));
+    
+    _notificationService.scheduleTimerExpiredNotification(
+      expiryTime: expiryTime,
+      zoneName: zoneName,
+      zoneNumber: zoneNumber,
+    );
+  }
+
+  void _checkAndSendExpiredNotification(
+    Duration elapsed,
+    int restrictionMinutes,
+    String? zoneName,
+    int? zoneNumber,
+  ) {
+    final remainingSeconds = (restrictionMinutes * 60) - elapsed.inSeconds;
+    
+    // If time has expired and notification hasn't been sent yet
+    if (remainingSeconds <= 0 && !_notificationSent) {
+      _notificationSent = true;
+      _notificationService.showImmediateNotification(
+        zoneName: zoneName,
+        zoneNumber: zoneNumber,
+      );
+      
+      // Also delete the session from database when timer expires
+      _deleteExpiredSession();
+    }
+  }
+
+  Future<void> _deleteExpiredSession() async {
+    final sessionId = await _storage.getSessionId();
+    if (sessionId != null) {
+      final deleted = await _timerService.deleteSession(sessionId: sessionId);
+      if (deleted) {
+        print('Expired session deleted: ID $sessionId');
+      } else {
+        print('Failed to delete expired session: ID $sessionId');
+      }
+    }
   }
 }

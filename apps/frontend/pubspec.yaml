@@ -35,42 +35,47 @@ dependencies:
   flutter_riverpod: ^3.0.0
   equatable: ^2.0.7
 
-  # for map
+  # map
   path_provider: ^2.1.5
   google_maps_flutter: ^2.13.1
   geocoding: ^4.0.0
 
-  # for image
+  # image
   flutter_svg: ^2.2.0
   cupertino_icons: ^1.0.8
 
-  # for camera
+  # camera
   camera: ^0.11.2
   image_picker: ^1.0.7
   permission_handler: ^12.0.1
   bloc: ^9.0.0
   flutter_bloc: ^9.1.1
 
-  # for string
+  # string
   flutter_localizations:
     sdk: flutter
 
-  # for image recognition
+  # image recognition
   google_generative_ai: ^0.4.7
 
-  # for sensors
+  # sensors
   sensors_plus: ^7.0.0
   
-  # for audio route detection
+  # audio route detection
   flutter_audio_output: ^0.0.4
 
-  # for gps
+  # gps
   geolocator: ^14.0.2
   shared_preferences: ^2.3.2
   crypto: ^3.0.3
 
-  # for animations
+  # animations
   lottie: ^3.1.2
+
+  # notifications
+  flutter_local_notifications: ^17.0.0
+  timezone: ^0.9.0
+
 
 dev_dependencies:
   flutter_test:
@@ -91,7 +96,7 @@ dev_dependencies:
 # The following section is specific to Flutter packages.
 flutter:
 
-  # for graphic
+  # graphic
   assets:
     - assets/
     - assets/road_segment.geojson
@@ -100,7 +105,7 @@ flutter:
 
   uses-material-design: true
 
-  # for string
+  # string
   generate: true
 
   # fonts
