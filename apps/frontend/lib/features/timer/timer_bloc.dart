@@ -277,4 +277,35 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
       (_) => add(const TimerTick()),
     );
   }
-}
+
+  void _scheduleNotification(
+    DateTime startTime,
+    int restrictionMinutes,
+    String? zoneName,
+    int? zoneNumber,
+  ) {
+    final expiryTime = startTime.add(Duration(minutes: restrictionMinutes));
+    
+    _notificationService.scheduleTimerExpiredNotification(
+      expiryTime: expiryTime,
+      zoneName: zoneName,
+      zoneNumber: zoneNumber,
+    );
+  }
+
+  void _checkAndSendExpiredNotification(
+    Duration elapsed,
+    int restrictionMinutes,
+    String? zoneName,
+    int? zoneNumber,
+  ) {
+    final remainingSeconds = (restrictionMinutes * 60) - elapsed.inSeconds;
+    
+    if (remainingSeconds <= 0 && !_notificationSent) {
+      _notificationSent = true;
+      _notificationService.showImmediateNotification(
+        zoneName: zoneName,
+        zoneNumber: zoneNumber,
+      );
+    }
+  }}
