@@ -31,12 +31,12 @@ class TimerScreen extends StatelessWidget {
                   const SizedBox(height: 16),
 
                   // Restriction Card always visible
-                  if (state is TimerRunning || state is TimerStopped)
+                  if (state is TimerRunning)
                     _buildRestrictionCard(context, state),
 
                   const SizedBox(height: 16),
 
-                  // Start/End buttons
+                  // Start/Reset buttons
                   _buildButtons(context, state),
                 ],
               ),
@@ -147,7 +147,6 @@ class TimerScreen extends StatelessWidget {
   }
 
   Widget _buildRestrictionCard(BuildContext context, TimerState state) {
-    // Dummy data for restriction (replace with API call later)
     final restrictionMinutes = state.restrictionDurationMinutes ?? 0;
     final restrictionDuration = Duration(minutes: restrictionMinutes);
 
@@ -172,11 +171,11 @@ class TimerScreen extends StatelessWidget {
         : '${remainingMinutes}m ${remainingSeconds}s';
 
     final backgroundColor = isOvertime
-        ? const Color(0x1AFF4757) // 0x1A = 26 in decimal (~10% opacity)
+        ? const Color(0x1AFF4757)
         : Colors.white;
 
     final borderColor = isOvertime
-        ? const Color(0x4DFF4757) // 0x4D = 77 in decimal (~30% opacity)
+        ? const Color(0x4DFF4757)
         : Color(0xFF7FAC58);
 
     final iconColor = isOvertime
@@ -364,7 +363,6 @@ class TimerScreen extends StatelessWidget {
 
   Widget _buildButtons(BuildContext context, TimerState state) {
     final isRunning = state is TimerRunning;
-    final isStopped = state is TimerStopped;
 
     return Row(
       children: [
@@ -383,21 +381,47 @@ class TimerScreen extends StatelessWidget {
         const SizedBox(width: 16),
         Expanded(
           child: _buildButton(
-            label: isStopped ? 'Reset' : 'End',
+            label: 'Reset',
             color: const Color(0xFFFF4757),
             textColor: Colors.white,
-            onPressed: (isRunning || isStopped)
+            onPressed: isRunning
                 ? () {
-                    if (isRunning) {
-                      context.read<TimerBloc>().add(const StopTimer());
-                    } else if (isStopped) {
-                      context.read<TimerBloc>().add(const ResetTimer());
-                    }
+                    _showResetConfirmation(context);
                   }
                 : null,
           ),
         ),
       ],
+    );
+  }
+
+  void _showResetConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Reset Timer?'),
+        content: const Text(
+          'This will stop the timer and delete your parking session.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              context.read<TimerBloc>().add(const ResetTimer());
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF4757),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Reset'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -425,66 +449,6 @@ class TimerScreen extends StatelessWidget {
           label,
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
-      ),
-    );
-  }
-
-  // ============================================================================
-  // TEST ZONE DIALOG - FOR DEVELOPMENT/TESTING ONLY
-  // ============================================================================
-  // This dialog allows manual testing of zone info display without needing
-  // to trigger actual parking detection (which requires driving around).
-  //
-  // 🗑️ TO REMOVE THIS TEST FEATURE:
-  // 1. Delete this entire _showStartDialog() method
-  // 2. In _buildButtons() above (line ~161), replace:
-  //    onPressed: isRunning ? null : () => _showStartDialog(context),
-  //    with:
-  //    onPressed: isRunning ? null : () {
-  //      context.read<TimerBloc>().add(const StartTimer());
-  //    },
-  //
-  // Once removed, the Start button will directly start the timer without
-  // showing the test zone dialog. Real zone info will only come from
-  // automatic parking detection (ParkingBloc in main.dart).
-  // ============================================================================
-  void _showStartDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Start Timer'),
-        content: const Text(
-          'Would you like to add test parking zone information?\n\n'
-          '(This simulates parking detection for testing)',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-              // Start without zone info
-              context.read<TimerBloc>().add(const StartTimer());
-            },
-            child: const Text('Start Without Zone'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-              // Start with test zone info
-              context.read<TimerBloc>().add(
-                const StartTimer(
-                  zoneNumber: -9999,
-                  zoneName: 'Test Zone - 2P (Mon-Fri 9AM-5PM)',
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF7FAC58),
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Start With Test Zone'),
-          ),
-        ],
       ),
     );
   }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:frontend/services/api_config.dart';
@@ -189,36 +190,9 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
   }
 
   Future<void> _onStopTimer(StopTimer event, Emitter<TimerState> emit) async {
-    _ticker?.cancel();
-    _ticker = null;
-
-    await _storage.saveIsRunning(false);
-    
-    // Cancel scheduled notification
-    await _notificationService.cancelTimerNotification();
-
-    // Delete session from database
-    final sessionId = await _storage.getSessionId();
-    if (sessionId != null) {
-      final deleted = await _timerService.deleteSession(sessionId: sessionId);
-      if (deleted) {
-        print('Session deleted: ID $sessionId');
-      } else {
-        print('Failed to delete session: ID $sessionId');
-      }
-    }
-
-    if (state is TimerRunning) {
-      final currentState = state as TimerRunning;
-      emit(
-        TimerStopped(
-          elapsed: currentState.elapsed,
-          zoneNumber: currentState.zoneNumber,
-          zoneName: currentState.zoneName,
-          restrictionDurationMinutes: currentState.restrictionDurationMinutes,
-        ),
-      );
-    }
+    // StopTimer is deprecated - use ResetTimer instead
+    // This ensures we go straight to reset without intermediate stopped state
+    add(const ResetTimer());
   }
 
   Future<void> _onResetTimer(ResetTimer event, Emitter<TimerState> emit) async {
@@ -301,11 +275,28 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
   ) {
     final remainingSeconds = (restrictionMinutes * 60) - elapsed.inSeconds;
     
+    // If time has expired and notification hasn't been sent yet
     if (remainingSeconds <= 0 && !_notificationSent) {
       _notificationSent = true;
       _notificationService.showImmediateNotification(
         zoneName: zoneName,
         zoneNumber: zoneNumber,
       );
+      
+      // Also delete the session from database when timer expires
+      _deleteExpiredSession();
     }
-  }}
+  }
+
+  Future<void> _deleteExpiredSession() async {
+    final sessionId = await _storage.getSessionId();
+    if (sessionId != null) {
+      final deleted = await _timerService.deleteSession(sessionId: sessionId);
+      if (deleted) {
+        debugPrint('Expired session deleted: ID $sessionId');
+      } else {
+        debugPrint('Failed to delete expired session: ID $sessionId');
+      }
+    }
+  }
+}
