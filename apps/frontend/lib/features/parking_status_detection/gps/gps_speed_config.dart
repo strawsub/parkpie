@@ -30,11 +30,8 @@ class GpsSpeedConfig {
   final double processNoise;
   final double measurementNoise;
 
-  // EMA (Exponential Moving Average) smoothing parameter for speed
-  final double emaAlpha; // 0.35 (only applied at low speeds for parking stability)
+  // Raw speed margin for detecting transitions
   final double rawSpeedMargin; // Margin for detecting transitions: 0.5 m/s
-  final double emaSpeedThresholdHigh; // Exit EMA (enter Kalman-only) at: 2.2 m/s
-  final double emaSpeedThresholdLow; // Enter EMA (exit Kalman-only) at: 1.8 m/s
 
   // Zero-speed detection (stationary phone)
   final double zeroSpeedThreshold; // Force speed to 0 if below this: 0.5 m/s (~1.8 km/h)
@@ -80,13 +77,10 @@ class GpsSpeedConfig {
 
     // Kalman filter parameters
     this.processNoise = 0.01,             // Process noise
-    this.measurementNoise = 0.5,          // Measurement noise
+    this.measurementNoise = 0.1,          // Measurement noise (reduced from 0.5 for faster response)
 
-    // EMA smoothing (conditional - only at low speeds, with hysteresis)
-    this.emaAlpha = 0.35,                 // 35% new sample, 65% history
+    // Raw speed margin for transition detection
     this.rawSpeedMargin = 0.5,            // 0.5 m/s margin for rawSpeed candidate start
-    this.emaSpeedThresholdHigh = 2.2,     // Exit EMA at ≥2.2 m/s (enter Kalman-only)
-    this.emaSpeedThresholdLow = 1.8,      // Enter EMA at ≤1.8 m/s (exit Kalman-only)
 
     // Zero-speed detection (GPS drift suppression)
     this.zeroSpeedThreshold = 0.5,        // Force to 0 if speed <0.5 m/s (~1.8 km/h)

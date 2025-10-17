@@ -20,8 +20,10 @@ import 'features/timer/timer_event.dart';
 import 'features/parking_status_detection/parking_status_bloc.dart';
 import 'features/parking_status_detection/parking_status_state.dart';
 import 'features/parking_status_detection/parking_status_event.dart';
+import 'features/parking_status_detection/utils.dart';
 import 'features/parking_status_detection/gyroscope/gyro_bloc.dart';
 import 'features/parking_status_detection/bluetooth/bluetooth_bloc.dart';
+import 'features/parking_status_detection/bluetooth/bluetooth_event.dart';
 import 'features/parking_status_detection/accelerometer/acc_bloc.dart';
 import 'features/parking_status_detection/gps/gps_speed_bloc.dart';
 
@@ -184,6 +186,11 @@ class _HomeContainerState extends State<HomeContainer> {
         onCancel: () {
           _isParkingDialogShowing = false;
           Navigator.of(parentContext).pop();
+          // Only reset Bluetooth if it was the trigger (bluetooth vote = parked)
+          final btVote = parkingBloc.state.sensorVotes['bluetooth'];
+          if (btVote == SensorVote.parked) {
+            context.read<BluetoothBloc>().add(const ResetBluetooth());
+          }
           // Revert to Driving state
           parkingBloc.add(const RevertToDriving());
         },
@@ -193,6 +200,11 @@ class _HomeContainerState extends State<HomeContainer> {
       _isParkingDialogShowing = false;
       // Revert to Driving state if dialog was dismissed without confirming
       if (parkingBloc.state is ParkingDetected) {
+        // Only reset Bluetooth if it was the trigger (bluetooth vote = parked)
+        final btVote = parkingBloc.state.sensorVotes['bluetooth'];
+        if (btVote == SensorVote.parked) {
+          context.read<BluetoothBloc>().add(const ResetBluetooth());
+        }
         parkingBloc.add(const RevertToDriving());
       }
     });

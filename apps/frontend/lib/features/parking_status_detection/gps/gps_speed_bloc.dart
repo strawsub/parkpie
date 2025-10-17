@@ -33,9 +33,6 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
     measurementNoise: _config.measurementNoise,
   );
 
-  // EMA filter for speed (additional smoothing at low velocities)
-  double? _emaSpeed;
-
   // Sliding window of location samples
   final ListQueue<LocationSample> _window = ListQueue();
 
@@ -196,41 +193,13 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
     }
 
     // Smooth speed using Kalman filter
-    double kalmanSpeed = _speedFilter.filter(rawSpeed);
+    double filteredSpeed = _speedFilter.filter(rawSpeed);
 
     // Zero-speed detection: Suppress GPS drift when stationary
     // If speed is very low AND GPS accuracy is poor, force speed to 0
-    if (kalmanSpeed < _config.zeroSpeedThreshold &&
+    if (filteredSpeed < _config.zeroSpeedThreshold &&
         (event.horizAcc == null || event.horizAcc! > _config.zeroSpeedAccuracyThreshold)) {
-      kalmanSpeed = 0.0; // Force to zero (GPS drift, not real movement)
-    }
-
-    // Apply conditional EMA with hysteresis to prevent oscillation
-    // High speed: Kalman-only (fast), Low speed: Kalman+EMA (stable)
-    final double filteredSpeed;
-
-    // Hysteresis logic: different thresholds for entering/exiting EMA mode
-    final bool shouldUseEMA;
-    if (_emaSpeed == null) {
-      // First time: use EMA if below LOW threshold
-      shouldUseEMA = kalmanSpeed <= _config.emaSpeedThresholdLow;
-    } else {
-      // Already using EMA: exit only if above HIGH threshold
-      shouldUseEMA = kalmanSpeed < _config.emaSpeedThresholdHigh;
-    }
-
-    if (shouldUseEMA) {
-      // Low speed mode: Apply EMA for stable parking transitions
-      if (_emaSpeed == null) {
-        _emaSpeed = kalmanSpeed; // Safe initialization
-      } else {
-        _emaSpeed = _config.emaAlpha * kalmanSpeed + (1.0 - _config.emaAlpha) * _emaSpeed!;
-      }
-      filteredSpeed = _emaSpeed!;
-    } else {
-      // High speed mode: Use Kalman only (fast response, no EMA lag)
-      filteredSpeed = kalmanSpeed;
-      _emaSpeed = null; // Reset EMA for next low-speed period
+      filteredSpeed = 0.0; // Force to zero (GPS drift, not real movement)
     }
 
     // Calculate accuracy-weighted window displacement
@@ -553,7 +522,6 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
     _window.clear();
     _resetCandidates();
     _speedFilter.reset();
-    _emaSpeed = null;
     _lastUpdateTime = null;
     _startTime = DateTime.now();
     _isInitializing = true;
