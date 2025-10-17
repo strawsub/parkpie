@@ -76,12 +76,11 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
 
     // Listen to Bluetooth state changes
     _bluetoothSubscription = bluetoothBloc.stream.listen((bluetoothState) {
-      if (bluetoothState is BluetoothConnectionStatus) {
-        add(UpdateSensorVote(
-          sensorName: 'bluetooth',
-          vote: bluetoothState.vote,
-        ));
-      }
+      // Listen to all bluetooth states (including BluetoothInitial for reset)
+      add(UpdateSensorVote(
+        sensorName: 'bluetooth',
+        vote: bluetoothState.vote,
+      ));
     });
 
     // Listen to GPS speed state changes

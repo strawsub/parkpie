@@ -258,28 +258,6 @@ return Parked(...);
 Exit: Manual reset only (ResetParking event → ParkingUnknown)
 
   ---
-Key Changes from Previous Version
-
-❌ Removed: 3-Second Gyro Freeze Window
-
-Old Logic:
-// Spike detected → latch → wait 3s → promote
-if (timeSinceSpike >= 3.0s) {
-return ParkingDetected(...);
-}
-
-New Logic (parking_status_bloc.dart:256-265):
-// Spike detected → immediate promotion
-if (hasGyroSpike) {
-return ParkingDetected(...);  // INSTANT
-}
-
-Impact:
-- Faster parking detection when user picks up phone
-- No more waiting period after rotation spike detected
-- Simplified state machine (removed latchedGyroSpikeTime tracking)
-
-  ---
 Summary: Promotion Paths from StoppedCandidate
 
 | Path              | Trigger             | Requirements                          | Timing
