@@ -1,16 +1,13 @@
 // lib/features/debug/debug_screen.dart
-import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:sensors_plus/sensors_plus.dart';
 import 'package:http/http.dart' as http;
 import 'package:frontend/features/map/pin/pin_cubit.dart';
 import 'package:frontend/features/map/pin/pin_state.dart';
 import 'package:frontend/features/parking_status_detection/parking_status_bloc.dart';
 import 'package:frontend/features/parking_status_detection/parking_status_event.dart';
 import 'package:frontend/features/parking_status_detection/parking_status_state.dart';
-import 'package:frontend/features/parking_status_detection/bluetooth/audio_bluetooth_service.dart';
 import 'package:frontend/features/parking_status_detection/bluetooth/bluetooth_bloc.dart';
 import 'package:frontend/features/parking_status_detection/bluetooth/bluetooth_state.dart';
 import 'package:frontend/features/parking_status_detection/gps/gps_speed_bloc.dart';
@@ -37,24 +34,6 @@ class DebugScreen extends StatefulWidget {
 }
 
 class _DebugScreenState extends State<DebugScreen> {
-  // Sensor subscription
-  StreamSubscription<UserAccelerometerEvent>? _accSub;
-  double _ax = 0, _ay = 0, _az = 0;
-
-  // Bluetooth service
-  final AudioBluetoothService _bluetoothService = AudioBluetoothService();
-
-  // Simple RMS over the last N samples
-  final int _winN = 50;
-  final List<double> _magBuf = [];
-  double get _rms {
-    if (_magBuf.isEmpty) return 0;
-    double sumSq = 0;
-    for (final m in _magBuf) {
-      sumSq += m * m;
-    }
-    return math.sqrt(sumSq / _magBuf.length);
-  }
 
   // API diagnostics
   final String _apiBaseShown = const String.fromEnvironment(
@@ -65,31 +44,6 @@ class _DebugScreenState extends State<DebugScreen> {
 
   String? _lastPingResult;
 
-  @override
-  void initState() {
-    super.initState();
-    // Only subscribe to sensor here; do not read providers in initState
-    _accSub = userAccelerometerEventStream().listen((e) {
-      final mag = math.sqrt(e.x * e.x + e.y * e.y + e.z * e.z);
-      setState(() {
-        _ax = e.x;
-        _ay = e.y;
-        _az = e.z;
-        _magBuf.add(mag);
-        if (_magBuf.length > _winN) _magBuf.removeAt(0);
-      });
-    });
-
-    // Initialize Bluetooth service
-    _bluetoothService.initialize();
-  }
-
-  @override
-  void dispose() {
-    _accSub?.cancel();
-    _bluetoothService.dispose();
-    super.dispose();
-  }
 
   Future<void> _pingAzure() async {
     final uri = Uri.parse('https://parkpie-90018.azurewebsites.net/api/map/getlocforpin');
@@ -180,19 +134,6 @@ class _DebugScreenState extends State<DebugScreen> {
 
 
           const SizedBox(height: 16),
-
-          // Sensor readout - Local debug readings
-          Card(
-            child: ListTile(
-              title: const Text('Accelerometer (debug raw)'),
-              subtitle: Text(
-                'ax=${_ax.toStringAsFixed(3)}, ay=${_ay.toStringAsFixed(3)}, az=${_az.toStringAsFixed(3)}\n'
-                    'Local RMS≈${_rms.toStringAsFixed(3)} (window $_winN)',
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 8),
 
           // Accelerometer Stillness Details (from AccBloc)
           Card(
@@ -288,37 +229,35 @@ class _DebugScreenState extends State<DebugScreen> {
 
           const SizedBox(height: 8),
 
-          // Bluetooth status
+          // Bluetooth status - Using BluetoothBloc for consistency
           Card(
-            child: StreamBuilder<AudioRouteStatus>(
-              stream: _bluetoothService.statusStream,
-              initialData: _bluetoothService.getCurrentStatus(),
-              builder: (context, snapshot) {
-                final status = snapshot.data;
-                if (status == null) {
+            child: (bluetoothBloc == null)
+                ? const ListTile(
+              title: Text('Audio Route Status'),
+              subtitle: Text('⚠️ BluetoothBloc provider not found'),
+            )
+                : BlocBuilder<BluetoothBloc, BluetoothState>(
+              bloc: bluetoothBloc,
+              builder: (context, state) {
+                if (state is BluetoothInitial) {
                   return const ListTile(
-                    title: Text('Bluetooth Status'),
+                    title: Text('Audio Route Status'),
                     subtitle: Text('Initializing...'),
                   );
                 }
 
-                if (status.error != null) {
-                  return ListTile(
-                    title: const Text('Bluetooth Status'),
-                    subtitle: Text('❌ Error: ${status.error}'),
-                  );
-                }
-
-                final bluetoothIcon = status.isBluetoothConnected ? '🛜' : '📱';
-                final routeText = status.isBluetoothConnected ? 'Bluetooth Audio' : 'Phone Audio';
-                final currentRouteInfo = 'Current: ${status.currentRouteName} (${status.currentRouteType})';
-                final availableInfo = status.bluetoothDeviceNames.isNotEmpty
-                    ? 'Available Bluetooth: ${status.bluetoothDeviceNames.join(', ')}'
-                    : 'No Bluetooth audio devices available';
+                final bluetoothIcon = state.isConnected ? '🛜' : '📱';
+                final routeText = state.isConnected ? 'Bluetooth Audio' : 'Phone Audio';
+                final deviceInfo = state.deviceName != null
+                    ? 'Device: ${state.deviceName}'
+                    : 'No device connected';
+                final connectionStatus = state.isConnected
+                    ? 'Connected to Bluetooth'
+                    : 'Using phone speaker/wired';
 
                 return ListTile(
                   title: Text('Audio Route $bluetoothIcon'),
-                  subtitle: Text('$routeText\n$currentRouteInfo\n$availableInfo'),
+                  subtitle: Text('$routeText\n$connectionStatus\n$deviceInfo'),
                 );
               },
             ),
