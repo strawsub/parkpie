@@ -1,7 +1,10 @@
 ⏺ Updated: Complete Parking Detection Logic (Current Implementation)
 
-Changes: Removed 3-second gyro freeze mechanism. Gyro spike now triggers instant promotion to
-ParkingDetected.
+Recent Changes:
+- Removed 3-second gyro freeze mechanism. Gyro spike now triggers instant promotion to ParkingDetected.
+- Fixed bluetooth vote update bug: Now listens to ALL BluetoothState types (including BluetoothInitial)
+- Fixed dialog dismissal bug: Only resets bluetooth if it was the actual trigger (conditional check added)
+- Fixed timeout/gyro dialog loop: Bluetooth reset clears disconnect event, preventing infinite re-showing
 
   ---
 Overview: 5-State Machine with Sensor Fusion
@@ -231,21 +234,27 @@ Requirements:
   ---
 State 4: ParkingDetected → Parked or Driving
 
-Dialog (main.dart:147-180):
-- Shows "Are you parked?" with Yes/No buttons
-- Cannot dismiss by tapping outside or back button
+Dialog (main.dart:159-211):
+- Shows "Are you parked?" with slide-to-park confirmation
+- Can be dismissed by swiping down (isDismissible: true)
 - No auto-confirm timer - stays open until user acts
 
-Outcome A: User Confirms "Yes" (parking_status_bloc.dart:441-451):
-emit(Parked(...));  // Terminal state
+Outcome A: User Confirms "Yes" (slide to park):
+- Calls UserConfirmedParking event → emit(Parked(...))
+- Starts timer with optional duration
+- Navigates to timer screen
+- Status changes to Parked (terminal state)
 
-Outcome B: User Clicks "No" (parking_status_bloc.dart:471-485):
-emit(Driving(...));  // Revert to Driving without resetting sensors
+Outcome B: User Clicks "No" or Swipes Down:
+- Checks if bluetooth was the trigger (btVote == SensorVote.parked)
+- If yes: Resets bluetooth to clear disconnect event
+- Calls RevertToDriving → emit(Driving(...))
+- Sensors continue voting normally (GPS/Acc not reset)
 
-Outcome C: No Automatic Revert (UPDATED)
-// ParkingDetected no longer auto-reverts on GPS
-// User must explicitly click "Yes" or "No"
-// This prevents GPS noise from dismissing the dialog
+Outcome C: Dialog Behavior After Dismissal
+- When re-entering StoppedCandidate, timeout counter resets (new candidateStartTime)
+- Bluetooth vote cleared to "unknown" (if it was the trigger), preventing instant re-promotion
+- Gyro/timeout triggers can occur again after meeting their conditions
 
   ---
 State 5: Parked (Terminal)
@@ -298,3 +307,31 @@ ParkingDetected
 
 Parked
 └─ Manual reset only → Unknown
+
+  ---
+Bug Fixes & Implementation Notes
+
+Bug Fix 1: Bluetooth Vote Not Updating After Reset
+Issue: When ResetBluetooth was called, it emitted BluetoothInitial with vote="unknown", but
+ParkingBloc only listened for BluetoothConnectionStatus events. This caused bluetooth vote to
+stay "parked" in sensorVotes map, triggering infinite dialog loop.
+
+Fix (parking_status_bloc.dart:78-84):
+- Changed bluetooth listener to handle ALL BluetoothState types
+- Now properly updates vote to "unknown" when bluetooth is reset
+- Prevents instant re-promotion after dialog dismissal
+
+Bug Fix 2: Unconditional Bluetooth Reset
+Issue: ResetBluetooth() was called whenever dialog was dismissed, regardless of which trigger
+(bluetooth/gyro/timeout) caused ParkingDetected. This could clear legitimate bluetooth state.
+
+Fix (main.dart:189-193, 204-207):
+- Added conditional check: only reset bluetooth if btVote == SensorVote.parked
+- Preserves bluetooth state when timeout or gyro triggered the dialog
+- Bluetooth only resets if it was actually the trigger
+
+Technical Details:
+- Gyroscope: Conditional voting prevents false positives outside StoppedCandidate
+- Accelerometer/GPS: No reset needed on dialog dismiss (reflect physical state)
+- Timeout: Resets automatically via new candidateStartTime when re-entering StoppedCandidate
+- Bluetooth: Requires explicit reset to clear _wasConnected flag and prevent re-trigger
