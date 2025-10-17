@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class Pin {
   final String? id;
   final double? lat;
@@ -7,6 +9,7 @@ class Pin {
   final String? endTime;
   final int? maximumStayMinutes;
   final String? description;
+  final List<ParkingRestriction> restrictions;
 
   const Pin({
     required this.lat,
@@ -17,6 +20,7 @@ class Pin {
     this.endTime,
     this.maximumStayMinutes,
     this.description,
+    this.restrictions = const [],
   });
 
   factory Pin.fromJson(Map<String, dynamic> json) {
@@ -26,15 +30,82 @@ class Pin {
       return double.tryParse(value.toString());
     }
 
+    int? parseInt(dynamic value) {
+      if (value == null) return null;
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      return int.tryParse(value.toString());
+    }
+
+    dynamic unwrapRestrictions(dynamic raw) {
+      if (raw == null) return null;
+
+      // Handle Postgres PGobject-style payload {type: "json", value: "[...]" }
+      if (raw is Map) {
+        final map = Map<String, dynamic>.from(raw);
+        if (map.containsKey('value')) {
+          final value = map['value'];
+          if (value == null || (value is String && value.isEmpty)) {
+            return null;
+          }
+          return unwrapRestrictions(value);
+        }
+      }
+
+      if (raw is String) {
+        try {
+          return jsonDecode(raw);
+        } catch (_) {
+          return null;
+        }
+      }
+
+      return raw;
+    }
+
+    List<ParkingRestriction> parseRestrictions(dynamic raw) {
+      final resolved = unwrapRestrictions(raw);
+      if (resolved is! List) return const [];
+
+      final topLevelOccupancy = parseDouble(json['occupancy_percent']);
+      final parentId =
+          json['id']?.toString() ?? json['zone_number']?.toString();
+      final List<ParkingRestriction> parsed = [];
+
+      for (final entry in resolved) {
+        if (entry is! Map<String, dynamic>) continue;
+        final merged = Map<String, dynamic>.from(entry);
+        merged.putIfAbsent('id', () => parentId);
+        if (merged['occupancy_percent'] == null && topLevelOccupancy != null) {
+          merged['occupancy_percent'] = topLevelOccupancy;
+        }
+        parsed.add(ParkingRestriction.fromJson(merged));
+      }
+
+      return List.unmodifiable(parsed);
+    }
+
+    final restrictions = parseRestrictions(json['restrictions']);
+    final firstRestriction = restrictions.isNotEmpty
+        ? restrictions.first
+        : null;
+    final startTimeRaw = json['start_time'] ?? firstRestriction?.startTime;
+    final endTimeRaw = json['end_time'] ?? firstRestriction?.endTime;
+    final maxStayRaw =
+        json['maximum_stay_minutes'] ?? firstRestriction?.maximumStayMinutes;
+
     return Pin(
-      id: json['id']?.toString(),
+      id: json['id']?.toString() ?? json['zone_number']?.toString(),
       lat: parseDouble(json['lat']),
       lng: parseDouble(json['lng']),
-      occupancyPercent: parseDouble(json['occupancy_percent']),
-      startTime: json['start_time']?.toString(),
-      endTime: json['end_time']?.toString(),
-      maximumStayMinutes: json['maximum_stay_minutes'],
+      occupancyPercent:
+          parseDouble(json['occupancy_percent']) ??
+          firstRestriction?.occupancyPercent,
+      startTime: startTimeRaw?.toString(),
+      endTime: endTimeRaw?.toString(),
+      maximumStayMinutes: parseInt(maxStayRaw),
       description: json['description']?.toString(),
+      restrictions: restrictions,
     );
   }
 }
@@ -78,15 +149,27 @@ class ParkingRestriction {
   DateTime get startDateTime {
     final now = DateTime.now();
     final parts = startTime.split(':');
-    return DateTime(now.year, now.month, now.day,
-                    int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+    return DateTime(
+      now.year,
+      now.month,
+      now.day,
+      int.parse(parts[0]),
+      int.parse(parts[1]),
+      int.parse(parts[2]),
+    );
   }
 
   DateTime get endDateTime {
     final now = DateTime.now();
     final parts = endTime.split(':');
-    var endDate = DateTime(now.year, now.month, now.day,
-                          int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+    var endDate = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      int.parse(parts[0]),
+      int.parse(parts[1]),
+      int.parse(parts[2]),
+    );
 
     // Handle overnight restrictions (end time is next day)
     if (endDate.isBefore(startDateTime)) {
@@ -98,19 +181,29 @@ class ParkingRestriction {
   // Check if current time falls within this restriction
   bool isCurrentlyActive() {
     final now = DateTime.now();
-    final currentDayOfWeek = now.weekday; // DateTime.weekday: 1=Monday, 7=Sunday
+    final currentDayOfWeek =
+        now.weekday; // DateTime.weekday: 1=Monday, 7=Sunday
 
     if (currentDayOfWeek != dayOfWeek) return false;
 
-    final currentTime = DateTime(now.year, now.month, now.day, now.hour, now.minute, now.second);
+    final currentTime = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      now.hour,
+      now.minute,
+      now.second,
+    );
 
     // Handle normal time ranges (start < end)
     if (!endDateTime.isBefore(startDateTime)) {
-      return currentTime.isAfter(startDateTime) && currentTime.isBefore(endDateTime);
+      return currentTime.isAfter(startDateTime) &&
+          currentTime.isBefore(endDateTime);
     }
 
     // Handle overnight ranges (end < start) - e.g., 10 PM to 6 AM
-    return currentTime.isAfter(startDateTime) || currentTime.isBefore(endDateTime);
+    return currentTime.isAfter(startDateTime) ||
+        currentTime.isBefore(endDateTime);
   }
 
   // Format time for display (remove seconds)
@@ -170,22 +263,47 @@ class ParkingLocation {
     return restrictions.where((r) => r.dayOfWeek == dayOfWeek).toList();
   }
 
-  // Convert from current Pin format (temporary until backend is updated)
+  // Convert from Pin data (including multi-day restrictions) while preserving legacy fallbacks.
   factory ParkingLocation.fromPin(Pin pin) {
-    final restriction = ParkingRestriction(
-      id: pin.id,
-      dayOfWeek: DateTime.now().weekday, // Current day as fallback
-      startTime: pin.startTime ?? '00:00:00',
-      endTime: pin.endTime ?? '23:59:59',
-      maximumStayMinutes: pin.maximumStayMinutes ?? 0,
-      occupancyPercent: pin.occupancyPercent,
-    );
+    final hasApiRestrictions = pin.restrictions.isNotEmpty;
+
+    final List<ParkingRestriction> resolvedRestrictions = hasApiRestrictions
+        ? pin.restrictions
+        : [
+            ParkingRestriction(
+              id: pin.id,
+              dayOfWeek: DateTime.now().weekday,
+              startTime: pin.startTime ?? '00:00:00',
+              endTime: pin.endTime ?? '23:59:59',
+              maximumStayMinutes: pin.maximumStayMinutes ?? 0,
+              occupancyPercent: pin.occupancyPercent,
+            ),
+          ];
+
+    final enriched =
+        resolvedRestrictions
+            .map(
+              (r) => ParkingRestriction(
+                id: r.id,
+                dayOfWeek: r.dayOfWeek,
+                startTime: r.startTime,
+                endTime: r.endTime,
+                maximumStayMinutes: r.maximumStayMinutes,
+                occupancyPercent: r.occupancyPercent ?? pin.occupancyPercent,
+              ),
+            )
+            .toList()
+          ..sort((a, b) {
+            final dayCompare = a.dayOfWeek.compareTo(b.dayOfWeek);
+            if (dayCompare != 0) return dayCompare;
+            return a.startTime.compareTo(b.startTime);
+          });
 
     return ParkingLocation(
       lat: pin.lat ?? 0,
       lng: pin.lng ?? 0,
       description: pin.description,
-      restrictions: [restriction],
+      restrictions: List.unmodifiable(enriched),
     );
   }
 }

@@ -57,6 +57,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
             return BlocBuilder<MapScreenCubit, MapScreenState>(
               buildWhen: (previous, current) =>
                   previous.markers != current.markers ||
+                  previous.segmentPolygons != current.segmentPolygons ||
                   previous.areaPolygons != current.areaPolygons ||
                   previous.filterActive != current.filterActive ||
                   previous.searchMarker != current.searchMarker ||
@@ -188,7 +189,11 @@ class _MapScreenViewState extends State<_MapScreenView> {
       compassEnabled: true,
       mapToolbarEnabled: false,
       minMaxZoomPreference: const MinMaxZoomPreference(2.0, 20.0),
-      polygons: mapState.areaPolygons,
+      polygons: {
+        ...mapState.areaPolygons,
+        if (cubit.showSegments) ...mapState.segmentPolygons,
+
+      },
       padding: EdgeInsets.only(
         bottom: 86 + MediaQuery.of(context).padding.bottom,
       ),
@@ -238,7 +243,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
               IconButton(
                 icon: Icon(
                   Icons.filter_list,
-                  color: mapState.filterActive ? Colors.blue : null,
+                  color: mapState.filterActive ? Color(0xFF7FAC58) : null,
                 ),
                 tooltip: 'Filter parking spots',
                 onPressed: () => _openFilterSheet(context),
@@ -284,11 +289,28 @@ class _MapScreenViewState extends State<_MapScreenView> {
               final mapCubit = context.read<MapScreenCubit>();
               mapCubit.clearFilter();
               context.read<SearchCubit>().clearSearch();
-              context.read<PinCubit>().loadPins();
+              context.read<PinCubit>().loadPins(forceRefresh: true);
             },
             icon: const Icon(Icons.refresh),
             label: const Text('Reload'),
           ),
+          const SizedBox(height: 12),
+
+          // TEST BUTTON: Trigger parking detection popup
+          FloatingActionButton(
+            heroTag: 'testParkingFab',
+            mini: true,
+            backgroundColor: Colors.orange,
+            onPressed: () {
+              // Trigger the parking detection event to show the popup
+              context.read<ParkingBloc>().add(
+                const TriggerTestParkingDetection(),
+              );
+            },
+            tooltip: 'Test Parking Popup',
+            child: const Icon(Icons.local_parking),
+          ),
+
           const SizedBox(height: 12),
           FloatingActionButton(
             heroTag: 'debugFab',
@@ -382,7 +404,8 @@ class _MapScreenViewState extends State<_MapScreenView> {
       }
 
       if (result is FilterConfig) {
-        await mapCubit.applyFilterWithSearch(result);
+        mapCubit.storeFilter(result);
+        mapCubit.applyFilterWithSearch(result);
       }
     } finally {
       if (mounted) {
@@ -401,15 +424,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
       useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => ParkingInfoSheet(
-        location: location,
-        id: pin.id,
-        occupancyPercent: pin.occupancyPercent,
-        startTime: pin.startTime,
-        endTime: pin.endTime,
-        maximumStayMinutes: pin.maximumStayMinutes,
-        description: pin.description,
-      ),
+      builder: (context) => ParkingInfoSheet(pin: pin),
     );
   }
 

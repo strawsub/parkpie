@@ -114,7 +114,8 @@ REQUIRED JSON FORMAT:
     }
   }
 
-  bool _isValidTime(String s) => RegExp(r'^[0-2][0-9]:[0-5][0-9]$').hasMatch(s);
+  bool _isValidTime(String s) =>
+      RegExp(r'^(?:[01][0-9]|2[0-3]):[0-5][0-9]$').hasMatch(s);
 
   void validatePayload(Map<String, dynamic> data) {
     final loc = data['location'] as Map<String, dynamic>?;
@@ -135,10 +136,8 @@ REQUIRED JSON FORMAT:
       throw Exception('Invalid location');
     }
     final zone = data['zone_number'];
-    if (zone != null) {
-      if (zone is! int || zone >= 0) {
-        throw Exception('zone_number must be a negative integer when provided');
-      }
+    if (zone != null && (zone is! int || zone <= 0)) {
+      throw Exception('zone_number must be a positive integer when provided');
     }
     for (final entry in rest) {
       final m = entry as Map<String, dynamic>;

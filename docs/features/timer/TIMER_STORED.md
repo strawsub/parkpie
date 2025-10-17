@@ -84,4 +84,4 @@
   - ✅ Restart your phone
   - ✅ Kill the app from task manager
 
-  The timer will continue counting correctly when you reopen it!
+  The timer will continue counting correctly when you reopen it yayy

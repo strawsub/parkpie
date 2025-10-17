@@ -3,9 +3,8 @@ import '../features/map/pin/pin_model.dart';
 /// Mock service to simulate multiple restrictions per day for UI testing
 /// This simulates the enhanced API that will return multiple time periods per day
 class MockParkingService {
-
   /// Toggle to control whether the UI should use mock parking data.
-  static bool useMockData = true;
+  static bool useMockData = false;
 
   /// Sample Melbourne parking location with realistic multi-restriction data
   static ParkingLocation getMockParkingLocation() {
@@ -157,7 +156,8 @@ class MockParkingService {
       ParkingLocation(
         lat: -37.8136,
         lng: 144.9631,
-        description: "Collins Street between Swanston Street and Elizabeth Street",
+        description:
+            "Collins Street between Swanston Street and Elizabeth Street",
         restrictions: [
           // Weekdays only - no weekend restrictions
           for (int day = 1; day <= 5; day++)
@@ -197,7 +197,7 @@ class MockParkingService {
               maximumStayMinutes: 480, // 8 hours overnight
               occupancyPercent: day <= DateTime.now().weekday ? 0.23 : null,
             ),
-          ]
+          ],
         ],
       ),
     ];
@@ -213,14 +213,18 @@ class MockParkingService {
         'lng': location.lng,
         'description': location.description,
       },
-      'restrictions': location.restrictions.map((r) => {
-        'id': r.id,
-        'day_of_week': r.dayOfWeek,
-        'start_time': r.startTime,
-        'end_time': r.endTime,
-        'maximum_stay_minutes': r.maximumStayMinutes,
-        'occupancy_percent': r.occupancyPercent,
-      }).toList(),
+      'restrictions': location.restrictions
+          .map(
+            (r) => {
+              'id': r.id,
+              'day_of_week': r.dayOfWeek,
+              'start_time': r.startTime,
+              'end_time': r.endTime,
+              'maximum_stay_minutes': r.maximumStayMinutes,
+              'occupancy_percent': r.occupancyPercent,
+            },
+          )
+          .toList(),
     };
   }
 

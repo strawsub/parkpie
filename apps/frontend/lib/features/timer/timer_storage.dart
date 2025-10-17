@@ -6,12 +6,15 @@ class TimerStorage {
   static const String _keyZoneNumber = 'parking_timer_zone_number';
   static const String _keyZoneName = 'parking_timer_zone_name';
   static const String _keyRestrictionDuration = 'parking_timer_restriction_duration';
+  static const String _keySessionId = 'parking_timer_session_id';
 
+  // Save start time
   Future<void> saveStartTime(DateTime startTime) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyStartTime, startTime.toIso8601String());
   }
 
+  // Get start time
   Future<DateTime?> getStartTime() async {
     final prefs = await SharedPreferences.getInstance();
     final timeString = prefs.getString(_keyStartTime);
@@ -23,16 +26,19 @@ class TimerStorage {
     }
   }
 
+  // Save running state
   Future<void> saveIsRunning(bool isRunning) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyIsRunning, isRunning);
   }
 
+  // Get running state
   Future<bool> getIsRunning() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_keyIsRunning) ?? false;
   }
 
+  // Save zone info
   Future<void> saveZoneInfo(int? zoneNumber, String? zoneName) async {
     final prefs = await SharedPreferences.getInstance();
     if (zoneNumber != null) {
@@ -47,6 +53,7 @@ class TimerStorage {
     }
   }
 
+  // Get zone info
   Future<Map<String, dynamic>> getZoneInfo() async {
     final prefs = await SharedPreferences.getInstance();
     return {
@@ -55,22 +62,38 @@ class TimerStorage {
     };
   }
 
-    Future<void> saveRestrictionDuration(int minutes) async {
+  // Save restriction duration
+  Future<void> saveRestrictionDuration(int minutes) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_keyRestrictionDuration, minutes);
   }
 
+  // Get restriction duration
   Future<int> getRestrictionDuration() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getInt(_keyRestrictionDuration) ?? 0;
   }
 
+  // Save session ID
+  Future<void> saveSessionId(int sessionId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_keySessionId, sessionId);
+  }
+
+  // Get session ID
+  Future<int?> getSessionId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_keySessionId);
+  }
+
+  // Clear all stored data
   Future<void> clear() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keyStartTime);
     await prefs.remove(_keyIsRunning);
     await prefs.remove(_keyZoneNumber);
     await prefs.remove(_keyZoneName);
-    await prefs.remove(_keyRestrictionDuration); // clear new key too
+    await prefs.remove(_keyRestrictionDuration);
+    await prefs.remove(_keySessionId);
   }
 }

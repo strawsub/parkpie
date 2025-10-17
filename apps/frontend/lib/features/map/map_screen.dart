@@ -21,14 +21,16 @@ import 'package:frontend/features/map/search/search_state.dart';
 import 'package:frontend/features/navigation/filter_trigger_cubit.dart';
 import 'package:frontend/features/navigation/navigation_cubit.dart';
 import 'package:frontend/features/parking_status_detection/parking_status_bloc.dart';
+import 'package:frontend/features/parking_status_detection/parking_status_event.dart';
 import 'package:frontend/features/timer/timer_bloc.dart';
 import 'package:frontend/features/timer/timer_state.dart' as timer;
+import 'package:frontend/services/segment_service.dart';
 import 'package:lottie/lottie.dart' as lottie;
 
 part 'map_screen/map_screen_state_fields.dart';
 part 'map_screen/map_screen_area.dart';
 part 'map_screen/map_screen_filter.dart';
-part 'map_screen/map_screen_map.dart';
+part 'map_screen/map_screen_cubit.dart';
 part 'map_screen/map_screen_search.dart';
 part 'map_screen/map_screen_ui.dart';
 

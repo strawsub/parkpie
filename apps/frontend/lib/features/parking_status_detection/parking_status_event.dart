@@ -36,3 +36,8 @@ class RevertToDriving extends ParkingEvent {
 class CandidateProgressTick extends ParkingEvent {
   const CandidateProgressTick();
 }
+
+// TEST EVENT: Manually trigger parking detection popup for UI testing
+class TriggerTestParkingDetection extends ParkingEvent {
+  const TriggerTestParkingDetection();
+}
