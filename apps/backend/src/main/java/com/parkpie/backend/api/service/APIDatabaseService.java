@@ -13,10 +13,13 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -313,6 +316,23 @@ public class APIDatabaseService {
         return jdbc.queryForList(sql.toString(), params.toArray());
     }
 
+    public String generateSessionId() {
+        SecureRandom random = new SecureRandom();
+
+        // random 3 digits (1–999, zero-padded)
+        int rand = random.nextInt(999) + 1;
+        String randPart = String.format("%03d", rand);
+
+        // timestamp down to seconds
+        String timePart = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+
+        // app key, short hash
+        String key = "0013ac9b";
+        int keyPart = Math.abs(key.hashCode()) % 1000; // keep it short, 3 digits
+
+        // concatenate all → 6 digits+ but quite random overall
+        return randPart + timePart.substring(timePart.length() - 6) + keyPart;
+    }
 
     public Map<String, Object> createParkingSession(double lat, double lng, String startTime) {
         try {
@@ -331,19 +351,29 @@ public class APIDatabaseService {
                     ? LocalTime.now()
                     : LocalTime.parse(startTime); // expects "HH:mm:ss"
 
+            String sessionId = generateSessionId();
+
+            // String insertSql = """
+            //     INSERT INTO public.parking_session (location, start_parking_time, parking_sign_id)
+            //     VALUES (ST_SetSRID(ST_MakePoint(?, ?), 4326), ?, ?)
+            //     RETURNING session_id
+            //     """;
+
             String insertSql = """
-                INSERT INTO public.parking_session (location, start_parking_time, parking_sign_id)
-                VALUES (ST_SetSRID(ST_MakePoint(?, ?), 4326), ?, ?)
-                RETURNING session_id
+                INSERT INTO public.parking_session (session_id, location, start_parking_time, parking_sign_id)
+                VALUES (?, ST_SetSRID(ST_MakePoint(?, ?), 4326), ?, ?)
                 """;
 
-            Integer sessionId = jdbc.queryForObject(
-                    insertSql,
-                    Integer.class,
-                    lng, lat,
-                    Time.valueOf(lt),
-                    signId
-            );
+            // Integer sessionId = jdbc.queryForObject(
+            //         insertSql,
+            //         Integer.class,
+            //         lng, lat,
+            //         Time.valueOf(lt),
+            //         signId
+            // );
+
+            
+            jdbc.update(insertSql, sessionId, lng, lat, Time.valueOf(lt), signId);
 
             Map<String, Object> resp = new HashMap<>();
             resp.put("created", true);
