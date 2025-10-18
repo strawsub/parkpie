@@ -30,6 +30,7 @@ class TimerScreen extends StatelessWidget {
             final failureState = state is TimerFailure ? state : null;
 
             return SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -51,6 +52,8 @@ class TimerScreen extends StatelessWidget {
                     const SizedBox(height: 16),
                     _buildButtons(context, state),
                   ],
+                  // Add extra padding at bottom to ensure buttons are always visible
+                  const SizedBox(height: 40),
                 ],
               ),
             );
@@ -466,34 +469,49 @@ class TimerScreen extends StatelessWidget {
       return const SizedBox.shrink();
     }
     final isRunning = state is TimerRunning;
+    final isStopped = state is TimerStopped;
+    final hasElapsed = state.elapsed.inSeconds > 0;
 
-    return Row(
+    return Column(
       children: [
-        Expanded(
+        // Start / Stop button
+        SizedBox(
+          width: double.infinity,
           child: _buildButton(
-            label: 'Start',
-            color: const Color(0xFF7FAC58),
+            label: isRunning ? 'Stop Timer' : 'Start Timer',
+            color: isRunning ? Colors.orange : const Color(0xFF7FAC58),
             textColor: Colors.white,
+            icon: isRunning
+                ? Icons.pause_circle_outline
+                : Icons.play_circle_outline,
             onPressed: isRunning
-                ? null
+                ? () {
+                    context.read<TimerBloc>().add(const StopTimer());
+                  }
                 : () {
                     context.read<TimerBloc>().add(const StartTimer());
                   },
           ),
         ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _buildButton(
-            label: 'Reset',
-            color: const Color(0xFFFF4757),
-            textColor: Colors.white,
-            onPressed: isRunning
-                ? () {
-                    _showResetConfirmation(context);
-                  }
-                : null,
+
+        // Show Reset button when stopped or has elapsed time
+        if (isStopped || hasElapsed) ...[
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: _buildButton(
+              label: 'Reset Timer',
+              color: const Color(0xFFFF4757),
+              textColor: Colors.white,
+              icon: Icons.refresh_rounded,
+              onPressed: () {
+                _showResetConfirmation(context);
+              },
+            ),
           ),
-        ),
+        ],
+
+        const SizedBox(height: 24),
       ],
     );
   }
@@ -532,6 +550,7 @@ class TimerScreen extends StatelessWidget {
     required String label,
     required Color color,
     required Color textColor,
+    IconData? icon,
     required VoidCallback? onPressed,
   }) {
     return SizedBox(
@@ -548,9 +567,18 @@ class TimerScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
           ),
         ),
-        child: Text(
-          label,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 20),
+              const SizedBox(width: 8),
+            ],
+            Text(
+              label,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ],
         ),
       ),
     );
