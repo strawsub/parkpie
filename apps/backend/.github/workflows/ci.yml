@@ -29,10 +29,3 @@ jobs:
 
       - name: Run Gradle check
         run: ./gradlew -Dorg.gradle.java.home=$JAVA_HOME check
-
-      - name: Publish Jacoco HTML Report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: jacoco-html-report
-          path: build/reports/jacoco/test/html
