@@ -4,10 +4,21 @@ import com.parkpie.backend.admin.service.SchedulerSettingsService;
 import com.parkpie.backend.api.entity.AvailabilityFetchLog;
 import com.parkpie.backend.api.repository.AvailabilityFetchLogRepository;
 import com.parkpie.backend.api.service.AvailabilityJobRunner;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -16,6 +27,7 @@ import java.util.Map;
 
 @Controller
 @RequestMapping("/admin/scheduler")
+@Tag(name = "Admin")
 public class AdminSchedulerController {
 
     private final SchedulerSettingsService settings;
@@ -75,6 +87,19 @@ public class AdminSchedulerController {
 
     @GetMapping("/status")
     @ResponseBody
+    @Operation(
+            summary = "Scheduler status snapshot",
+            description = "Provides the latest information about the availability fetch scheduler.",
+            security = {@SecurityRequirement(name = "basicAuth")}
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Current scheduler status.",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(example = "{\"enabled\":true,\"intervalMinutes\":15,\"running\":false}")
+            )
+    )
     public ResponseEntity<Map<String, Object>> status() {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("enabled", settings.isEnabled());
@@ -92,6 +117,19 @@ public class AdminSchedulerController {
 
     @GetMapping("/logs")
     @ResponseBody
+    @Operation(
+            summary = "Recent scheduler runs",
+            description = "Returns the 50 most recent availability fetch executions.",
+            security = {@SecurityRequirement(name = "basicAuth")}
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Recent scheduler executions.",
+            content = @Content(
+                    mediaType = "application/json",
+                    array = @ArraySchema(schema = @Schema(implementation = AvailabilityFetchLog.class))
+            )
+    )
     public List<AvailabilityFetchLog> logs() {
         return logRepo.findTop50ByOrderByStartedAtDesc();
     }

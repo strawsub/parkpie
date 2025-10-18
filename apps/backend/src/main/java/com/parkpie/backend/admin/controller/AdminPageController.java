@@ -1,6 +1,12 @@
 package com.parkpie.backend.admin.controller;
 
 import com.parkpie.backend.admin.service.AdminDatabaseService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,6 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Controller
+@Tag(name = "Admin")
 public class AdminPageController {
 
     private final AdminDatabaseService adminDatabaseService;
@@ -39,6 +46,19 @@ public class AdminPageController {
     
     @GetMapping("/admin/health")
     @ResponseBody
+    @Operation(
+            summary = "Admin UI health",
+            description = "Returns the status of dependencies used by the administrative console.",
+            security = {@SecurityRequirement(name = "basicAuth")}
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Health report for the admin console.",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(example = "{\"status\":\"UP\",\"database\":\"UP\",\"version\":\"1.0.0\"}")
+            )
+    )
     public Map<String, Object> health() {
         Map<String, Object> health = new HashMap<>();
         try {

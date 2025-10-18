@@ -1,5 +1,10 @@
 package com.parkpie.backend.core.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -7,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 @RestController
+@Tag(name = "Health")
 public class HealthController {
 
     private final JdbcTemplate jdbc;
@@ -16,6 +22,15 @@ public class HealthController {
     }
 
     @GetMapping("/health")
+    @Operation(summary = "Application health probe", description = "Returns database connectivity and application liveness information.")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Application is healthy.",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(example = "{\"ok\": true, \"dbVersion\": \"PostgreSQL 16.2\"}")
+            )
+    )
     public Map<String, Object> health() {
         Integer one = jdbc.queryForObject("SELECT 1", Integer.class);
         String version = jdbc.queryForObject("SELECT version()", String.class);
@@ -23,6 +38,15 @@ public class HealthController {
     }
 
     @GetMapping("/health/postgis")
+    @Operation(summary = "PostGIS health probe", description = "Executes a simple PostGIS spatial query and returns the WKT representation.")
+    @ApiResponse(
+            responseCode = "200",
+            description = "PostGIS spatial extensions are available.",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(example = "{\"point\": \"POINT (144.9631 -37.8136)\"}")
+            )
+    )
     public Map<String, Object> postgis() {
         String wkt = jdbc.queryForObject(
                 "SELECT ST_AsText(ST_GeomFromText('POINT(144.9631 -37.8136)', 4326))",
