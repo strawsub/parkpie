@@ -56,8 +56,9 @@ public abstract class PostgresIntegrationTest {
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "update");
         registry.add("spring.jpa.properties.hibernate.hbm2ddl.auto", () -> "update");
         registry.add("spring.jpa.show-sql", () -> "false");
+        // Hibernate 6 (Spring Boot 3.x) auto-detects PostGIS with PostgreSQLDialect
         registry.add("spring.jpa.properties.hibernate.dialect",
-                () -> "org.hibernate.spatial.dialect.postgis.PostgisPGDialect");
+                () -> "org.hibernate.dialect.PostgreSQLDialect");
     }
 
     /**
