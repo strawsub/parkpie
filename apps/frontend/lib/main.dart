@@ -132,24 +132,14 @@ class _HomeContainerState extends State<HomeContainer> {
       child: BlocBuilder<NavigationCubit, int>(
         builder: (context, selectedIndex) {
           return Scaffold(
-            body: Stack(
-              children: [
-                // Full-screen content
-                _getSelectedView(selectedIndex),
-                // Floating navigation bar (hidden when camera is active)
-                if (selectedIndex != 1)
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: BottomNavBar(
-                      currentIndex: selectedIndex,
-                      onTap: (index) =>
-                          _handleNavTap(context, index, selectedIndex),
-                    ),
-                  ),
-              ],
-            ),
+            body: _getSelectedView(selectedIndex),
+            bottomNavigationBar: selectedIndex != 1
+                ? BottomNavBar(
+                    currentIndex: selectedIndex,
+                    onTap: (index) =>
+                        _handleNavTap(context, index, selectedIndex),
+                  )
+                : null, // Hide nav bar on camera screen
           );
         },
       ),

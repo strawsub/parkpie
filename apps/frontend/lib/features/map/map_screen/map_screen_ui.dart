@@ -32,6 +32,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       body: MultiBlocListener(
         listeners: [
           BlocListener<FilterTriggerCubit, int>(
@@ -277,7 +278,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
   Widget _buildFloatingButtons(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(
-        bottom: 86 + MediaQuery.of(context).padding.bottom,
+        bottom: 72 + MediaQuery.of(context).padding.bottom,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
