@@ -1,5 +1,6 @@
 package com.parkpie.backend.parking.repository;
 
+import com.parkpie.backend.core.config.GeoConfig;
 import com.parkpie.backend.parking.entity.ParkingSign;
 import com.parkpie.backend.support.PostgresIntegrationTest;
 import org.junit.jupiter.api.DisplayName;
@@ -10,6 +11,7 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -22,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Import(GeoConfig.class)
 @EnabledIf("com.parkpie.backend.support.PostgresIntegrationTest#isContainerAvailable")
 class ParkingSignRepositoryIntegrationTest extends PostgresIntegrationTest {
 
