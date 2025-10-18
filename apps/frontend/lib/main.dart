@@ -68,9 +68,9 @@ class ParkPieApp extends StatelessWidget {
         BlocProvider<GpsSpeedBloc>.value(value: gpsSpeedBloc),
         BlocProvider<ParkingBloc>.value(value: parkingBloc),
         BlocProvider(
-          create: (context) => TimerBloc(
-            locationCubit: context.read<LocationCubit>(),
-          )..add(const LoadTimer()),
+          create: (context) =>
+              TimerBloc(locationCubit: context.read<LocationCubit>())
+                ..add(const LoadTimer()),
         ),
       ],
       child: MaterialApp(
@@ -159,6 +159,7 @@ class _HomeContainerState extends State<HomeContainer> {
   void _showParkingDialog(BuildContext context) {
     final parentContext = context;
     final parkingBloc = context.read<ParkingBloc>();
+    final bluetoothBloc = context.read<BluetoothBloc>();
     _isParkingDialogShowing = true;
 
     showModalBottomSheet(
@@ -189,13 +190,14 @@ class _HomeContainerState extends State<HomeContainer> {
           // Only reset Bluetooth if it was the trigger (bluetooth vote = parked)
           final btVote = parkingBloc.state.sensorVotes['bluetooth'];
           if (btVote == SensorVote.parked) {
-            context.read<BluetoothBloc>().add(const ResetBluetooth());
+            bluetoothBloc.add(const ResetBluetooth());
           }
           // Revert to Driving state
           parkingBloc.add(const RevertToDriving());
         },
       ),
     ).then((_) {
+      if (!mounted) return;
       // Handle dismissal by swipe down (or any other dismissal method)
       _isParkingDialogShowing = false;
       // Revert to Driving state if dialog was dismissed without confirming
@@ -203,7 +205,7 @@ class _HomeContainerState extends State<HomeContainer> {
         // Only reset Bluetooth if it was the trigger (bluetooth vote = parked)
         final btVote = parkingBloc.state.sensorVotes['bluetooth'];
         if (btVote == SensorVote.parked) {
-          context.read<BluetoothBloc>().add(const ResetBluetooth());
+          bluetoothBloc.add(const ResetBluetooth());
         }
         parkingBloc.add(const RevertToDriving());
       }

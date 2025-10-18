@@ -35,7 +35,8 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     on<ResetTimer>(_onResetTimer);
     on<TimerTick>(_onTimerTick);
     on<UpdateRestrictionDuration>(_onUpdateRestrictionDuration);
-    
+    on<SetKnownZone>(_onSetKnownZone);
+
     // Initialize notification service
     _notificationService.initialize();
   }
@@ -55,7 +56,7 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
 
     // Emit updated state with new restriction duration
     emit(state.copyWith(restrictionDurationMinutes: event.durationMinutes));
-    
+
     // Reschedule notification if timer is running
     if (state is TimerRunning) {
       final currentState = state as TimerRunning;
@@ -72,14 +73,28 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     final isRunning = await _storage.getIsRunning();
     if (!isRunning) {
       final restrictionMinutes = await _storage.getRestrictionDuration();
-      emit(TimerInitial(restrictionDurationMinutes: restrictionMinutes));
+      final zoneInfo = await _storage.getZoneInfo();
+      emit(
+        TimerInitial(
+          restrictionDurationMinutes: restrictionMinutes ?? 0,
+          zoneNumber: zoneInfo['zoneNumber'] as int?,
+          zoneName: zoneInfo['zoneName'] as String?,
+        ),
+      );
       return;
     }
 
     final startTime = await _storage.getStartTime();
     if (startTime == null) {
       final restrictionMinutes = await _storage.getRestrictionDuration();
-      emit(TimerInitial(restrictionDurationMinutes: restrictionMinutes));
+      final zoneInfo = await _storage.getZoneInfo();
+      emit(
+        TimerInitial(
+          restrictionDurationMinutes: restrictionMinutes ?? 0,
+          zoneNumber: zoneInfo['zoneNumber'] as int?,
+          zoneName: zoneInfo['zoneName'] as String?,
+        ),
+      );
       return;
     }
 
@@ -93,14 +108,14 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
         startTime: startTime,
         zoneNumber: zoneInfo['zoneNumber'] as int?,
         zoneName: zoneInfo['zoneName'] as String?,
-        restrictionDurationMinutes: restrictionMinutes,
+        restrictionDurationMinutes: restrictionMinutes ?? 0,
       ),
     );
 
     // Schedule notification for remaining time
     _scheduleNotification(
       startTime,
-      restrictionMinutes,
+      restrictionMinutes ?? 0,
       zoneInfo['zoneName'] as String?,
       zoneInfo['zoneNumber'] as int?,
     );
@@ -112,23 +127,27 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     final startTime = DateTime.now();
     _notificationSent = false;
 
-    // Save local info first
     await _storage.saveStartTime(startTime);
     await _storage.saveIsRunning(true);
-    await _storage.saveZoneInfo(event.zoneNumber, event.zoneName);
 
-    double latitude;
-    double longitude;
+    final storedZoneInfo = await _storage.getZoneInfo();
+    final zoneNumber = event.zoneNumber ?? storedZoneInfo['zoneNumber'] as int?;
+    final zoneName = event.zoneName ?? storedZoneInfo['zoneName'] as String?;
+    await _storage.saveZoneInfo(zoneNumber, zoneName);
+
+    late double latitude;
+    late double longitude;
     int? restrictionMinutes;
+    bool usedFallback = false;
+    bool fetchFailed = false;
+    int? createdSessionId;
 
     try {
-      // Get location
       final filteredPosition = _locationCubit.state.filteredPosition;
       if (filteredPosition != null && filteredPosition.length >= 2) {
         latitude = filteredPosition[0];
         longitude = filteredPosition[1];
       } else {
-        // Fallback to raw GPS hardware
         final position = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(
             accuracy: LocationAccuracy.best,
@@ -138,32 +157,71 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
         longitude = position.longitude;
       }
 
-      // Create parking session in database
       final session = await _timerService.createSession(
         lat: latitude,
         lng: longitude,
         startTime: startTime,
       );
-
-      if (session != null) {
-        // Save session ID locally
-        await _storage.saveSessionId(session.sessionId);
-        print('Session created: ID ${session.sessionId}');
-      } else {
-        print('Failed to create session in database');
-      }
-
-      // Fetch restriction duration
-      restrictionMinutes = await _timerService.fetchRestrictionDuration(
-        lat: latitude,
-        lng: longitude,
-        startTime: startTime,
-      );
-
-      restrictionMinutes ??= await _storage.getRestrictionDuration();
+      createdSessionId = session?.sessionId;
     } catch (e) {
-      print('Error in _onStartTimer: $e');
-      restrictionMinutes = await _storage.getRestrictionDuration();
+      debugPrint('Error obtaining location/session: $e');
+      final stored = await _storage.getRestrictionDuration();
+      if (stored != null && stored > 0) {
+        restrictionMinutes = stored;
+        usedFallback = true;
+      } else {
+        await _handleRestrictionLookupFailure(createdSessionId);
+        emit(
+          TimerFailure(
+            message:
+                'We could not determine your location. Please retry once you have a stronger GPS signal.',
+            zoneNumber: zoneNumber,
+            zoneName: zoneName,
+          ),
+        );
+        return;
+      }
+    }
+
+    if (restrictionMinutes == null) {
+      try {
+        restrictionMinutes = await _timerService.fetchRestrictionDuration(
+          lat: latitude,
+          lng: longitude,
+          startTime: startTime,
+          zoneNumber: zoneNumber,
+        );
+      } catch (e) {
+        fetchFailed = true;
+        debugPrint('Error fetching restriction duration: $e');
+      }
+    }
+
+    if (restrictionMinutes == null || restrictionMinutes <= 0) {
+      if (fetchFailed) {
+        final stored = await _storage.getRestrictionDuration();
+        if (stored != null && stored > 0) {
+          restrictionMinutes = stored;
+          usedFallback = true;
+        }
+      }
+    }
+
+    if (restrictionMinutes == null || restrictionMinutes <= 0) {
+      await _handleRestrictionLookupFailure(createdSessionId);
+      emit(
+        TimerFailure(
+          message:
+              'No nearby parking sign could be found. Please select a sign on the map or rescan the sign.',
+          zoneNumber: zoneNumber,
+          zoneName: zoneName,
+        ),
+      );
+      return;
+    }
+
+    if (createdSessionId != null) {
+      await _storage.saveSessionId(createdSessionId);
     }
 
     await _storage.saveRestrictionDuration(restrictionMinutes);
@@ -172,19 +230,14 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
       TimerRunning(
         elapsed: Duration.zero,
         startTime: startTime,
-        zoneNumber: event.zoneNumber,
-        zoneName: event.zoneName,
+        zoneNumber: zoneNumber,
+        zoneName: zoneName,
         restrictionDurationMinutes: restrictionMinutes,
+        usingFallback: usedFallback,
       ),
     );
 
-    // Schedule notification
-    _scheduleNotification(
-      startTime,
-      restrictionMinutes,
-      event.zoneName,
-      event.zoneNumber,
-    );
+    _scheduleNotification(startTime, restrictionMinutes, zoneName, zoneNumber);
 
     _startTicker();
   }
@@ -204,19 +257,25 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     if (sessionId != null) {
       final deleted = await _timerService.deleteSession(sessionId: sessionId);
       if (deleted) {
-        print('Session deleted: ID $sessionId');
+        debugPrint('Session deleted: ID $sessionId');
       } else {
-        print('Failed to delete session: ID $sessionId');
+        debugPrint('Failed to delete session: ID $sessionId');
       }
     }
 
-    await _storage.clear();
-    
+    await _storage.clearActiveSession();
+
     // Cancel all notifications
     await _notificationService.cancelTimerNotification();
     _notificationSent = false;
 
-    emit(const TimerInitial());
+    final zoneInfo = await _storage.getZoneInfo();
+    emit(
+      TimerInitial(
+        zoneNumber: zoneInfo['zoneNumber'] as int?,
+        zoneName: zoneInfo['zoneName'] as String?,
+      ),
+    );
   }
 
   void _onTimerTick(TimerTick event, Emitter<TimerState> emit) {
@@ -231,6 +290,7 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
           zoneNumber: currentState.zoneNumber,
           zoneName: currentState.zoneName,
           restrictionDurationMinutes: currentState.restrictionDurationMinutes,
+          usingFallback: false,
         ),
       );
 
@@ -258,8 +318,11 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     String? zoneName,
     int? zoneNumber,
   ) {
+    if (restrictionMinutes <= 0) {
+      return;
+    }
     final expiryTime = startTime.add(Duration(minutes: restrictionMinutes));
-    
+
     _notificationService.scheduleTimerExpiredNotification(
       expiryTime: expiryTime,
       zoneName: zoneName,
@@ -274,7 +337,7 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     int? zoneNumber,
   ) {
     final remainingSeconds = (restrictionMinutes * 60) - elapsed.inSeconds;
-    
+
     // If time has expired and notification hasn't been sent yet
     if (remainingSeconds <= 0 && !_notificationSent) {
       _notificationSent = true;
@@ -282,10 +345,53 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
         zoneName: zoneName,
         zoneNumber: zoneNumber,
       );
-      
+
       // Also delete the session from database when timer expires
       _deleteExpiredSession();
     }
+  }
+
+  Future<void> _onSetKnownZone(
+    SetKnownZone event,
+    Emitter<TimerState> emit,
+  ) async {
+    await _storage.saveZoneInfo(event.zoneNumber, event.zoneName);
+
+    if (state is TimerRunning) {
+      emit(
+        (state as TimerRunning).copyWith(
+          zoneNumber: event.zoneNumber,
+          zoneName: event.zoneName,
+        ),
+      );
+    } else if (state is TimerInitial) {
+      emit(
+        (state as TimerInitial).copyWith(
+          zoneNumber: event.zoneNumber,
+          zoneName: event.zoneName,
+        ),
+      );
+    } else if (state is TimerFailure) {
+      emit(
+        (state as TimerFailure).copyWith(
+          zoneNumber: event.zoneNumber,
+          zoneName: event.zoneName,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleRestrictionLookupFailure(int? sessionId) async {
+    _ticker?.cancel();
+    _ticker = null;
+    _notificationSent = false;
+
+    if (sessionId != null) {
+      await _timerService.deleteSession(sessionId: sessionId);
+    }
+
+    await _storage.clearActiveSession();
+    await _notificationService.cancelTimerNotification();
   }
 
   Future<void> _deleteExpiredSession() async {

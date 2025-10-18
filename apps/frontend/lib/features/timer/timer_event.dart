@@ -41,3 +41,13 @@ class UpdateRestrictionDuration extends TimerEvent {
   @override
   List<Object?> get props => [durationMinutes];
 }
+
+class SetKnownZone extends TimerEvent {
+  final int? zoneNumber;
+  final String? zoneName;
+
+  const SetKnownZone({this.zoneNumber, this.zoneName});
+
+  @override
+  List<Object?> get props => [zoneNumber, zoneName];
+}

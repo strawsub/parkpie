@@ -9,6 +9,6 @@ public record RestrictionDurationApiResponse(
         Integer zoneNumber,
         double distanceMeters,
         OffsetDateTime restrictionWindowEnd,
-        OffsetDateTime nextRestrictionStart
+        OffsetDateTime nextRestrictionStart,
+        boolean matchedByZoneId
 ) {}
-

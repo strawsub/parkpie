@@ -7,9 +7,9 @@ class NotificationService {
   factory NotificationService() => _instance;
   NotificationService._internal();
 
-  final FlutterLocalNotificationsPlugin _notifications = 
+  final FlutterLocalNotificationsPlugin _notifications =
       FlutterLocalNotificationsPlugin();
-  
+
   bool _initialized = false;
 
   Future<void> initialize() async {
@@ -17,7 +17,9 @@ class NotificationService {
 
     tz.initializeTimeZones();
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
@@ -43,17 +45,17 @@ class NotificationService {
   }
 
   Future<void> _requestPermissions() async {
-    final android = _notifications.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
+    final android = _notifications
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     await android?.requestNotificationsPermission();
 
-    final ios = _notifications.resolvePlatformSpecificImplementation<
-        IOSFlutterLocalNotificationsPlugin>();
-    await ios?.requestPermissions(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    final ios = _notifications
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >();
+    await ios?.requestPermissions(alert: true, badge: true, sound: true);
   }
 
   Future<void> scheduleTimerExpiredNotification({
@@ -90,13 +92,11 @@ class NotificationService {
 
     await _notifications.zonedSchedule(
       0, // notification id
-      'Parking Timer Expired! ⏰',
+      'Parking Timer Expired!',
       'Your parking time in $zoneText has ended. Please move your vehicle.',
       tz.TZDateTime.from(expiryTime, tz.local),
       details,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
     );
   }
 
@@ -131,8 +131,8 @@ class NotificationService {
 
     await _notifications.show(
       0,
-      'Parking Timer Expired! ⏰',
-      'Your parking time has ended. Please move your vehicle.',
+      'Parking Timer Expired!',
+      'Your parking time in $zoneText has ended. Please move your vehicle.',
       details,
     );
   }

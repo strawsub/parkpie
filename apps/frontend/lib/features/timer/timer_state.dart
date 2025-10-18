@@ -6,6 +6,7 @@ abstract class TimerState extends Equatable {
   final int? zoneNumber;
   final String? zoneName;
   final int restrictionDurationMinutes; // make non-nullable
+  final bool usingFallback;
 
   const TimerState({
     this.elapsed = Duration.zero,
@@ -13,6 +14,7 @@ abstract class TimerState extends Equatable {
     this.zoneNumber,
     this.zoneName,
     this.restrictionDurationMinutes = 0,
+    this.usingFallback = false,
   });
 
   TimerState copyWith({
@@ -21,20 +23,26 @@ abstract class TimerState extends Equatable {
     int? zoneNumber,
     String? zoneName,
     int? restrictionDurationMinutes,
+    bool? usingFallback,
   });
 
   @override
   List<Object?> get props => [
-        elapsed,
-        startTime,
-        zoneNumber,
-        zoneName,
-        restrictionDurationMinutes,
-      ];
+    elapsed,
+    startTime,
+    zoneNumber,
+    zoneName,
+    restrictionDurationMinutes,
+    usingFallback,
+  ];
 }
 
 class TimerInitial extends TimerState {
-  const TimerInitial({super.restrictionDurationMinutes});
+  const TimerInitial({
+    super.restrictionDurationMinutes,
+    super.zoneNumber,
+    super.zoneName,
+  });
 
   @override
   TimerInitial copyWith({
@@ -43,10 +51,13 @@ class TimerInitial extends TimerState {
     int? zoneNumber,
     String? zoneName,
     int? restrictionDurationMinutes,
+    bool? usingFallback,
   }) {
     return TimerInitial(
       restrictionDurationMinutes:
           restrictionDurationMinutes ?? this.restrictionDurationMinutes,
+      zoneNumber: zoneNumber ?? this.zoneNumber,
+      zoneName: zoneName ?? this.zoneName,
     );
   }
 }
@@ -58,6 +69,7 @@ class TimerRunning extends TimerState {
     super.zoneNumber,
     super.zoneName,
     super.restrictionDurationMinutes,
+    super.usingFallback,
   });
 
   @override
@@ -67,6 +79,7 @@ class TimerRunning extends TimerState {
     int? zoneNumber,
     String? zoneName,
     int? restrictionDurationMinutes,
+    bool? usingFallback,
   }) {
     return TimerRunning(
       elapsed: elapsed ?? this.elapsed,
@@ -75,6 +88,7 @@ class TimerRunning extends TimerState {
       zoneName: zoneName ?? this.zoneName,
       restrictionDurationMinutes:
           restrictionDurationMinutes ?? this.restrictionDurationMinutes,
+      usingFallback: usingFallback ?? this.usingFallback,
     );
   }
 }
@@ -86,6 +100,7 @@ class TimerStopped extends TimerState {
     super.zoneNumber,
     super.zoneName,
     super.restrictionDurationMinutes,
+    super.usingFallback,
   });
 
   @override
@@ -95,6 +110,7 @@ class TimerStopped extends TimerState {
     int? zoneNumber,
     String? zoneName,
     int? restrictionDurationMinutes,
+    bool? usingFallback,
   }) {
     return TimerStopped(
       elapsed: elapsed ?? this.elapsed,
@@ -103,6 +119,31 @@ class TimerStopped extends TimerState {
       zoneName: zoneName ?? this.zoneName,
       restrictionDurationMinutes:
           restrictionDurationMinutes ?? this.restrictionDurationMinutes,
+      usingFallback: usingFallback ?? this.usingFallback,
     );
   }
+}
+
+class TimerFailure extends TimerState {
+  final String message;
+  const TimerFailure({required this.message, super.zoneNumber, super.zoneName});
+
+  @override
+  TimerFailure copyWith({
+    Duration? elapsed,
+    DateTime? startTime,
+    int? zoneNumber,
+    String? zoneName,
+    int? restrictionDurationMinutes,
+    bool? usingFallback,
+  }) {
+    return TimerFailure(
+      message: message,
+      zoneNumber: zoneNumber ?? this.zoneNumber,
+      zoneName: zoneName ?? this.zoneName,
+    );
+  }
+
+  @override
+  List<Object?> get props => super.props..add(message);
 }

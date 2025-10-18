@@ -39,7 +39,8 @@ class SegmentService {
 
   Future<void> loadCountsFromApi() async {
     final url = Uri.parse(
-        'https://parkpie-90018.azurewebsites.net/api/segment/getlocationforsegment');
+      'https://parkpie-90018.azurewebsites.net/api/segment/getlocationforsegment',
+    );
     final response = await http.get(url);
 
     if (response.statusCode == 200) {
@@ -56,29 +57,35 @@ class SegmentService {
     }
   }
 
-  Set<Polygon> buildPolygons({double minOpacity = 0.5, double maxOpacity = 0.8}) {
+  Set<Polygon> buildPolygons({
+    double minOpacity = 0.5,
+    double maxOpacity = 0.8,
+  }) {
     if (segments.isEmpty || segmentCounts.isEmpty) return {};
 
     int maxCount = segmentCounts.values.reduce(max);
 
-    return segments.where((seg) {
-      return (segmentCounts[seg.segId] ?? 0) > 0;
-    }).map((seg) {
-      int count = segmentCounts[seg.segId] ?? 0;
-      double t = count / maxCount;
-      Color fillColor = Color.lerp(
-        Colors.yellow.withOpacity(minOpacity),
-        Colors.red.withOpacity(maxOpacity),
-        t,
-      )!;
+    return segments
+        .where((seg) {
+          return (segmentCounts[seg.segId] ?? 0) > 0;
+        })
+        .map((seg) {
+          int count = segmentCounts[seg.segId] ?? 0;
+          double t = count / maxCount;
+          Color fillColor = Color.lerp(
+            Colors.yellow.withValues(alpha: minOpacity),
+            Colors.red.withValues(alpha: maxOpacity),
+            t,
+          )!;
 
-      return Polygon(
-        polygonId: PolygonId(seg.segId),
-        points: seg.points,
-        fillColor: fillColor,
-        strokeColor: Colors.transparent,
-        strokeWidth: 0,
-      );
-    }).toSet();
+          return Polygon(
+            polygonId: PolygonId(seg.segId),
+            points: seg.points,
+            fillColor: fillColor,
+            strokeColor: Colors.transparent,
+            strokeWidth: 0,
+          );
+        })
+        .toSet();
   }
 }

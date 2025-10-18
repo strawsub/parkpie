@@ -5,7 +5,8 @@ class TimerStorage {
   static const String _keyIsRunning = 'parking_timer_is_running';
   static const String _keyZoneNumber = 'parking_timer_zone_number';
   static const String _keyZoneName = 'parking_timer_zone_name';
-  static const String _keyRestrictionDuration = 'parking_timer_restriction_duration';
+  static const String _keyRestrictionDuration =
+      'parking_timer_restriction_duration';
   static const String _keySessionId = 'parking_timer_session_id';
 
   // Save start time
@@ -63,15 +64,19 @@ class TimerStorage {
   }
 
   // Save restriction duration
-  Future<void> saveRestrictionDuration(int minutes) async {
+  Future<void> saveRestrictionDuration(int? minutes) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_keyRestrictionDuration, minutes);
+    if (minutes != null && minutes > 0) {
+      await prefs.setInt(_keyRestrictionDuration, minutes);
+    } else {
+      await prefs.remove(_keyRestrictionDuration);
+    }
   }
 
   // Get restriction duration
-  Future<int> getRestrictionDuration() async {
+  Future<int?> getRestrictionDuration() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_keyRestrictionDuration) ?? 0;
+    return prefs.getInt(_keyRestrictionDuration);
   }
 
   // Save session ID
@@ -93,6 +98,14 @@ class TimerStorage {
     await prefs.remove(_keyIsRunning);
     await prefs.remove(_keyZoneNumber);
     await prefs.remove(_keyZoneName);
+    await prefs.remove(_keyRestrictionDuration);
+    await prefs.remove(_keySessionId);
+  }
+
+  Future<void> clearActiveSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyStartTime);
+    await prefs.remove(_keyIsRunning);
     await prefs.remove(_keyRestrictionDuration);
     await prefs.remove(_keySessionId);
   }

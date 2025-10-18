@@ -9,7 +9,8 @@ public record RestrictionDurationResult(
         Integer zoneNumber,
         double distanceMeters,
         ZonedDateTime restrictionWindowEnd,
-        ZonedDateTime nextRestrictionStart
+        ZonedDateTime nextRestrictionStart,
+        boolean matchedByZoneId
 ) {
 
     public enum Scenario {
@@ -17,4 +18,3 @@ public record RestrictionDurationResult(
         UNTIL_NEXT_RESTRICTION
     }
 }
-

@@ -10,6 +10,7 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -32,88 +33,57 @@ public class ParkingRestrictionDurationService {
             double lng,
             OffsetDateTime startTime
     ) {
+        return calculateDuration(lat, lng, startTime, null);
+    }
+
+    public Optional<RestrictionDurationResult> calculateDuration(
+            double lat,
+            double lng,
+            OffsetDateTime startTime,
+            Integer preferredZoneNumber
+    ) {
         Objects.requireNonNull(startTime, "startTime");
         ZonedDateTime localStart = startTime.atZoneSameInstant(MELBOURNE_ZONE);
 
         List<ParkingSignRepository.RestrictionWindowView> windows = parkingSignRepository
                 .findRestrictionWindowsNear(lat, lng, DEFAULT_SEARCH_RADIUS_METERS);
 
-        ParkingSignRepository.RestrictionWindowView nearest = windows.stream()
+        List<ParkingSignRepository.RestrictionWindowView> sorted = windows.stream()
                 .filter(view -> view.getZoneNumber() != null)
-                .findFirst()
-                .orElse(null);
-
-        if (nearest == null) {
-            return Optional.empty();
-        }
-
-        Integer zoneNumber = nearest.getZoneNumber();
-        double distanceMeters = nearest.getDistanceMeters();
-
-        List<RestrictionWindow> zoneWindows = windows.stream()
-                .filter(view -> Objects.equals(zoneNumber, view.getZoneNumber()))
-                .filter(view -> view.getDayOfWeek() != null && view.getStartTime() != null && view.getEndTime() != null)
-                .map(view -> new RestrictionWindow(
-                        normalizeDayOfWeek(view.getDayOfWeek()),
-                        view.getStartTime(),
-                        view.getEndTime(),
-                        view.getMaximumStayMinutes()
-                ))
+                .sorted(Comparator
+                        .comparingDouble(ParkingSignRepository.RestrictionWindowView::getDistanceMeters)
+                        .thenComparing(ParkingSignRepository.RestrictionWindowView::getZoneNumber,
+                                Comparator.nullsLast(Integer::compareTo)))
                 .collect(Collectors.toList());
 
-        if (zoneWindows.isEmpty()) {
+        if (sorted.isEmpty()) {
             return Optional.empty();
         }
 
-        for (RestrictionWindow window : zoneWindows) {
-            ZonedDateTime occurrenceStart = occurrenceStartOnOrBefore(localStart, window);
-            ZonedDateTime occurrenceEnd = occurrenceEndFromStart(occurrenceStart, window);
-            if (!localStart.isBefore(occurrenceStart) && localStart.isBefore(occurrenceEnd)) {
-                long minutesUntilEnd = Math.max(0, Duration.between(localStart, occurrenceEnd).toMinutes());
-                Integer maxStay = window.maxStayMinutes();
-                long allowedMinutes = minutesUntilEnd;
-                if (maxStay != null && maxStay >= 0) {
-                    allowedMinutes = Math.min(allowedMinutes, maxStay.longValue());
-                }
-                return Optional.of(new RestrictionDurationResult(
-                        allowedMinutes,
-                        RestrictionDurationResult.Scenario.ACTIVE_RESTRICTION,
-                        maxStay,
-                        zoneNumber,
-                        distanceMeters,
-                        occurrenceEnd,
-                        null
-                ));
+        if (preferredZoneNumber != null) {
+            Optional<RestrictionDurationResult> preferred = evaluateZone(localStart, sorted, preferredZoneNumber, true);
+            if (preferred.isPresent()) {
+                return preferred;
             }
         }
 
-        ZonedDateTime nextStart = null;
-        RestrictionWindow nextWindow = null;
+        List<Integer> distinctZones = sorted.stream()
+                .map(ParkingSignRepository.RestrictionWindowView::getZoneNumber)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
 
-        for (RestrictionWindow window : zoneWindows) {
-            ZonedDateTime candidate = nextOccurrenceStartAfter(localStart, window);
-            if (nextStart == null || candidate.isBefore(nextStart)) {
-                nextStart = candidate;
-                nextWindow = window;
+        for (Integer zoneNumber : distinctZones) {
+            if (preferredZoneNumber != null && Objects.equals(preferredZoneNumber, zoneNumber)) {
+                continue;
+            }
+            Optional<RestrictionDurationResult> candidate = evaluateZone(localStart, sorted, zoneNumber, false);
+            if (candidate.isPresent()) {
+                return candidate;
             }
         }
 
-        if (nextStart == null) {
-            return Optional.empty();
-        }
-
-        long minutesUntilNext = Math.max(0, Duration.between(localStart, nextStart).toMinutes());
-        Integer nextMaxStay = nextWindow != null ? nextWindow.maxStayMinutes() : null;
-
-        return Optional.of(new RestrictionDurationResult(
-                minutesUntilNext,
-                RestrictionDurationResult.Scenario.UNTIL_NEXT_RESTRICTION,
-                nextMaxStay,
-                zoneNumber,
-                distanceMeters,
-                null,
-                nextStart
-        ));
+        return Optional.empty();
     }
 
     private ZonedDateTime occurrenceStartOnOrBefore(ZonedDateTime reference, RestrictionWindow window) {
@@ -152,6 +122,95 @@ public class ParkingRestrictionDurationService {
         return dow;
     }
 
+    private Optional<RestrictionDurationResult> evaluateZone(
+            ZonedDateTime localStart,
+            List<ParkingSignRepository.RestrictionWindowView> windows,
+            Integer zoneNumber,
+            boolean matchedByZoneId
+    ) {
+        if (zoneNumber == null) {
+            return Optional.empty();
+        }
+
+        List<ParkingSignRepository.RestrictionWindowView> zoneViews = windows.stream()
+                .filter(view -> Objects.equals(zoneNumber, view.getZoneNumber()))
+                .collect(Collectors.toList());
+
+        if (zoneViews.isEmpty()) {
+            return Optional.empty();
+        }
+
+        double distanceMeters = zoneViews.stream()
+                .mapToDouble(ParkingSignRepository.RestrictionWindowView::getDistanceMeters)
+                .min()
+                .orElse(Double.NaN);
+
+        List<RestrictionWindow> zoneWindows = zoneViews.stream()
+                .filter(view -> view.getDayOfWeek() != null && view.getStartTime() != null && view.getEndTime() != null)
+                .map(view -> new RestrictionWindow(
+                        normalizeDayOfWeek(view.getDayOfWeek()),
+                        view.getStartTime(),
+                        view.getEndTime(),
+                        view.getMaximumStayMinutes()
+                ))
+                .collect(Collectors.toList());
+
+        if (zoneWindows.isEmpty()) {
+            return Optional.empty();
+        }
+
+        for (RestrictionWindow window : zoneWindows) {
+            ZonedDateTime occurrenceStart = occurrenceStartOnOrBefore(localStart, window);
+            ZonedDateTime occurrenceEnd = occurrenceEndFromStart(occurrenceStart, window);
+            if (!localStart.isBefore(occurrenceStart) && localStart.isBefore(occurrenceEnd)) {
+                long minutesUntilEnd = Math.max(0, Duration.between(localStart, occurrenceEnd).toMinutes());
+                Integer maxStay = window.maxStayMinutes();
+                long allowedMinutes = minutesUntilEnd;
+                if (maxStay != null && maxStay >= 0) {
+                    allowedMinutes = Math.min(allowedMinutes, maxStay.longValue());
+                }
+                return Optional.of(new RestrictionDurationResult(
+                        allowedMinutes,
+                        RestrictionDurationResult.Scenario.ACTIVE_RESTRICTION,
+                        maxStay,
+                        zoneNumber,
+                        distanceMeters,
+                        occurrenceEnd,
+                        null,
+                        matchedByZoneId
+                ));
+            }
+        }
+
+        ZonedDateTime nextStart = null;
+        RestrictionWindow nextWindow = null;
+
+        for (RestrictionWindow window : zoneWindows) {
+            ZonedDateTime candidate = nextOccurrenceStartAfter(localStart, window);
+            if (nextStart == null || candidate.isBefore(nextStart)) {
+                nextStart = candidate;
+                nextWindow = window;
+            }
+        }
+
+        if (nextStart == null) {
+            return Optional.empty();
+        }
+
+        long minutesUntilNext = Math.max(0, Duration.between(localStart, nextStart).toMinutes());
+        Integer nextMaxStay = nextWindow != null ? nextWindow.maxStayMinutes() : null;
+
+        return Optional.of(new RestrictionDurationResult(
+                minutesUntilNext,
+                RestrictionDurationResult.Scenario.UNTIL_NEXT_RESTRICTION,
+                nextMaxStay,
+                zoneNumber,
+                distanceMeters,
+                null,
+                nextStart,
+                matchedByZoneId
+        ));
+    }
+
     private record RestrictionWindow(int dayOfWeek, LocalTime startTime, LocalTime endTime, Integer maxStayMinutes) { }
 }
-

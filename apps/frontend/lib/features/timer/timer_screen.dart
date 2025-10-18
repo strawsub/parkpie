@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:frontend/features/navigation/navigation_cubit.dart';
 import 'package:lottie/lottie.dart';
 import 'timer_bloc.dart';
 import 'timer_event.dart';
@@ -13,8 +14,21 @@ class TimerScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: BlocBuilder<TimerBloc, TimerState>(
+        child: BlocConsumer<TimerBloc, TimerState>(
+          listener: (context, state) {
+            if (state is TimerRunning && state.usingFallback) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Using cached restriction data. Timer may be inaccurate until the network returns.',
+                  ),
+                ),
+              );
+            }
+          },
           builder: (context, state) {
+            final failureState = state is TimerFailure ? state : null;
+
             return SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               child: Column(
@@ -29,15 +43,14 @@ class TimerScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   if (state.zoneNumber != null) _buildZoneInfo(state),
                   const SizedBox(height: 16),
-
-                  // Restriction Card always visible
-                  if (state is TimerRunning)
-                    _buildRestrictionCard(context, state),
-
-                  const SizedBox(height: 16),
-
-                  // Start/Reset buttons
-                  _buildButtons(context, state),
+                  if (failureState != null)
+                    _buildFailureView(context, failureState)
+                  else ...[
+                    if (state is TimerRunning)
+                      _buildRestrictionCard(context, state),
+                    const SizedBox(height: 16),
+                    _buildButtons(context, state),
+                  ],
                 ],
               ),
             );
@@ -146,8 +159,99 @@ class TimerScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildFailureView(BuildContext context, TimerFailure state) {
+    final theme = Theme.of(context);
+    final zoneLabel = state.zoneNumber != null
+        ? 'Zone ${state.zoneNumber}'
+        : 'this location';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.orange.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.warning_amber_rounded,
+            color: Colors.orange,
+            size: 48,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            "We couldn't find signage for $zoneLabel",
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: Colors.orange.shade800,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            state.message,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: Colors.orange.shade700,
+            ),
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                context.read<TimerBloc>().add(
+                  StartTimer(
+                    zoneNumber: state.zoneNumber,
+                    zoneName: state.zoneName,
+                  ),
+                );
+              },
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry lookup'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF7FAC58),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  vertical: 14,
+                  horizontal: 16,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    context.read<NavigationCubit>().setIndex(0);
+                  },
+                  icon: const Icon(Icons.map_outlined),
+                  label: const Text('Choose on map'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    context.read<NavigationCubit>().setIndex(1);
+                  },
+                  icon: const Icon(Icons.camera_alt_outlined),
+                  label: const Text('Scan sign'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildRestrictionCard(BuildContext context, TimerState state) {
-    final restrictionMinutes = state.restrictionDurationMinutes ?? 0;
+    final restrictionMinutes = state.restrictionDurationMinutes;
     final restrictionDuration = Duration(minutes: restrictionMinutes);
 
     final elapsed = state.elapsed;
@@ -170,17 +274,13 @@ class TimerScreen extends StatelessWidget {
         ? '${remainingHours}h ${remainingMinutes}m ${remainingSeconds}s'
         : '${remainingMinutes}m ${remainingSeconds}s';
 
-    final backgroundColor = isOvertime
-        ? const Color(0x1AFF4757)
-        : Colors.white;
+    final backgroundColor = isOvertime ? const Color(0x1AFF4757) : Colors.white;
 
     final borderColor = isOvertime
         ? const Color(0x4DFF4757)
         : Color(0xFF7FAC58);
 
-    final iconColor = isOvertime
-        ? const Color(0xFFFF4757)
-        : Color(0xFF7FAC58);
+    final iconColor = isOvertime ? const Color(0xFFFF4757) : Color(0xFF7FAC58);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -362,6 +462,9 @@ class TimerScreen extends StatelessWidget {
   }
 
   Widget _buildButtons(BuildContext context, TimerState state) {
+    if (state is TimerFailure) {
+      return const SizedBox.shrink();
+    }
     final isRunning = state is TimerRunning;
 
     return Row(

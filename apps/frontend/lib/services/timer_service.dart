@@ -12,11 +12,17 @@ class TimerService {
     required double lat,
     required double lng,
     required DateTime startTime,
+    int? zoneNumber,
   }) async {
-    final url = Uri.parse(
+    final buffer = StringBuffer(
       '$backendBaseUrl/api/map/restrictionduration'
       '?lat=$lat&lng=$lng&startTime=${startTime.toIso8601String()}',
     );
+    if (zoneNumber != null) {
+      buffer.write('&zone=$zoneNumber');
+    }
+
+    final url = Uri.parse(buffer.toString());
 
     final response = await http.get(url);
 
@@ -37,7 +43,8 @@ class TimerService {
     required DateTime startTime,
   }) async {
     // Format time as HH:mm:ss
-    final timeString = '${startTime.hour.toString().padLeft(2, '0')}:'
+    final timeString =
+        '${startTime.hour.toString().padLeft(2, '0')}:'
         '${startTime.minute.toString().padLeft(2, '0')}:'
         '${startTime.second.toString().padLeft(2, '0')}';
 
@@ -51,7 +58,7 @@ class TimerService {
 
       if (response.statusCode == 200) {
         final body = json.decode(response.body);
-        
+
         if (body['created'] == true) {
           return ParkingSession(
             sessionId: body['session_id'] as int,
@@ -84,7 +91,7 @@ class TimerService {
       }
       return false;
     } catch (e) {
-      print('Error deleting session: $e');
+      debugPrint('Error deleting session: $e');
       return false;
     }
   }

@@ -19,6 +19,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Controller
 public class APIServices {
@@ -123,12 +124,21 @@ public class APIServices {
     public RestrictionDurationApiResponse getRestrictionDuration(
             @RequestParam("lat") double lat,
             @RequestParam("lng") double lng,
-            @RequestParam("startTime") String startTimeRaw
+            @RequestParam("startTime") String startTimeRaw,
+            @RequestParam(value = "zone", required = false) Integer zoneNumber
     ) {
+        if (zoneNumber != null && zoneNumber >= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "zone must be a negative manual zone id");
+        }
         OffsetDateTime startTime = parseStartTime(startTimeRaw);
-        return restrictionDurationService.calculateDuration(lat, lng, startTime)
-                .map(this::toApiResponse)
-                .orElse(null);
+        Optional<RestrictionDurationResult> result = restrictionDurationService.calculateDuration(lat, lng, startTime, zoneNumber);
+        if (result.isEmpty()) {
+            if (zoneNumber != null) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No matching restrictions for supplied zone or nearby location");
+            }
+            return null;
+        }
+        return toApiResponse(result.get());
     }
 
     @ResponseBody
@@ -146,7 +156,8 @@ public class APIServices {
                 result.zoneNumber(),
                 result.distanceMeters(),
                 result.restrictionWindowEnd() != null ? result.restrictionWindowEnd().toOffsetDateTime() : null,
-                result.nextRestrictionStart() != null ? result.nextRestrictionStart().toOffsetDateTime() : null
+                result.nextRestrictionStart() != null ? result.nextRestrictionStart().toOffsetDateTime() : null,
+                result.matchedByZoneId()
         );
     }
 

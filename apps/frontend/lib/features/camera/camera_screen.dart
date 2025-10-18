@@ -7,6 +7,8 @@ import 'package:frontend/features/camera/camera_event.dart';
 import 'package:frontend/features/camera/camera_state.dart';
 import 'package:frontend/features/camera/sign_restriction.dart';
 import 'package:frontend/features/navigation/navigation_cubit.dart';
+import 'package:frontend/features/timer/timer_bloc.dart';
+import 'package:frontend/features/timer/timer_event.dart';
 
 class CameraScreen extends StatelessWidget {
   const CameraScreen({super.key});
@@ -261,6 +263,79 @@ class _CameraViewState extends State<CameraView> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildErrorView(String message) {
+    return Container(
+      color: Colors.black,
+      width: double.infinity,
+      child: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white, size: 72),
+                const SizedBox(height: 16),
+                const Text(
+                  "We couldn't read that sign",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.75),
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 28),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      context.read<CameraBloc>().add(PhotoRetaken());
+                    },
+                    icon: const Icon(Icons.camera_alt_outlined),
+                    label: const Text('Retake photo'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF7FAC58),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 14,
+                        horizontal: 16,
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: () {
+                    context.read<CameraBloc>().add(CameraClosed());
+                    context.read<NavigationCubit>().setIndex(0);
+                  },
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.white.withValues(alpha: 0.75),
+                  ),
+                  child: const Text('Back to map'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -599,7 +674,7 @@ class _CameraViewState extends State<CameraView> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             offset: const Offset(0, 4),
             blurRadius: 10,
           ),
@@ -726,6 +801,9 @@ class _CameraViewState extends State<CameraView> {
               context,
             ).showSnackBar(SnackBar(content: Text(state.message)));
           } else if (state is SignAnalysisSuccess) {
+            context.read<TimerBloc>().add(
+              SetKnownZone(zoneNumber: state.zoneNumber),
+            );
             final replaced = state.replacedPrevious;
             final message = replaced > 0
                 ? 'Updated zone ${state.zoneNumber} ($replaced window(s) replaced).'
@@ -746,6 +824,8 @@ class _CameraViewState extends State<CameraView> {
                 valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7FAC58)),
               ),
             );
+          } else if (state is CameraError) {
+            return _buildErrorView(state.message);
           } else if (state is CameraReady) {
             return _buildCameraPreview(context, context.read<CameraBloc>());
           } else if (state is PhotoUploading) {

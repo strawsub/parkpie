@@ -43,6 +43,7 @@ class ParkingRestrictionDurationServiceTest {
         assertEquals(RestrictionDurationResult.Scenario.ACTIVE_RESTRICTION, result.get().scenario());
         assertEquals(30L, result.get().durationMinutes());
         assertEquals(30, result.get().maxStayMinutes());
+        assertFalse(result.get().matchedByZoneId());
     }
 
     @Test
@@ -62,6 +63,7 @@ class ParkingRestrictionDurationServiceTest {
         assertEquals(11 * 60L, result.get().durationMinutes()); // 11 hours until 8am next day
         assertEquals(102, result.get().zoneNumber());
         assertEquals(120, result.get().maxStayMinutes());
+        assertFalse(result.get().matchedByZoneId());
     }
 
     @Test
@@ -73,6 +75,40 @@ class ParkingRestrictionDurationServiceTest {
         Optional<RestrictionDurationResult> result = service.calculateDuration(-37.0, 144.0, startTime);
 
         assertFalse(result.isPresent());
+    }
+
+    @Test
+    void honoursPreferredZoneWhenPresent() {
+        OffsetDateTime startTime = OffsetDateTime.parse("2025-05-07T15:00:00+10:00");
+        List<ParkingSignRepository.RestrictionWindowView> windows = List.of(
+                window(-200, 3, LocalTime.of(8, 0), LocalTime.of(18, 0), 60, 25.0),
+                window(-200, 3, LocalTime.of(18, 0), LocalTime.of(23, 0), null, 25.0),
+                window(-101, 3, LocalTime.of(9, 0), LocalTime.of(17, 0), 30, 10.0)
+        );
+        Mockito.when(repository.findRestrictionWindowsNear(anyDouble(), anyDouble(), anyDouble()))
+                .thenReturn(windows);
+
+        Optional<RestrictionDurationResult> result = service.calculateDuration(-37.0, 144.0, startTime, -200);
+
+        assertTrue(result.isPresent());
+        assertTrue(result.get().matchedByZoneId());
+        assertEquals(-200, result.get().zoneNumber());
+    }
+
+    @Test
+    void fallsBackToNearestWhenPreferredZoneMissing() {
+        OffsetDateTime startTime = OffsetDateTime.parse("2025-05-07T21:00:00+10:00");
+        List<ParkingSignRepository.RestrictionWindowView> windows = List.of(
+                window(-150, 4, LocalTime.of(7, 0), LocalTime.of(10, 0), 90, 5.0)
+        );
+        Mockito.when(repository.findRestrictionWindowsNear(anyDouble(), anyDouble(), anyDouble()))
+                .thenReturn(windows);
+
+        Optional<RestrictionDurationResult> result = service.calculateDuration(-37.0, 144.0, startTime, -999);
+
+        assertTrue(result.isPresent());
+        assertFalse(result.get().matchedByZoneId());
+        assertEquals(-150, result.get().zoneNumber());
     }
 
     private static ParkingSignRepository.RestrictionWindowView window(
@@ -99,4 +135,3 @@ class ParkingRestrictionDurationServiceTest {
         };
     }
 }
-
