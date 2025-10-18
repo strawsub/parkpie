@@ -5,7 +5,6 @@ import 'package:camera/camera.dart';
 import 'package:frontend/features/camera/camera_bloc.dart';
 import 'package:frontend/features/camera/camera_event.dart';
 import 'package:frontend/features/camera/camera_state.dart';
-import 'package:frontend/features/camera/sign_restriction.dart';
 import 'package:frontend/features/navigation/navigation_cubit.dart';
 import 'package:frontend/features/timer/timer_bloc.dart';
 import 'package:frontend/features/timer/timer_event.dart';
@@ -340,7 +339,6 @@ class _CameraViewState extends State<CameraView> {
   }
 
   Widget _buildAnalysisResultsView(SignAnalysisSuccess state) {
-    final restrictions = state.restrictions;
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
@@ -499,83 +497,7 @@ class _CameraViewState extends State<CameraView> {
                     ),
                   ),
 
-                  const SizedBox(height: 24),
-
-                  // Restrictions Header
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '${restrictions.length} Restriction${restrictions.length != 1 ? 's' : ''}',
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Restrictions List
-                  if (restrictions.isEmpty)
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Text(
-                          'No restrictions found for this sign.',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 15,
-                          ),
-                        ),
-                      ),
-                    )
-                  else
-                    ...restrictions.map(
-                      (r) => _buildRestrictionCard(context, r),
-                    ),
-
-                  const SizedBox(height: 20),
-
-                  // Extracted Text Section
-                  Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey[300]!),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: ExpansionTile(
-                      tilePadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      title: const Text(
-                        'Extracted text',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                      ),
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              state.rawText.isEmpty
-                                  ? 'No text available.'
-                                  : state.rawText,
-                              style: const TextStyle(
-                                color: Colors.black87,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
 
                   // Location Info
                   Center(
@@ -657,137 +579,6 @@ class _CameraViewState extends State<CameraView> {
         ],
       ),
     );
-  }
-
-  Widget _buildRestrictionCard(
-    BuildContext context,
-    SignRestriction restriction,
-  ) {
-    final start = _formatTime(context, restriction.startTime);
-    final end = _formatTime(context, restriction.endTime);
-    final stay = _formatStayDuration(restriction.maximumStayMinutes);
-
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            offset: const Offset(0, 4),
-            blurRadius: 10,
-          ),
-        ],
-        border: Border.all(
-          color: const Color.fromRGBO(127, 172, 88, 0.4),
-          width: 1.5,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Day Circle
-            Container(
-              width: 56,
-              height: 56,
-              decoration: const BoxDecoration(
-                color: Color(0xFF7FAC58),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  restriction.dayLabel.substring(0, 3).toUpperCase(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 16),
-
-            // Restriction Details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    restriction.dayLabel,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.access_time,
-                        size: 16,
-                        color: Colors.black54,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '$start - $end',
-                        style: const TextStyle(
-                          color: Colors.black87,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.timer_outlined,
-                        size: 16,
-                        color: Colors.black54,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        stay,
-                        style: const TextStyle(
-                          color: Colors.black87,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _formatTime(BuildContext context, String hhmm) {
-    final parts = hhmm.split(':');
-    final hour = int.parse(parts[0]);
-    final minute = int.parse(parts[1]);
-    final time = TimeOfDay(hour: hour, minute: minute);
-    return time.format(context);
-  }
-
-  String _formatStayDuration(int? minutes) {
-    if (minutes == null || minutes <= 0) {
-      return 'No maximum stay stated';
-    }
-    final hours = minutes ~/ 60;
-    final mins = minutes % 60;
-    if (mins == 0) {
-      return hours == 1 ? '1 hour max' : '$hours hours max';
-    }
-    if (hours == 0) {
-      return '$minutes minutes max';
-    }
-    return '$hours h $mins m max';
   }
 
   @override

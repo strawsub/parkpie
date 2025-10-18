@@ -86,7 +86,7 @@ class _ParkingDetectedBottomSheetState extends State<ParkingDetectedBottomSheet>
             'Parking Detected',
             style: TextStyle(
               fontSize: 24,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 24),
@@ -177,7 +177,7 @@ class _ParkingDetectedBottomSheetState extends State<ParkingDetectedBottomSheet>
       child: Container(
         height: 60,
         decoration: BoxDecoration(
-          color: const Color(0xFF2C2C2C),
+          color: _primaryGreen,
           borderRadius: BorderRadius.circular(30),
         ),
         child: Stack(
@@ -187,7 +187,7 @@ class _ParkingDetectedBottomSheetState extends State<ParkingDetectedBottomSheet>
               child: Text(
                 'Slide to Park',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.5),
+                  color: Colors.white.withValues(alpha: 0.7),
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),

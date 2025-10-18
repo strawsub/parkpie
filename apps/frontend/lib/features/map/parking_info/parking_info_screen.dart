@@ -347,7 +347,7 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
                       const SizedBox(height: 20),
 
                       // Information blocks - NEW LAYOUT WITH RESTRICTION BADGE
-                      if (restriction != null) ...[
+                      if (restriction != null)
                         IntrinsicHeight(
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -576,10 +576,57 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
                           ),
                         ),
 
-                        const SizedBox(height: 24),
+                      // No restrictions message - centered with consistent spacing
+                      if (restriction == null)
+                        SizedBox(
+                          height: 210, // Match approximate height of restriction info blocks
+                          child: Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 32),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.info_outline,
+                                        size: 20,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'No Restrictions for ${dayAbbreviations[selectedDay - 1]}',
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.black87,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'There are no parking restrictions recorded for this day.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
 
-                        // Day selector
-                        Row(
+                      const SizedBox(height: 24),
+
+                      // Day selector
+                      Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: List.generate(7, (index) {
                             final dayIndex = index + 1; // 1-7 for Monday-Sunday
@@ -618,17 +665,16 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
                           }),
                         ),
 
-                        const SizedBox(height: 8),
-                        const Center(
-                          child: Text(
-                            'select to see other day restrictions',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.black54,
-                            ),
+                      const SizedBox(height: 8),
+                      const Center(
+                        child: Text(
+                          'select to see other day restrictions',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.black54,
                           ),
                         ),
-                      ],
+                      ),
                     ],
                   ),
                 ),

@@ -12,6 +12,9 @@ class _MapScreenViewState extends State<_MapScreenView> {
   final TextEditingController _searchController = TextEditingController();
   GoogleMapController? _googleMapController;
 
+  // Debug settings visibility toggle - set to false in production !!!
+  static const bool _showDebugSettings = true;
+
   @override
   void initState() {
     super.initState();
@@ -69,6 +72,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
                     _buildGoogleMap(context, mapState),
                     _buildSearchBar(context, mapState),
                     _buildTimerBadge(context),
+                    if (_showDebugSettings) _buildDebugButton(context),
                   ],
                 );
               },
@@ -76,7 +80,6 @@ class _MapScreenViewState extends State<_MapScreenView> {
           },
         ),
       ),
-      floatingActionButton: _buildFloatingButtons(context),
     );
   }
 
@@ -196,7 +199,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
 
       },
       padding: EdgeInsets.only(
-        bottom: 86 + MediaQuery.of(context).padding.bottom,
+        bottom: MediaQuery.of(context).padding.bottom, // Position GPS button above tab bar
       ),
     );
   }
@@ -213,7 +216,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
         borderRadius: BorderRadius.circular(30),
         child: Container(
           height: 50,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(30),
@@ -221,7 +224,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
           child: Row(
             children: [
               Padding(
-                padding: const EdgeInsets.only(right: 8.0),
+                padding: const EdgeInsets.only(right: 12.0),
                 child: Image.asset('assets/icon.png', width: 28, height: 28),
               ),
               Expanded(
@@ -275,73 +278,154 @@ class _MapScreenViewState extends State<_MapScreenView> {
     );
   }
 
-  Widget _buildFloatingButtons(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: 72 + MediaQuery.of(context).padding.bottom,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          FloatingActionButton.extended(
-            heroTag: 'reloadFab',
-            onPressed: () {
-              final mapCubit = context.read<MapScreenCubit>();
-              mapCubit.clearFilter();
-              context.read<SearchCubit>().clearSearch();
-              context.read<PinCubit>().loadPins(forceRefresh: true);
-            },
-            icon: const Icon(Icons.refresh),
-            label: const Text('Reload'),
-          ),
-          const SizedBox(height: 12),
+  Future<void> _showDebugMenu(BuildContext context) async {
+    // Capture BLoC references before showing bottom sheet
+    final mapCubit = context.read<MapScreenCubit>();
+    final searchCubit = context.read<SearchCubit>();
+    final pinCubit = context.read<PinCubit>();
+    final parkingBloc = context.read<ParkingBloc>();
 
-          // TEST BUTTON: Trigger parking detection popup
-          FloatingActionButton(
-            heroTag: 'testParkingFab',
-            mini: true,
-            backgroundColor: Colors.orange,
-            onPressed: () {
-              // Trigger the parking detection event to show the popup
-              context.read<ParkingBloc>().add(
-                const TriggerTestParkingDetection(),
-              );
-            },
-            tooltip: 'Test Parking Popup',
-            child: const Icon(Icons.local_parking),
-          ),
-
-          const SizedBox(height: 12),
-          FloatingActionButton(
-            heroTag: 'debugFab',
-            mini: true,
-            onPressed: () {
-              final pinCubit = context.read<PinCubit>();
-              final parkingBloc = context.read<ParkingBloc>();
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => MultiBlocProvider(
-                    providers: [
-                      BlocProvider.value(value: pinCubit),
-                      BlocProvider.value(value: parkingBloc),
-                    ],
-                    child: const DebugScreen(),
-                  ),
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Drag handle
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // Title
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Text(
+                'Debug Settings',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
                 ),
-              );
-            },
-            tooltip: 'Debug',
-            child: const Icon(Icons.bug_report),
+              ),
+            ),
+            const Divider(height: 1),
+            // Debug options
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7FAC58).withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.refresh, color: Color(0xFF7FAC58)),
+              ),
+              title: const Text('Reload Pins'),
+              subtitle: const Text('Refresh all parking data'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                mapCubit.clearFilter();
+                searchCubit.clearSearch();
+                pinCubit.loadPins(forceRefresh: true);
+              },
+            ),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade100,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.local_parking, color: Colors.orange.shade700),
+              ),
+              title: const Text('Test Parking Detection'),
+              subtitle: const Text('Trigger parking detection popup'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                parkingBloc.add(const TriggerTestParkingDetection());
+              },
+            ),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.purple.shade100,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.bug_report, color: Colors.purple.shade700),
+              ),
+              title: const Text('Debug Screen'),
+              subtitle: const Text('Open debug information screen'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => MultiBlocProvider(
+                      providers: [
+                        BlocProvider.value(value: pinCubit),
+                        BlocProvider.value(value: parkingBloc),
+                      ],
+                      child: const DebugScreen(),
+                    ),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade100,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.remove_red_eye, color: Colors.blue.shade700),
+              ),
+              title: const Text('Toggle Areas Debug'),
+              subtitle: const Text('Show/hide area polygons on map'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                mapCubit.toggleAreasDebug();
+              },
+            ),
+            SizedBox(height: MediaQuery.of(sheetContext).padding.bottom + 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDebugButton(BuildContext context) {
+    return Positioned(
+      top: 120, // Below search bar and timer badge
+      right: 16,
+      child: Material(
+        elevation: 4,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          onTap: () => _showDebugMenu(context),
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Icon(
+              Icons.settings,
+              color: Color(0xFF7FAC58),
+              size: 24,
+            ),
           ),
-          FloatingActionButton(
-            heroTag: 'areas-debug',
-            mini: true,
-            tooltip: 'areas-debug',
-            child: const Icon(Icons.remove_red_eye),
-            onPressed: () => context.read<MapScreenCubit>().toggleAreasDebug(),
-          ),
-        ],
+        ),
       ),
     );
   }
