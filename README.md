@@ -9,7 +9,7 @@ Users can take photos of parking signs, which are processed via computer vision,
 - **Frontend**: Flutter
 - **Backend**: Java 21, Spring Boot 3.5.4, Spring Data JPA, Hibernate
 - **Database**: PostgreSQL 17
-- **Deployment**: AWS
+- **Deployment**: Microsoft Azure Cloud
 
 ---
 
