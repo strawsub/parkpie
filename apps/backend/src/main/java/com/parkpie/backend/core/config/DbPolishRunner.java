@@ -5,15 +5,30 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+/**
+ * Performs idempotent database maintenance and schema adjustments when the application starts.
+ * The runner keeps legacy indexes, constraints, and helper tables aligned with the expectations of
+ * the current codebase without requiring manual migrations for developer environments.
+ */
 @Component
 public class DbPolishRunner implements ApplicationRunner {
 
     private final JdbcTemplate jdbc;
 
+    /**
+     * Creates the runner.
+     *
+     * @param jdbc JDBC template used to execute idempotent DDL statements
+     */
     public DbPolishRunner(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
 
+    /**
+     * Executes the collection of idempotent DDL and DML statements that tidy up the database schema.
+     *
+     * @param args application arguments supplied during startup
+     */
     @Override
     public void run(ApplicationArguments args) {
         // Spatial index for fast map queries
@@ -173,8 +188,6 @@ public class DbPolishRunner implements ApplicationRunner {
         """);
     }
 }
-
-
 
 
 

@@ -25,6 +25,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Serves the administrative scheduler UI and JSON helpers that expose job status. Operators use
+ * these endpoints to configure and monitor the availability fetch job.
+ */
 @Controller
 @RequestMapping("/admin/scheduler")
 @Tag(name = "Admin")
@@ -34,6 +38,13 @@ public class AdminSchedulerController {
     private final AvailabilityJobRunner runner;
     private final AvailabilityFetchLogRepository logRepo;
 
+    /**
+     * Creates the controller.
+     *
+     * @param settings scheduler configuration service
+     * @param runner   job runner used to trigger immediate executions
+     * @param logRepo  repository providing recent execution logs
+     */
     public AdminSchedulerController(SchedulerSettingsService settings,
                                     AvailabilityJobRunner runner,
                                     AvailabilityFetchLogRepository logRepo) {
@@ -42,6 +53,12 @@ public class AdminSchedulerController {
         this.logRepo = logRepo;
     }
 
+    /**
+     * Renders the scheduler overview page with configuration and recent logs.
+     *
+     * @param model MVC model loaded with scheduler attributes
+     * @return template name for the scheduler dashboard
+     */
     @GetMapping
     public String scheduler(Model model) {
         model.addAttribute("enabled", settings.isEnabled());
@@ -56,6 +73,13 @@ public class AdminSchedulerController {
         return "admin/scheduler";
     }
 
+    /**
+     * Updates scheduler configuration submitted from the UI.
+     *
+     * @param enabled        string flag derived from checkbox input
+     * @param intervalMinutes new execution interval in minutes
+     * @return redirect back to the scheduler page
+     */
     @PostMapping
     public String update(@RequestParam(value = "enabled", required = false) String enabled,
                          @RequestParam("intervalMinutes") long intervalMinutes) {
@@ -64,6 +88,11 @@ public class AdminSchedulerController {
         return "redirect:/admin/scheduler";
     }
 
+    /**
+     * Triggers a manual availability fetch if the scheduler is idle.
+     *
+     * @return redirect back to the scheduler page
+     */
     @PostMapping("/trigger")
     public String trigger() {
         if (settings.isRunning()) {
@@ -85,6 +114,11 @@ public class AdminSchedulerController {
         return "redirect:/admin/scheduler";
     }
 
+    /**
+     * Returns the most recent scheduler status snapshot.
+     *
+     * @return JSON response describing scheduler configuration and last execution
+     */
     @GetMapping("/status")
     @ResponseBody
     @Operation(
@@ -115,6 +149,11 @@ public class AdminSchedulerController {
         return ResponseEntity.ok(m);
     }
 
+    /**
+     * Provides the most recent scheduler execution logs as JSON.
+     *
+     * @return list of the last fifty availability fetch executions
+     */
     @GetMapping("/logs")
     @ResponseBody
     @Operation(

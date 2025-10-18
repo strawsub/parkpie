@@ -15,22 +15,42 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Serves administrative HTML pages and supporting JSON helpers used by operations staff.
+ */
 @Controller
 @Tag(name = "Admin")
 public class AdminPageController {
 
     private final AdminDatabaseService adminDatabaseService;
 
+    /**
+     * Creates the controller.
+     *
+     * @param adminDatabaseService service that exposes aggregated database metadata
+     */
     public AdminPageController(AdminDatabaseService adminDatabaseService) {
         this.adminDatabaseService = adminDatabaseService;
     }
 
+    /**
+     * Renders the administrative dashboard page.
+     *
+     * @param model MVC model populated with table counts
+     * @return dashboard template name
+     */
     @GetMapping("/admin")
     public String dashboard(Model model) {
         model.addAttribute("counts", adminDatabaseService.fetchTableCounts());
         return "admin/dashboard";
     }
 
+    /**
+     * Renders the database overview page summarising table information.
+     *
+     * @param model MVC model enriched with database metadata
+     * @return database template name
+     */
     @GetMapping("/admin/database")
     public String database(Model model) {
         model.addAttribute("database", adminDatabaseService.fetchDbInfo());
@@ -38,12 +58,23 @@ public class AdminPageController {
         return "admin/database";
     }
 
+    /**
+     * Renders the CSV upload management page.
+     *
+     * @param model MVC model populated with record counts
+     * @return upload template name
+     */
     @GetMapping("/admin/upload")
     public String upload(Model model) {
         model.addAttribute("counts", adminDatabaseService.fetchTableCounts());
         return "admin/upload";
     }
     
+    /**
+     * Reports a lightweight health status tailored for the administration experience.
+     *
+     * @return map describing current availability of admin dependencies
+     */
     @GetMapping("/admin/health")
     @ResponseBody
     @Operation(

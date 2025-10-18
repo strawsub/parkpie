@@ -10,22 +10,45 @@ import java.sql.SQLException;
 import java.time.LocalTime;
 import java.util.*;
 
+/**
+ * Aggregates realtime bay occupancy into zone-level parking sign snapshots.
+ */
 @Service
 public class ParkingSignAggregationService {
 
     private final JdbcTemplate jdbc;
     private final ParkingSignRepository signRepo;
 
+    /**
+     * Creates the aggregation service.
+     *
+     * @param jdbc JDBC template used for aggregation queries
+     * @param signRepo repository used to upsert sign windows
+     */
     public ParkingSignAggregationService(JdbcTemplate jdbc, ParkingSignRepository signRepo) {
         this.jdbc = jdbc;
         this.signRepo = signRepo;
     }
 
+    /**
+     * Aggregated zone metrics derived from realtime bay occupancy.
+     *
+     * @param bayCount total bays considered
+     * @param lat average latitude used for representative geometry
+     * @param lng average longitude used for representative geometry
+     * @param updatedAt timestamp of the latest occupancy update
+     * @param occupancyPercent proportion of bays currently occupied
+     */
     public record ZoneAgg(int bayCount, double lat, double lng, java.time.LocalDateTime updatedAt, Double occupancyPercent) {}
 
     // Key for identifying a restriction window row
     private static record WindowKey(Integer dayOfWeek, LocalTime startTime, LocalTime endTime) {}
 
+    /**
+     * Rebuilds aggregated signs from realtime occupancy data.
+     *
+     * @return number of windows upserted
+     */
     @Transactional
     public int rebuildFromRealtime() {
         List<Integer> zones = jdbc.query("SELECT DISTINCT zone_number FROM parking_bay_realtime WHERE zone_number IS NOT NULL ORDER BY zone_number",
@@ -158,8 +181,6 @@ public class ParkingSignAggregationService {
         return jdbc.update(sql.toString(), params.toArray());
     }
 }
-
-
 
 
 

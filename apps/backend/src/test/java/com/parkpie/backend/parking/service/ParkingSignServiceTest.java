@@ -15,6 +15,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.never;
 
+/**
+ * Unit tests covering the manual parking sign ingestion workflow.
+ */
 class ParkingSignServiceTest {
 
     private ParkingSignRepository repository;

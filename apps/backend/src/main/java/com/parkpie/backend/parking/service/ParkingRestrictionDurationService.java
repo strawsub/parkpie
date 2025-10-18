@@ -16,18 +16,39 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+/**
+ * Computes parking restriction durations based on nearby sign windows. The service models weekly
+ * restriction cycles to determine how long a vehicle may remain at a location or when the next
+ * restriction will become active.
+ */
 @Service
 public class ParkingRestrictionDurationService {
 
+    /**
+     * Melbourne time zone used to interpret parking restriction schedules.
+     */
     public static final ZoneId MELBOURNE_ZONE = ZoneId.of("Australia/Melbourne");
     private static final double DEFAULT_SEARCH_RADIUS_METERS = 100.0;
 
     private final ParkingSignRepository parkingSignRepository;
 
+    /**
+     * Creates the service.
+     *
+     * @param parkingSignRepository repository used to query restriction windows
+     */
     public ParkingRestrictionDurationService(ParkingSignRepository parkingSignRepository) {
         this.parkingSignRepository = parkingSignRepository;
     }
 
+    /**
+     * Calculates the permissible parking duration for the given location and start time.
+     *
+     * @param lat latitude in WGS84 decimal degrees
+     * @param lng longitude in WGS84 decimal degrees
+     * @param startTime ISO timestamp representing when the parking session begins
+     * @return optional result describing either the active restriction or time until the next one
+     */
     public Optional<RestrictionDurationResult> calculateDuration(
             double lat,
             double lng,
@@ -36,6 +57,16 @@ public class ParkingRestrictionDurationService {
         return calculateDuration(lat, lng, startTime, null);
     }
 
+    /**
+     * Calculates the permissible parking duration for the given location and start time, allowing
+     * the caller to prioritise a preferred zone.
+     *
+     * @param lat latitude in WGS84 decimal degrees
+     * @param lng longitude in WGS84 decimal degrees
+     * @param startTime ISO timestamp representing when the parking session begins
+     * @param preferredZoneNumber zone number to favour when multiple zones overlap
+     * @return optional result describing either the active restriction or time until the next one
+     */
     public Optional<RestrictionDurationResult> calculateDuration(
             double lat,
             double lng,

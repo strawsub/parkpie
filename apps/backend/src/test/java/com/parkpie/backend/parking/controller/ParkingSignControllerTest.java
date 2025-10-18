@@ -28,6 +28,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+/**
+ * Web MVC tests covering parking sign retrieval and ingestion endpoints.
+ */
 @WebMvcTest(controllers = ParkingSignController.class)
 @Import(SecurityConfig.class)
 @TestPropertySource(properties = {

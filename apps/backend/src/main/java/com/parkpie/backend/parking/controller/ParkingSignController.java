@@ -24,6 +24,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+/**
+ * REST controller exposing public endpoints for finding parking signs and submitting manual sign
+ * ingests sourced from ParkPie users.
+ */
 @RestController
 @RequestMapping(value = "/signs", produces = "application/json")
 @Tag(name = "Parking")
@@ -32,10 +36,23 @@ public class ParkingSignController {
 
     private final ParkingSignService service;
 
+    /**
+     * Constructs the controller.
+     *
+     * @param service service that encapsulates parking sign operations
+     */
     public ParkingSignController(ParkingSignService service) {
         this.service = service;
     }
 
+    /**
+     * Retrieves nearby parking signs ordered by distance from the provided coordinates.
+     *
+     * @param lat    latitude in WGS84 decimal degrees
+     * @param lng    longitude in WGS84 decimal degrees
+     * @param meters search radius in metres
+     * @return list of sign projections matching the query
+     */
     @GetMapping("/near")
     @Operation(
             summary = "Look up nearby parking signs",
@@ -73,6 +90,12 @@ public class ParkingSignController {
         return service.findNear(lat, lng, meters);
     }
 
+    /**
+     * Ingests a user-submitted parking sign and returns a summary of the persisted data.
+     *
+     * @param request validated request detailing the sign location and restriction windows
+     * @return summary of the saved zone and number of stored restrictions
+     */
     @PostMapping(value = "/ingest", consumes = "application/json")
     @Operation(
             summary = "Submit a manually collected parking sign",

@@ -52,6 +52,11 @@ public class ParkingSegmentBootstrapService {
                     145.101068, -37.791741)
     );
 
+    /**
+     * Creates the bootstrapper.
+     *
+     * @param jdbc JDBC template used to execute DDL statements
+     */
     public ParkingSegmentBootstrapService(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
@@ -152,4 +157,3 @@ public class ParkingSegmentBootstrapService {
         }
     }
 }
-

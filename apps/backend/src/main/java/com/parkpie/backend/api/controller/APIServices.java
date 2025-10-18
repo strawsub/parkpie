@@ -21,6 +21,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ * Legacy controller exposing API endpoints consumed by the frontend and administrative tools.
+ */
 @Controller
 public class APIServices {
     private static final ZoneId DEFAULT_ZONE = ParkingRestrictionDurationService.MELBOURNE_ZONE;
@@ -29,6 +32,13 @@ public class APIServices {
     private final AvailabilityJobRunner runner;
     private final ParkingRestrictionDurationService restrictionDurationService;
 
+    /**
+     * Creates the controller.
+     *
+     * @param dbService database access service
+     * @param runner availability job runner
+     * @param restrictionDurationService service used to compute restriction durations
+     */
     public APIServices(
             APIDatabaseService dbService,
             AvailabilityJobRunner runner,
@@ -39,6 +49,12 @@ public class APIServices {
         this.restrictionDurationService = restrictionDurationService;
     }
 
+    /**
+     * Triggers the availability import once and renders a landing page.
+     *
+     * @param model template model
+     * @return Thymeleaf view name
+     */
     @GetMapping("/api/updateavailability")
     public String landingUpdateAvailability(Model model) {
         String status = runner.runOnce("api");
@@ -46,6 +62,11 @@ public class APIServices {
         return "api/landing";
     }
 
+    /**
+     * Returns supporting information used to plot a sign pin.
+     *
+     * @return list of map rows describing the sign
+     */
     @ResponseBody
     @GetMapping("/api/map/getsignforpin")
     public List<Map<String, Object>> getLocForPin() {
@@ -54,14 +75,32 @@ public class APIServices {
 
 
     // Lat, Long -> Nearby Parking Bays
+    /**
+     * Queries parking bays near a location.
+     *
+     * @param lat latitude in WGS84 decimal degrees
+     * @param lng longitude in WGS84 decimal degrees
+     * @return list of bays near the location
+     */
     @ResponseBody
     @GetMapping("/api/map/querybylocation")
     public List<Map<String, Object>> queryByLocation(
             @RequestParam("lat") double lat,
             @RequestParam("lng") double lng) {
-        return dbService.queryByPoint(lat, lng); 
+        return dbService.queryByPoint(lat, lng);
     }
 
+    /**
+     * Queries parking bays by location and radius with optional restriction filters.
+     *
+     * @param lat latitude in WGS84 decimal degrees
+     * @param lng longitude in WGS84 decimal degrees
+     * @param radius radius in metres
+     * @param duration optional requested stay duration
+     * @param restrictionTime optional time filter
+     * @param restrictionDate optional date filter
+     * @return list of bays matching the filter
+     */
     @ResponseBody
     @GetMapping("/api/map/querybyradius")
     public List<Map<String, Object>> queryByRadius(
@@ -75,6 +114,14 @@ public class APIServices {
         return dbService.queryByFilter(lat, lng, radius, duration, restrictionTime, restrictionDate);
     }
 
+    /**
+     * Creates a parking session entry.
+     *
+     * @param lat latitude in WGS84 decimal degrees
+     * @param lng longitude in WGS84 decimal degrees
+     * @param startTime optional session start time
+     * @return session payload
+     */
     @ResponseBody
     @GetMapping("/api/map/createsession")
     public Map<String, Object> createSessionViaGet(
@@ -86,6 +133,12 @@ public class APIServices {
     }
 
 
+    /**
+     * Deletes a parking session entry.
+     *
+     * @param sessionID identifier of the session
+     * @return deletion result payload
+     */
     @ResponseBody
     @GetMapping("/api/map/deletesession")
     public Map<String, Object> deleteSessionViaGet(
@@ -95,6 +148,11 @@ public class APIServices {
     }
 
 
+    /**
+     * Returns all configured parking segments.
+     *
+     * @return list of segment details
+     */
     @ResponseBody
     @GetMapping("/api/map/getallsegments")
     public List<Map<String, Object>> getAllSegments() {
@@ -103,6 +161,11 @@ public class APIServices {
 
     // TODO: Remove these debug endpoints after API enhancement is complete
     // DEBUG: Temporary endpoint to investigate database structure
+    /**
+     * Debug endpoint returning all restrictions.
+     *
+     * @return list of restriction rows
+     */
     @ResponseBody
     @GetMapping("/api/debug/getallrestrictions")
     public List<Map<String, Object>> getAllRestrictionsDebug() {
@@ -110,6 +173,14 @@ public class APIServices {
     }
 
     // DEBUG: Get all restrictions for a specific location
+    /**
+     * Debug endpoint returning restrictions near a location.
+     *
+     * @param lat latitude in WGS84 decimal degrees
+     * @param lng longitude in WGS84 decimal degrees
+     * @param radius search radius in metres
+     * @return list of restriction rows
+     */
     @ResponseBody
     @GetMapping("/api/debug/getlocationrestrictions")
     public List<Map<String, Object>> getLocationRestrictionsDebug(
@@ -119,6 +190,15 @@ public class APIServices {
         return dbService.getAllRestrictionsForLocation(lat, lng, radius);
     }
 
+    /**
+     * Calculates the restriction duration for a given location and start time.
+     *
+     * @param lat latitude in WGS84 decimal degrees
+     * @param lng longitude in WGS84 decimal degrees
+     * @param startTimeRaw user provided start time
+     * @param zoneNumber optional manual zone identifier
+     * @return API response describing stay duration
+     */
     @ResponseBody
     @GetMapping("/api/map/restrictionduration")
     public RestrictionDurationApiResponse getRestrictionDuration(
@@ -141,6 +221,11 @@ public class APIServices {
         return toApiResponse(result.get());
     }
 
+    /**
+     * Returns the geometry metadata for parking segments.
+     *
+     * @return list of segment location rows
+     */
     @ResponseBody
     @GetMapping("/api/segment/getlocationforsegment")
     public List<Map<String, Object>> getLocationForSegment()
@@ -148,6 +233,12 @@ public class APIServices {
         return dbService.getLocationForSegment();
     }
 
+    /**
+     * Converts a restriction duration result into the API response type.
+     *
+     * @param result domain result
+     * @return API response
+     */
     private RestrictionDurationApiResponse toApiResponse(RestrictionDurationResult result) {
         return new RestrictionDurationApiResponse(
                 result.durationMinutes(),
@@ -161,6 +252,12 @@ public class APIServices {
         );
     }
 
+    /**
+     * Parses the supplied start time string, accepting full ISO timestamps or local datetimes.
+     *
+     * @param raw user-supplied start time
+     * @return parsed timestamp in offset form
+     */
     private OffsetDateTime parseStartTime(String raw) {
         if (raw == null || raw.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startTime is required");

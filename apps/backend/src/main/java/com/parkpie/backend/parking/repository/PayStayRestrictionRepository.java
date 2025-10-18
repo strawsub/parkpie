@@ -7,8 +7,24 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalTime;
 
+/**
+ * Repository managing PayStay restriction windows.
+ */
 public interface PayStayRestrictionRepository extends JpaRepository<PayStayRestriction, Long> {
 
+    /**
+     * Upserts a PayStay restriction window using its natural key.
+     *
+     * @param zone PayStay zone identifier
+     * @param dayOfWeek ISO day-of-week
+     * @param startTime start time of the restriction window
+     * @param endTime end time of the restriction window
+     * @param minimumStayMinutes minimum stay minutes, nullable
+     * @param maximumStayMinutes maximum stay minutes
+     * @param costPerHourCents hourly cost in cents
+     * @param dayOfWeekName friendly day-of-week label
+     * @return number of rows inserted or updated
+     */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional
     @Query(value = """

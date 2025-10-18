@@ -29,6 +29,9 @@ import java.util.List;
 import java.util.Map;
 import java.sql.Time;
 
+/**
+ * Provides database access helpers backing the legacy API endpoints and CSV import workflows.
+ */
 @Service
 public class APIDatabaseService {
 
@@ -37,6 +40,12 @@ public class APIDatabaseService {
 
     private static final double STREET_DESCRIPTION_MAX_DISTANCE_METERS = 100.0;
 
+    /**
+     * Creates the service.
+     *
+     * @param jdbc JDBC template used for executing queries
+     * @param realtimeRepo repository used for realtime bay data
+     */
     public APIDatabaseService(JdbcTemplate jdbc, ParkingBayRealtimeRepository realtimeRepo) {
         this.jdbc = jdbc;
         this.realtimeRepo = realtimeRepo;
@@ -46,6 +55,9 @@ public class APIDatabaseService {
 
 
 
+    /**
+     * Downloads the realtime bay sensor feed and stages recent rows in memory.
+     */
     public void downloadCSV() {
         rows = new ArrayList<>();
 
@@ -101,11 +113,19 @@ public class APIDatabaseService {
         }
     }
 
+    /**
+     * Returns staged realtime rows sorted by kerbside identifier.
+     *
+     * @return staged sensor rows
+     */
     public List<Map<String, Object>> getRows() {
         rows.sort(Comparator.comparingInt(r -> (Integer) r.get("kerbsideid")));
         return rows;
     }
 
+    /**
+     * Persists staged realtime rows into the database via the repository upsert helper.
+     */
     public void updateDatabase() {
         for (Map<String, Object> row : rows) {
             var lastUpdated = OffsetDateTime.parse((String) row.get("lastupdated")).toLocalDateTime();
@@ -124,6 +144,11 @@ public class APIDatabaseService {
     // Get all signs from parking_signs table
     private List<Map<String, Object>> allPin = new ArrayList<>();
 
+    /**
+     * Loads aggregated sign information used to display a pin on the map.
+     *
+     * @return list of sign rows
+     */
     public List<Map<String, Object>> getSignForPin() {
         double descriptionRadius = STREET_DESCRIPTION_MAX_DISTANCE_METERS;
         String sql = """
@@ -169,6 +194,13 @@ public class APIDatabaseService {
         return allPin;
     }
 
+    /**
+     * Queries signs near a single point using a small default radius.
+     *
+     * @param lat latitude in WGS84 decimal degrees
+     * @param lng longitude in WGS84 decimal degrees
+     * @return list of matching rows
+     */
     public List<Map<String, Object>> queryByPoint(double lat, double lng) {
 
         double radiusMeters = 100;
@@ -195,9 +227,20 @@ public class APIDatabaseService {
     }
 
 
+    /**
+     * Queries signs using a combination of radius and optional restriction filters.
+     *
+     * @param lat latitude in WGS84 decimal degrees
+     * @param lng longitude in WGS84 decimal degrees
+     * @param radius radius in metres
+     * @param duration optional desired stay duration in minutes
+     * @param restrictionTime optional restriction time window in {@code HH:mm:ss} format
+     * @param restrictionDate optional restriction date in {@code yyyy-MM-dd} format
+     * @return list of matching rows
+     */
     public List<Map<String, Object>> queryByFilter(
-        double lat, double lng, double radius,
-        Integer duration, String restrictionTime, String restrictionDate // time "HH:mm:ss", date "yyyy-MM-dd"
+            double lat, double lng, double radius,
+            Integer duration, String restrictionTime, String restrictionDate // time "HH:mm:ss", date "yyyy-MM-dd"
     ) {
         StringBuilder sql = new StringBuilder("""
                     SELECT
@@ -316,6 +359,11 @@ public class APIDatabaseService {
         return jdbc.queryForList(sql.toString(), params.toArray());
     }
 
+    /**
+     * Generates a unique identifier for parking sessions.
+     *
+     * @return newly generated session identifier
+     */
     public String generateSessionId() {
         SecureRandom random = new SecureRandom();
 
@@ -334,6 +382,14 @@ public class APIDatabaseService {
         return randPart + timePart.substring(timePart.length() - 6) + keyPart;
     }
 
+    /**
+     * Creates a parking session near the supplied coordinates.
+     *
+     * @param lat latitude in WGS84 decimal degrees
+     * @param lng longitude in WGS84 decimal degrees
+     * @param startTime optional session start time string
+     * @return payload describing the outcome of the creation attempt
+     */
     public Map<String, Object> createParkingSession(double lat, double lng, String startTime) {
         try {
             List<Map<String, Object>> nearest = queryByPoint(lat, lng);
@@ -400,6 +456,12 @@ public class APIDatabaseService {
     }
 
 
+    /**
+     * Deletes a parking session by identifier.
+     *
+     * @param sessionID identifier of the session to delete
+     * @return payload indicating success or failure
+     */
     public Map<String, Object> deleteParkingSession(String sessionID) {
         Map<String, Object> resp = new HashMap<>();
 
@@ -430,6 +492,11 @@ public class APIDatabaseService {
     }
 
 
+    /**
+     * Returns all parking segments stored in the database.
+     *
+     * @return segment rows
+     */
     public List<Map<String, Object>> getAllSegments() {
 
         String sql = """
@@ -443,6 +510,11 @@ public class APIDatabaseService {
     }
 
     // DEBUG: Get all parking signs to investigate database structure
+    /**
+     * Returns a denormalised view of restrictions for debugging purposes.
+     *
+     * @return list of restriction rows
+     */
     public List<Map<String, Object>> getAllRestrictionsForInvestigation() {
         String sql = """
             SELECT
@@ -474,6 +546,14 @@ public class APIDatabaseService {
     }
 
     // DEBUG: Get all restrictions for a specific location across all days
+    /**
+     * Returns restrictions near the supplied location for debugging purposes.
+     *
+     * @param lat latitude in WGS84 decimal degrees
+     * @param lng longitude in WGS84 decimal degrees
+     * @param radius radius in metres
+     * @return list of restriction rows
+     */
     public List<Map<String, Object>> getAllRestrictionsForLocation(double lat, double lng, double radius) {
         String sql = """
             SELECT
@@ -513,6 +593,11 @@ public class APIDatabaseService {
     }
 
 
+    /**
+     * Returns representative locations for each parking segment.
+     *
+     * @return list of segment location rows
+     */
     public List<Map<String, Object>> getLocationForSegment() {
 
         String sql_user_session = """
@@ -623,6 +708,11 @@ public class APIDatabaseService {
     }
 
 
+    /**
+     * Loads the road segment GeoJSON asset bundled with the application.
+     *
+     * @return list of GeoJSON features or {@code null} on failure
+     */
     public List<Map<String, Object>> loadGeoJson() {
         try {
             ClassPathResource resource = new ClassPathResource("assets/road_segment.geojson");
@@ -690,6 +780,3 @@ public class APIDatabaseService {
 
     
 }
-
-
-

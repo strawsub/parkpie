@@ -10,8 +10,21 @@ import com.parkpie.backend.parking.entity.ParkingBayRealtime;
 
 import java.time.LocalDateTime;
 
+/**
+ * Repository handling upsert operations for realtime parking bay occupancy data.
+ */
 public interface ParkingBayRealtimeRepository extends CrudRepository<ParkingBayRealtime, Long> {
 
+    /**
+     * Upserts realtime occupancy metrics for a kerbside bay.
+     *
+     * @param kerbsideId kerbside identifier
+     * @param lastUpdated timestamp the upstream feed last updated the row
+     * @param statusTimestamp timestamp describing when the occupancy status was observed
+     * @param statusDescription occupancy status text
+     * @param zoneNumber associated zone number, when available
+     * @return number of rows inserted or updated
+     */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional
     @Query(value = """

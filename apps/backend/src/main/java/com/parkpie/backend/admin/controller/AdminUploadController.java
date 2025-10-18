@@ -23,6 +23,10 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * Handles administrative CSV uploads and exposes endpoints for monitoring long-running import
+ * progress.
+ */
 @Controller
 @RequestMapping("/admin/upload")
 @Tag(name = "Admin")
@@ -31,12 +35,26 @@ public class AdminUploadController {
     private final CsvImportService csvImportService;
     private final UploadProgressService uploadProgressService;
 
+    /**
+     * Creates the controller.
+     *
+     * @param csvImportService service responsible for processing CSV payloads
+     * @param uploadProgressService service that tracks async upload progress
+     */
     public AdminUploadController(CsvImportService csvImportService,
                                  UploadProgressService uploadProgressService) {
         this.csvImportService = csvImportService;
         this.uploadProgressService = uploadProgressService;
     }
 
+    /**
+     * Handles parking bay CSV uploads and launches asynchronous processing.
+     *
+     * @param file uploaded CSV file
+     * @param progressId identifier used to track import progress
+     * @param ra redirect attributes used to surface flash messages
+     * @return redirect to the upload page
+     */
     @PostMapping("/bays")
     public String uploadBays(@RequestParam("file") MultipartFile file,
                              @RequestParam("progressId") String progressId,
@@ -70,6 +88,14 @@ public class AdminUploadController {
         }
     }
 
+    /**
+     * Handles CSV uploads that contain zone link information.
+     *
+     * @param file uploaded CSV file
+     * @param progressId identifier used to track import progress
+     * @param ra redirect attributes used to surface flash messages
+     * @return redirect to the upload page
+     */
     @PostMapping("/zone-links")
     public String uploadZoneLinks(@RequestParam("file") MultipartFile file,
                                   @RequestParam("progressId") String progressId,
@@ -101,6 +127,14 @@ public class AdminUploadController {
         }
     }
 
+    /**
+     * Handles CSV uploads for manual parking restrictions.
+     *
+     * @param file uploaded CSV file
+     * @param progressId identifier used to track import progress
+     * @param ra redirect attributes used to surface flash messages
+     * @return redirect to the upload page
+     */
     @PostMapping("/restrictions")
     public String uploadRestrictions(@RequestParam("file") MultipartFile file,
                                      @RequestParam("progressId") String progressId,
@@ -132,6 +166,12 @@ public class AdminUploadController {
         }
     }
 
+    /**
+     * Returns the current progress of a CSV upload.
+     *
+     * @param progressId identifier used to look up upload status
+     * @return HTTP response containing progress details or 404 if missing
+     */
     @GetMapping("/progress/{progressId}")
     @ResponseBody
     @Operation(

@@ -7,9 +7,26 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+/**
+ * Centralised exception handling for REST controllers. The handler converts common validation
+ * exceptions into JSON error payloads understood by front-end clients.
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    /**
+     * Creates the exception handler.
+     */
+    public GlobalExceptionHandler() {
+    }
+
+    /**
+     * Converts {@link MethodArgumentNotValidException} instances raised when request bodies fail to
+     * bind to validation constraints.
+     *
+     * @param exception validation exception raised by Spring MVC
+     * @return JSON payload describing the violated fields
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     Map<String, Object> badRequest(MethodArgumentNotValidException exception) {
@@ -21,6 +38,13 @@ public class GlobalExceptionHandler {
         );
     }
 
+    /**
+     * Converts bean validation {@link ConstraintViolationException} instances generated for invalid
+     * request parameters.
+     *
+     * @param exception constraint violation thrown by the validation framework
+     * @return JSON payload describing the failed constraint
+     */
     @ExceptionHandler(ConstraintViolationException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     Map<String, Object> constraintViolation(ConstraintViolationException exception) {

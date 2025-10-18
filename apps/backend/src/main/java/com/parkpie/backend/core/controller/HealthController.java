@@ -11,16 +11,31 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
+/**
+ * Exposes health and connectivity probes that allow infrastructure to verify the availability of
+ * the ParkPie backend and its PostGIS dependencies.
+ */
 @RestController
 @Tag(name = "Health")
 public class HealthController {
 
     private final JdbcTemplate jdbc;
 
+    /**
+     * Constructs the controller.
+     *
+     * @param jdbc template used to issue lightweight verification queries
+     */
     public HealthController(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
 
+    /**
+     * Performs a lightweight database round-trip and returns a JSON payload summarising application
+     * status.
+     *
+     * @return map indicating whether the database is reachable and its reported version
+     */
     @GetMapping("/health")
     @Operation(summary = "Application health probe", description = "Returns database connectivity and application liveness information.")
     @ApiResponse(
@@ -37,6 +52,12 @@ public class HealthController {
         return Map.of("ok", one != null && one == 1, "dbVersion", version);
     }
 
+    /**
+     * Demonstrates that spatial extensions are operational by executing an inexpensive PostGIS
+     * function.
+     *
+     * @return map containing the textual representation of a sample geometry
+     */
     @GetMapping("/health/postgis")
     @Operation(summary = "PostGIS health probe", description = "Executes a simple PostGIS spatial query and returns the WKT representation.")
     @ApiResponse(

@@ -5,8 +5,22 @@ import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Repository for persisting and updating parking bay information sourced from CSV feeds.
+ */
 public interface ParkingBayRepository extends JpaRepository<ParkingBay, Long> {
 
+    /**
+     * Upserts a parking bay identified by street segment and kerbside identifiers.
+     *
+     * @param streetSegmentId street segment identifier
+     * @param kerbsideId kerbside identifier
+     * @param description street description
+     * @param lat latitude in WGS84 decimal degrees
+     * @param lng longitude in WGS84 decimal degrees
+     * @param lastUpdated dataset update timestamp
+     * @return number of rows inserted or updated
+     */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional
     @Query(value = """
@@ -28,6 +42,16 @@ public interface ParkingBayRepository extends JpaRepository<ParkingBay, Long> {
                   @Param("lastUpdated") java.time.LocalDate lastUpdated);
 
     // For rows without KerbsideID: try to update by (segment, lat, lng, kerbside_id IS NULL); if nothing updated, insert
+    /**
+     * Attempts to update a parking bay lacking a kerbside identifier, matching on coordinates.
+     *
+     * @param streetSegmentId street segment identifier
+     * @param description street description
+     * @param lat latitude in WGS84 decimal degrees
+     * @param lng longitude in WGS84 decimal degrees
+     * @param lastUpdated dataset update timestamp
+     * @return number of rows updated
+     */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional
     @Query(value = """
@@ -46,6 +70,16 @@ public interface ParkingBayRepository extends JpaRepository<ParkingBay, Long> {
                                  @Param("lng") double lng,
                                  @Param("lastUpdated") java.time.LocalDate lastUpdated);
 
+    /**
+     * Inserts a new parking bay lacking a kerbside identifier.
+     *
+     * @param streetSegmentId street segment identifier
+     * @param description street description
+     * @param lat latitude in WGS84 decimal degrees
+     * @param lng longitude in WGS84 decimal degrees
+     * @param lastUpdated dataset update timestamp
+     * @return number of rows inserted
+     */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional
     @Query(value = """

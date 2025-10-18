@@ -19,6 +19,11 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Locale;
 
+/**
+ * Imports CSV payloads provided via the administrative console and persists them into domain
+ * tables. The service exposes both multipart and byte-array based APIs so uploads can be processed
+ * synchronously or asynchronously.
+ */
 @Service
 public class CsvImportService {
 
@@ -27,6 +32,14 @@ public class CsvImportService {
     private final PayStayRestrictionRepository payStayRestrictionRepository;
     private final ParkingSegmentBootstrapService parkingSegmentBootstrapService;
 
+    /**
+     * Creates the service.
+     *
+     * @param parkingBayRepository repository used to persist parking bay entries
+     * @param payStayZoneLinkRepository repository used to persist PayStay zone link entries
+     * @param payStayRestrictionRepository repository used to persist PayStay restriction entries
+     * @param parkingSegmentBootstrapService helper that ensures dependent static tables exist
+     */
     public CsvImportService(ParkingBayRepository parkingBayRepository,
                             PayStayZoneLinkRepository payStayZoneLinkRepository,
                             PayStayRestrictionRepository payStayRestrictionRepository,
@@ -38,6 +51,12 @@ public class CsvImportService {
     }
 
     // Convenience overloads (safe if called synchronously)
+    /**
+     * Imports a CSV file containing parking bay data.
+     *
+     * @param file multipart upload produced by the admin console
+     * @return summary describing the number of rows written and skipped
+     */
     public String importParkingBays(MultipartFile file) {
         try {
             return importParkingBays(file.getBytes());
@@ -46,6 +65,12 @@ public class CsvImportService {
         }
     }
 
+    /**
+     * Imports a CSV file containing PayStay zone link data.
+     *
+     * @param file multipart upload produced by the admin console
+     * @return summary describing the number of rows written and skipped
+     */
     public String importZoneLinks(MultipartFile file) {
         try {
             return importZoneLinks(file.getBytes());
@@ -54,6 +79,12 @@ public class CsvImportService {
         }
     }
 
+    /**
+     * Imports a CSV file containing PayStay restriction data.
+     *
+     * @param file multipart upload produced by the admin console
+     * @return summary describing the number of rows written and skipped
+     */
     public String importRestrictions(MultipartFile file) {
         try {
             return importRestrictions(file.getBytes());
@@ -63,6 +94,12 @@ public class CsvImportService {
     }
 
     // The async-safe versions the controller uses
+    /**
+     * Imports parking bay data from a byte array so the operation can be executed asynchronously.
+     *
+     * @param bytes CSV content encoded as UTF-8
+     * @return summary describing the number of rows written and skipped
+     */
     public String importParkingBays(byte[] bytes) {
         int upserts = 0;
         int skipped = 0;
@@ -129,6 +166,13 @@ public class CsvImportService {
         return summary;
     }
 
+    /**
+     * Imports PayStay zone link data from a byte array so the operation can be executed
+     * asynchronously.
+     *
+     * @param bytes CSV content encoded as UTF-8
+     * @return summary describing the number of rows written
+     */
     @Transactional
     public String importZoneLinks(byte[] bytes) {
         int upserts = 0;
@@ -150,6 +194,12 @@ public class CsvImportService {
         return upserts + " rows upserted";
     }
 
+    /**
+     * Imports restriction data from a byte array so the operation can be executed asynchronously.
+     *
+     * @param bytes CSV content encoded as UTF-8
+     * @return summary describing the number of rows written and skipped
+     */
     public String importRestrictions(byte[] bytes) {
         int upserts = 0;
         int skipped = 0;

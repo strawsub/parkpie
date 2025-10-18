@@ -13,6 +13,9 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Smoke tests verifying core beans are created and basic endpoints operate when the context loads.
+ */
 @SpringBootTest
 @EnabledIf("com.parkpie.backend.support.PostgresIntegrationTest#isContainerAvailable")
 class ParkPieBackendApplicationTests extends PostgresIntegrationTest {

@@ -16,6 +16,10 @@ import java.util.HashMap;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+/**
+ * Provides parking sign lookup and ingestion capabilities for both public APIs and manual user
+ * submissions.
+ */
 @Service
 public class ParkingSignService {
 
@@ -23,10 +27,23 @@ public class ParkingSignService {
 
     private final ParkingSignRepository parkingSignRepository;
 
+    /**
+     * Creates the service.
+     *
+     * @param parkingSignRepository repository used for persistence and queries
+     */
     public ParkingSignService(ParkingSignRepository parkingSignRepository) {
         this.parkingSignRepository = parkingSignRepository;
     }
 
+    /**
+     * Finds parking signs near the supplied location ordered by distance.
+     *
+     * @param lat latitude in WGS84 decimal degrees
+     * @param lng longitude in WGS84 decimal degrees
+     * @param meters search radius in metres
+     * @return list of sign view projections
+     */
     @Transactional(readOnly = true)
     public List<ParkingSignDto.SignView> findNear(double lat, double lng, double meters) {
         return parkingSignRepository.findNear(lat, lng, meters).stream()
@@ -34,6 +51,12 @@ public class ParkingSignService {
                 .toList();
     }
 
+    /**
+     * Validates and persists a manually submitted parking sign.
+     *
+     * @param req validated request describing the sign and restriction windows
+     * @return response summarising the saved data
+     */
     @Transactional
     public UserSignIngestDto.Response ingestUserSign(UserSignIngestDto.Request req) {
         Objects.requireNonNull(req, "request");

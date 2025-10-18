@@ -17,6 +17,9 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Integration tests exercising custom queries in {@link ParkingSignRepository}.
+ */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @EnabledIf("com.parkpie.backend.support.PostgresIntegrationTest#isContainerAvailable")

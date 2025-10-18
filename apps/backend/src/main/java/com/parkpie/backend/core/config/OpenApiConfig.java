@@ -12,6 +12,12 @@ import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * Configures the Springdoc OpenAPI integration for the ParkPie backend. This definition describes
+ * global API metadata, server URLs, tag groupings, and the basic authentication scheme used by
+ * secured admin endpoints. It also registers grouped document definitions that separate public and
+ * administrative API surfaces.
+ */
 @Configuration
 @OpenAPIDefinition(
         info = @Info(
@@ -51,6 +57,17 @@ import org.springframework.context.annotation.Configuration;
 )
 public class OpenApiConfig {
 
+    /**
+     * Creates the OpenAPI configuration.
+     */
+    public OpenApiConfig() {
+    }
+
+    /**
+     * Creates the OpenAPI grouping that exposes the health and public parking endpoints.
+     *
+     * @return Springdoc grouping definition for public APIs
+     */
     @Bean
     public GroupedOpenApi publicApi() {
         return GroupedOpenApi.builder()
@@ -59,6 +76,11 @@ public class OpenApiConfig {
                 .build();
     }
 
+    /**
+     * Creates the OpenAPI grouping for administration endpoints which require basic authentication.
+     *
+     * @return Springdoc grouping definition for administrative APIs
+     */
     @Bean
     public GroupedOpenApi adminApi() {
         return GroupedOpenApi.builder()

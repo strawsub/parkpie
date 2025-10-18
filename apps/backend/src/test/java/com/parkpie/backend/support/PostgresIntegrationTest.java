@@ -6,6 +6,10 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
+/**
+ * Base test class that provisions a PostGIS-enabled PostgreSQL Testcontainer and wires Spring
+ * properties for integration tests.
+ */
 public abstract class PostgresIntegrationTest {
 
     private static final PostgreSQLContainer<?> POSTGRES;
@@ -36,6 +40,11 @@ public abstract class PostgresIntegrationTest {
         STARTUP_MESSAGE = message;
     }
 
+    /**
+     * Registers datasource properties for the running container or skips tests if unavailable.
+     *
+     * @param registry dynamic property registry provided by Spring Test
+     */
     @DynamicPropertySource
     static void overrideDataSourceProps(DynamicPropertyRegistry registry) {
         Assumptions.assumeTrue(CONTAINER_AVAILABLE,
@@ -51,6 +60,11 @@ public abstract class PostgresIntegrationTest {
                 () -> "org.hibernate.spatial.dialect.postgis.PostgisPGDialect");
     }
 
+    /**
+     * Indicates whether the container started successfully.
+     *
+     * @return {@code true} when the Testcontainer is available
+     */
     public static boolean isContainerAvailable() {
         return CONTAINER_AVAILABLE;
     }

@@ -5,8 +5,21 @@ import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Repository managing PayStay zone to street segment associations.
+ */
 public interface PayStayZoneLinkRepository extends JpaRepository<PayStayZoneLink, Long> {
 
+    /**
+     * Upserts a zone link using the zone and street segment as the natural key.
+     *
+     * @param zone PayStay zone identifier
+     * @param streetSegmentId street segment identifier
+     * @param street street description
+     * @param between1 first cross street
+     * @param between2 second cross street
+     * @return number of rows inserted or updated
+     */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional
     @Query(value = """
