@@ -132,6 +132,7 @@ target/
 *.sql.gz
 *.dump
 *.backup
+!apps/backend/src/test/resources/db/postgis-init.sql
 
 # Local PostgreSQL data directory
 pgdata/
