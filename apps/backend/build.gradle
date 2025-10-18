@@ -35,8 +35,7 @@ dependencies {
     // CSV
     implementation 'org.apache.commons:commons-csv:1.11.0'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
-    runtimeOnly 'org.postgresql:postgresql'
-    testRuntimeOnly 'org.postgresql:postgresql'
+    implementation 'org.postgresql:postgresql'
     implementation 'net.postgis:postgis-jdbc:2024.1.0'
 
     // Spatial / PostGIS
