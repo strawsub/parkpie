@@ -6,6 +6,8 @@ import com.parkpie.backend.parking.repository.ParkingSignRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -79,6 +81,7 @@ public class ParkingSignService {
             }
         }
 
+        LocalDateTime ingestTimestamp = LocalDateTime.now(ZoneOffset.UTC);
         int saved = 0;
         for (var r : uniqueRestrictions) {
             saved += parkingSignRepository.upsertManual(
@@ -88,7 +91,8 @@ public class ParkingSignService {
                     r.day_of_week,
                     r.start_time,
                     r.end_time,
-                    r.maximum_stay_minutes
+                    r.maximum_stay_minutes,
+                    ingestTimestamp
             );
         }
 

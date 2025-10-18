@@ -41,7 +41,7 @@ class ParkingSignServiceTest {
                         window(-101, 2, LocalTime.of(8, 30), LocalTime.of(18, 0), 60, 4.5)
                 ));
         Mockito.when(repository.deleteByZone(-101)).thenReturn(6);
-        Mockito.when(repository.upsertManual(eq(-101), eq(lat), eq(lng), anyInt(), any(), any(), any()))
+        Mockito.when(repository.upsertManual(eq(-101), eq(lat), eq(lng), anyInt(), any(), any(), any(), any()))
                 .thenReturn(1);
 
         var response = service.ingestUserSign(request);
@@ -67,7 +67,7 @@ class ParkingSignServiceTest {
         Mockito.when(repository.findRestrictionWindowsNear(eq(lat), eq(lng), anyDouble()))
                 .thenReturn(List.of());
         Mockito.when(repository.nextManualZoneSequence()).thenReturn(5L);
-        Mockito.when(repository.upsertManual(eq(-5), eq(lat), eq(lng), anyInt(), any(), any(), any()))
+        Mockito.when(repository.upsertManual(eq(-5), eq(lat), eq(lng), anyInt(), any(), any(), any(), any()))
                 .thenReturn(1);
 
         var response = service.ingestUserSign(request);
@@ -139,4 +139,3 @@ class ParkingSignServiceTest {
         };
     }
 }
-

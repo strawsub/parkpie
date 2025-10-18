@@ -81,8 +81,13 @@ public class ParkingSignAggregationService {
             if (!rs.next()) return null;
             int cnt = rs.getInt("cnt");
             if (cnt <= 0) return null;
-            double lat = rs.getDouble("avg_lat");
-            double lng = rs.getDouble("avg_lng");
+            Double latObj = rs.getObject("avg_lat", Double.class);
+            Double lngObj = rs.getObject("avg_lng", Double.class);
+            if (latObj == null || lngObj == null) {
+                return null;
+            }
+            double lat = latObj;
+            double lng = lngObj;
             java.sql.Timestamp ts = rs.getTimestamp("max_last");
             java.time.LocalDateTime updatedAt = ts != null ? ts.toLocalDateTime() : null;
             int present = rs.getInt("present_cnt");
@@ -122,10 +127,10 @@ public class ParkingSignAggregationService {
 
     private Map<String, Object> mapRestriction(ResultSet rs) throws SQLException {
         Map<String, Object> m = new HashMap<>();
-        m.put("day_of_week", rs.getInt("day_of_week"));
+        m.put("day_of_week", rs.getObject("day_of_week", Integer.class));
         m.put("start_time", rs.getObject("start_time", LocalTime.class));
         m.put("end_time", rs.getObject("end_time", LocalTime.class));
-        m.put("maximum_stay_minutes", rs.getInt("maximum_stay_minutes"));
+        m.put("maximum_stay_minutes", rs.getObject("maximum_stay_minutes", Integer.class));
         return m;
     }
 
@@ -153,7 +158,6 @@ public class ParkingSignAggregationService {
         return jdbc.update(sql.toString(), params.toArray());
     }
 }
-
 
 
 
