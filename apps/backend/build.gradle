@@ -2,6 +2,7 @@ plugins {
     id 'org.springframework.boot' version '3.5.4'
     id 'io.spring.dependency-management' version '1.1.7'
     id 'java'
+    id 'jacoco'
 }
 
 group = 'com.parkpie'
@@ -39,14 +40,42 @@ dependencies {
     implementation 'org.hibernate.orm:hibernate-spatial'
     implementation 'org.locationtech.jts:jts-core:1.19.0'
 
+    // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'org.testcontainers:testcontainers'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks.withType(Test).configureEach {
     useJUnitPlatform()
+    finalizedBy 'jacocoTestReport'
 }
 
 bootJar {
     archiveFileName = 'backend-0.0.1-SNAPSHOT.jar'
 }
+
+jacocoTestReport {
+    dependsOn tasks.test
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            element = 'PACKAGE'
+            includes = ['com/parkpie/backend/parking']
+            limit {
+                minimum = 0.7
+            }
+        }
+    }
+}
+
+check.dependsOn jacocoTestCoverageVerification

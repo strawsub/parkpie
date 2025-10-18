@@ -11,6 +11,7 @@ import java.time.LocalTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.never;
 
@@ -75,6 +76,39 @@ class ParkingSignServiceTest {
         assertThat(response.zone_number).isEqualTo(-5);
         assertThat(response.replaced_previous).isZero();
         Mockito.verify(repository, never()).deleteByZone(anyInt());
+    }
+
+    @Test
+    void rejectsPositiveManualZoneNumber() {
+        var location = new UserSignIngestDto.Location();
+        location.lat = -37.81;
+        location.lng = 144.96;
+
+        var restriction = restriction(1, LocalTime.of(8, 0), LocalTime.of(18, 0), 120);
+
+        var request = new UserSignIngestDto.Request();
+        request.location = location;
+        request.restrictions = List.of(restriction);
+        request.zone_number = 5;
+
+        assertThatThrownBy(() -> service.ingestUserSign(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Manual zone_number must be negative");
+    }
+
+    @Test
+    void throwsWhenManualZoneSequenceReturnsInvalidValue() {
+        Mockito.when(repository.findRestrictionWindowsNear(anyDouble(), anyDouble(), anyDouble()))
+                .thenReturn(List.of());
+        Mockito.when(repository.nextManualZoneSequence()).thenReturn(0L);
+
+        var request = buildRequest(-37.8, 144.95,
+                restriction(2, LocalTime.of(7, 0), LocalTime.of(10, 0), 60)
+        );
+
+        assertThatThrownBy(() -> service.ingestUserSign(request))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("invalid value");
     }
 
     private static UserSignIngestDto.Request buildRequest(double lat, double lng, UserSignIngestDto.Restriction... restrictions) {
