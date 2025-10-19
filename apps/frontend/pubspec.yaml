@@ -72,6 +72,9 @@ dependencies:
   # animations
   lottie: ^3.1.2
 
+  # carousel
+  carousel_slider: ^5.0.0
+
   # notifications
   flutter_local_notifications: ^19.4.2
   timezone: ^0.10.1

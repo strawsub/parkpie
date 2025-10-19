@@ -2,12 +2,91 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:frontend/features/navigation/navigation_cubit.dart';
 import 'package:lottie/lottie.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:frontend/services/timer_service.dart';
+import 'package:frontend/services/api_config.dart';
+import 'package:frontend/widgets/parking_zone_carousel.dart';
 import 'timer_bloc.dart';
 import 'timer_event.dart';
 import 'timer_state.dart';
 
-class TimerScreen extends StatelessWidget {
+class TimerScreen extends StatefulWidget {
   const TimerScreen({super.key});
+
+  @override
+  State<TimerScreen> createState() => _TimerScreenState();
+}
+
+class _TimerScreenState extends State<TimerScreen> {
+  List<ParkingZone>? _nearbyZones;
+  bool _isLoadingZones = false;
+  final TimerService _timerService = TimerService(backendBaseUrl: resolveApiBaseUrl());
+
+  @override
+  void initState() {
+    super.initState();
+    // Fetch zones when screen initializes
+    _fetchNearbyZones();
+  }
+
+  Future<void> _fetchNearbyZones() async {
+    setState(() {
+      _isLoadingZones = true;
+    });
+
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+      );
+
+      final zones = await _timerService.fetchNearbyParkingZones(
+        lat: position.latitude,
+        lng: position.longitude,
+        radiusMeters: 100,
+        maxResults: 5,
+      );
+      if (mounted) {
+        setState(() {
+          _nearbyZones = zones;
+          _isLoadingZones = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _nearbyZones = [];
+          _isLoadingZones = false;
+        });
+      }
+    }
+  }
+
+  void _onZoneSelected(ParkingZone zone, TimerState state) {
+    // Only allow zone changes when timer is stopped
+    if (state is! TimerRunning) {
+      context.read<TimerBloc>().add(
+        SetKnownZone(
+          zoneNumber: zone.zoneNumber,
+          zoneName: zone.zoneName ?? zone.zoneId,
+        ),
+      );
+
+      // Update restriction duration based on zone's time limit
+      if (zone.maximumStayMinutes != null && zone.maximumStayMinutes! > 0) {
+        // Zone has a time limit - use it
+        context.read<TimerBloc>().add(
+          UpdateRestrictionDuration(zone.maximumStayMinutes!),
+        );
+      } else {
+        // Zone has NO time limit - use -1 to indicate "no restriction" (different from null)
+        context.read<TimerBloc>().add(
+          UpdateRestrictionDuration(-1),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,8 +121,87 @@ class TimerScreen extends StatelessWidget {
                   const SizedBox(height: 20),
                   _buildTimerDisplay(state),
                   const SizedBox(height: 16),
-                  if (state.zoneNumber != null) _buildZoneInfo(state),
-                  const SizedBox(height: 16),
+                  // Add parking zone carousel
+                  if (_isLoadingZones)
+                    const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF7FAC58),
+                        ),
+                      ),
+                    )
+                  else if (_nearbyZones != null && _nearbyZones!.isNotEmpty) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Text(
+                        state is TimerRunning
+                            ? 'Current parking zone'
+                            : 'Select parking zone',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Opacity(
+                      opacity: state is TimerRunning ? 0.6 : 1.0,
+                      child: IgnorePointer(
+                        ignoring: state is TimerRunning,
+                        child: ParkingZoneCarousel(
+                          parkingZones: _nearbyZones!,
+                          onZoneSelected: (zone) => _onZoneSelected(zone, state),
+                          initialSelectedZone: _nearbyZones!.firstWhere(
+                            (zone) => zone.zoneNumber == state.zoneNumber,
+                            orElse: () => _nearbyZones!.first,
+                          ),
+                          showTitle: false, // Hide duplicate title
+                        ),
+                      ),
+                    ),
+                    if (state is TimerRunning)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Text(
+                          'Stop timer to change zone',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey.shade500,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      )
+                    else
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Text(
+                          'Swipe to select a zone',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: const Color(0xFF7FAC58),
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 16),
+                  ] else if (state is! TimerRunning)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Text(
+                        'No nearby parking zones found',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                  if (_nearbyZones != null && _nearbyZones!.isEmpty && state is! TimerRunning)
+                    const SizedBox(height: 16),
                   if (failureState != null)
                     _buildFailureView(context, failureState)
                   else ...[
@@ -115,47 +273,6 @@ class TimerScreen extends StatelessWidget {
               color: Colors.grey.shade800,
               fontFeatures: const [FontFeature.tabularFigures()],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildZoneInfo(TimerState state) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF7FAC58).withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFF7FAC58).withValues(alpha: 0.3),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.location_on, color: const Color(0xFF7FAC58), size: 18),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  state.zoneName ?? 'Zone ${state.zoneNumber}',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF7FAC58),
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 2,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Check parking restrictions for this zone',
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
           ),
         ],
       ),
@@ -376,88 +493,335 @@ class TimerScreen extends StatelessWidget {
   }
 
   void _showEditRestrictionDialog(BuildContext context, int currentMinutes) {
-    final hoursController = TextEditingController(
-      text: (currentMinutes ~/ 60).toString(),
-    );
-    final minutesController = TextEditingController(
-      text: (currentMinutes % 60).toString(),
-    );
+    const primaryGreen = Color(0xFF7FAC58);
+    int selectedMinutes = currentMinutes;
+
+    // Common preset durations
+    final presets = [
+      {'label': '15 min', 'minutes': 15},
+      {'label': '30 min', 'minutes': 30},
+      {'label': '1 hour', 'minutes': 60},
+    ];
 
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Edit Restriction Duration'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Set the parking time limit for this location',
-              style: TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            Row(
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          backgroundColor: Colors.white,
+          contentPadding: const EdgeInsets.all(0),
+          content: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.85,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: hoursController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Hours',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                // Header
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Set Time Limit',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                      const SizedBox(height: 4),
+                      Text(
+                        'Choose how long you can park here',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: minutesController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Minutes',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+
+                // Quick presets
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        'QUICK SELECT',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade600,
+                          letterSpacing: 0.5,
+                        ),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                      const SizedBox(height: 8),
+                      Row(
+                        children: presets.asMap().entries.map((entry) {
+                          final preset = entry.value;
+                          final index = entry.key;
+                          final isSelected = selectedMinutes == preset['minutes'];
+                          return Expanded(
+                            child: Padding(
+                              padding: EdgeInsets.only(
+                                left: index == 0 ? 0 : 3,
+                                right: index == presets.length - 1 ? 0 : 3,
+                              ),
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    selectedMinutes = preset['minutes'] as int;
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? primaryGreen
+                                        : Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? primaryGreen
+                                          : Colors.grey.shade300,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      preset['label'] as String,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: isSelected
+                                            ? Colors.white
+                                            : Colors.grey.shade700,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
                       ),
-                    ),
+                    ],
+                  ),
+                ),
+
+                // Custom time picker
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'CUSTOM TIME',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade600,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          // Hours selector
+                          Expanded(
+                            child: _buildNumberPicker(
+                              label: 'Hours',
+                              value: selectedMinutes ~/ 60,
+                              maxValue: 12,
+                              onChanged: (hours) {
+                                setState(() {
+                                  selectedMinutes = (hours * 60) + (selectedMinutes % 60);
+                                });
+                              },
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Text(
+                              ':',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey.shade400,
+                              ),
+                            ),
+                          ),
+                          // Minutes selector
+                          Expanded(
+                            child: _buildNumberPicker(
+                              label: 'Minutes',
+                              value: selectedMinutes % 60,
+                              maxValue: 55,
+                              step: 5,
+                              onChanged: (mins) {
+                                setState(() {
+                                  selectedMinutes = (selectedMinutes ~/ 60) * 60 + mins;
+                                });
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Action buttons
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.grey.shade600,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                        ),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: () {
+                          if (selectedMinutes > 0) {
+                            context.read<TimerBloc>().add(
+                              UpdateRestrictionDuration(selectedMinutes),
+                            );
+                            Navigator.of(dialogContext).pop();
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryGreen,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 10,
+                          ),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          'Save',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
           ),
-          ElevatedButton(
-            onPressed: () {
-              final hours = int.tryParse(hoursController.text) ?? 0;
-              final minutes = int.tryParse(minutesController.text) ?? 0;
-              final totalMinutes = (hours * 60) + minutes;
+        ),
+      ),
+    );
+  }
 
-              if (totalMinutes > 0) {
-                context.read<TimerBloc>().add(
-                  UpdateRestrictionDuration(totalMinutes),
-                );
-                Navigator.of(dialogContext).pop();
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF7FAC58),
-              foregroundColor: Colors.white,
+  Widget _buildNumberPicker({
+    required String label,
+    required int value,
+    required int maxValue,
+    int step = 1,
+    required ValueChanged<int> onChanged,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        children: [
+          // Increment button
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                if (value + step <= maxValue) {
+                  onChanged(value + step);
+                }
+              },
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Icon(
+                  Icons.keyboard_arrow_up,
+                  size: 20,
+                  color: value + step <= maxValue
+                      ? const Color(0xFF7FAC58)
+                      : Colors.grey.shade300,
+                ),
+              ),
             ),
-            child: const Text('Save'),
+          ),
+          // Value display
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            decoration: BoxDecoration(
+              border: Border.symmetric(
+                horizontal: BorderSide(color: Colors.grey.shade200),
+              ),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  value.toString().padLeft(2, '0'),
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Decrement button
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                if (value - step >= 0) {
+                  onChanged(value - step);
+                }
+              },
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(10)),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Icon(
+                  Icons.keyboard_arrow_down,
+                  size: 20,
+                  color: value - step >= 0
+                      ? const Color(0xFF7FAC58)
+                      : Colors.grey.shade300,
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -469,8 +833,6 @@ class TimerScreen extends StatelessWidget {
       return const SizedBox.shrink();
     }
     final isRunning = state is TimerRunning;
-    final isStopped = state is TimerStopped;
-    final hasElapsed = state.elapsed.inSeconds > 0;
 
     return Column(
       children: [
@@ -486,30 +848,14 @@ class TimerScreen extends StatelessWidget {
                 : Icons.play_circle_outline,
             onPressed: isRunning
                 ? () {
-                    context.read<TimerBloc>().add(const StopTimer());
+                    // Show confirmation dialog before stopping
+                    _showResetConfirmation(context);
                   }
                 : () {
                     context.read<TimerBloc>().add(const StartTimer());
                   },
           ),
         ),
-
-        // Show Reset button when stopped or has elapsed time
-        if (isStopped || hasElapsed) ...[
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: _buildButton(
-              label: 'Reset Timer',
-              color: const Color(0xFFFF4757),
-              textColor: Colors.white,
-              icon: Icons.refresh_rounded,
-              onPressed: () {
-                _showResetConfirmation(context);
-              },
-            ),
-          ),
-        ],
 
         const SizedBox(height: 24),
       ],
@@ -520,15 +866,36 @@ class TimerScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Reset Timer?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: Colors.white,
+        title: const Text(
+          'Stop Timer?',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
         content: const Text(
           'This will stop the timer and delete your parking session.',
+          style: TextStyle(
+            fontSize: 15,
+            color: Colors.black87,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.grey.shade600,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -538,10 +905,22 @@ class TimerScreen extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFFF4757),
               foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
-            child: const Text('Reset'),
+            child: const Text(
+              'Stop',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       ),
     );
   }

@@ -30,6 +30,8 @@ import 'features/parking_status_detection/gps/gps_speed_bloc.dart';
 import 'l10n/app_localizations.dart';
 import 'widgets/nav_bar.dart';
 import 'widgets/parking_detected_bottom_sheet.dart';
+import 'services/timer_service.dart';
+import 'services/api_config.dart';
 
 void main() {
   runApp(const ParkPieApp());
@@ -150,6 +152,7 @@ class _HomeContainerState extends State<HomeContainer> {
     final parentContext = context;
     final parkingBloc = context.read<ParkingBloc>();
     final bluetoothBloc = context.read<BluetoothBloc>();
+    final timerService = TimerService(backendBaseUrl: resolveApiBaseUrl());
     _isParkingDialogShowing = true;
 
     showModalBottomSheet(
@@ -158,17 +161,49 @@ class _HomeContainerState extends State<HomeContainer> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => ParkingDetectedBottomSheet(
-        onConfirm: (selectedMinutes) {
+        timerService: timerService,
+        onConfirm: (selectedMinutes, selectedZone) {
           _isParkingDialogShowing = false;
           Navigator.of(parentContext).pop();
           parkingBloc.add(const UserConfirmedParking());
 
-          // Start the timer with optional duration
+          // If user manually overrode duration, use that (manual override takes priority)
           if (selectedMinutes != null) {
             parentContext.read<TimerBloc>().add(
               UpdateRestrictionDuration(selectedMinutes),
             );
+            // Store zone info only for display purposes, but don't use its time limit
+            if (selectedZone != null) {
+              parentContext.read<TimerBloc>().add(
+                SetKnownZone(
+                  zoneNumber: selectedZone.zoneNumber,
+                  zoneName: selectedZone.zoneName ?? selectedZone.zoneId,
+                ),
+              );
+            }
           }
+          // Otherwise, use zone's restriction and store zone info
+          else if (selectedZone != null) {
+            if (selectedZone.maximumStayMinutes != null && selectedZone.maximumStayMinutes! > 0) {
+              // Zone has a time limit - use it
+              parentContext.read<TimerBloc>().add(
+                UpdateRestrictionDuration(selectedZone.maximumStayMinutes!),
+              );
+            } else {
+              // Zone has NO time limit - use -1 to indicate "no restriction" (different from null)
+              parentContext.read<TimerBloc>().add(
+                UpdateRestrictionDuration(-1),
+              );
+            }
+            parentContext.read<TimerBloc>().add(
+              SetKnownZone(
+                zoneNumber: selectedZone.zoneNumber,
+                zoneName: selectedZone.zoneName ?? selectedZone.zoneId,
+              ),
+            );
+          }
+
+          // Start the timer
           parentContext.read<TimerBloc>().add(const StartTimer());
 
           // Navigate to timer screen

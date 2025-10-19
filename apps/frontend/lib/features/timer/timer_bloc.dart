@@ -164,9 +164,11 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
       );
       createdSessionId = session?.sessionId;
     } catch (e) {
-      debugPrint('Error obtaining location/session: $e');
       final stored = await _storage.getRestrictionDuration();
-      if (stored != null && stored > 0) {
+      if (stored != null && stored == -1) {
+        // User selected a zone with no time limit
+        restrictionMinutes = 0;
+      } else if (stored != null && stored > 0) {
         restrictionMinutes = stored;
         usedFallback = true;
       } else {
@@ -184,30 +186,48 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     }
 
     if (restrictionMinutes == null) {
-      try {
-        restrictionMinutes = await _timerService.fetchRestrictionDuration(
-          lat: latitude,
-          lng: longitude,
-          startTime: startTime,
-          zoneNumber: zoneNumber,
-        );
-      } catch (e) {
-        fetchFailed = true;
-        debugPrint('Error fetching restriction duration: $e');
+      // First check if user manually set a duration (override)
+      final storedDuration = await _storage.getRestrictionDuration();
+
+      if (storedDuration != null && storedDuration == -1) {
+        // -1 means user selected a zone with NO time limit - use count-up mode
+        restrictionMinutes = 0;
+      } else if (storedDuration != null && storedDuration > 0) {
+        // User manually set a specific duration
+        restrictionMinutes = storedDuration;
+      } else {
+        // Only fetch from API if no manual override exists
+        try {
+          restrictionMinutes = await _timerService.fetchRestrictionDuration(
+            lat: latitude,
+            lng: longitude,
+            startTime: startTime,
+            zoneNumber: zoneNumber,
+          );
+        } catch (e) {
+          fetchFailed = true;
+        }
       }
     }
 
-    if (restrictionMinutes == null || restrictionMinutes <= 0) {
+    // Handle API fetch failures
+    if (restrictionMinutes == null || restrictionMinutes < 0) {
       if (fetchFailed) {
         final stored = await _storage.getRestrictionDuration();
-        if (stored != null && stored > 0) {
+        if (stored != null && stored == -1) {
+          // Stored -1 means no time limit
+          restrictionMinutes = 0;
+        } else if (stored != null && stored > 0) {
+          // Stored positive value means a valid restriction
           restrictionMinutes = stored;
           usedFallback = true;
         }
       }
     }
 
-    if (restrictionMinutes == null || restrictionMinutes <= 0) {
+    // Only fail if we still don't have a valid restriction value
+    // Note: 0 is valid (count-up mode), -1 should have been converted to 0 by now
+    if (restrictionMinutes == null || restrictionMinutes < 0) {
       await _handleRestrictionLookupFailure(createdSessionId);
       emit(
         TimerFailure(

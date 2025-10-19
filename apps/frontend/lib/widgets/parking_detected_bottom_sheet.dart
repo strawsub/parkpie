@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/widgets/parking_zone_carousel.dart';
+import 'package:frontend/services/timer_service.dart';
+import 'package:geolocator/geolocator.dart';
 
 class ParkingDetectedBottomSheet extends StatefulWidget {
-  final Function(int? selectedMinutes) onConfirm;
+  final Function(int? selectedMinutes, ParkingZone? selectedZone) onConfirm;
   final VoidCallback onCancel;
+  final TimerService timerService;
 
   const ParkingDetectedBottomSheet({
     super.key,
     required this.onConfirm,
     required this.onCancel,
+    required this.timerService,
   });
 
   @override
@@ -20,10 +25,65 @@ class _ParkingDetectedBottomSheetState extends State<ParkingDetectedBottomSheet>
   static const double _slideThreshold = 0.75;
   static const Color _primaryGreen = Color(0xFF7FAC58);
 
+  List<ParkingZone>? _nearbyZones;
+  ParkingZone? _selectedZone;
+  bool _isLoadingZones = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchNearbyZones();
+  }
+
+  Future<void> _fetchNearbyZones() async {
+    try {
+      // Get current position
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+      );
+
+      // Fetch nearby parking zones
+      final zones = await widget.timerService.fetchNearbyParkingZones(
+        lat: position.latitude,
+        lng: position.longitude,
+        radiusMeters: 100,
+        maxResults: 5,
+      );
+
+      if (mounted) {
+        setState(() {
+          _nearbyZones = zones;
+          _selectedZone = zones.isNotEmpty ? zones.first : null;
+          _isLoadingZones = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching nearby zones: $e');
+      if (mounted) {
+        setState(() {
+          _nearbyZones = [];
+          _isLoadingZones = false;
+        });
+      }
+    }
+  }
+
   void _selectDuration(int minutes) {
     setState(() {
       _selectedDuration = _selectedDuration == minutes ? null : minutes;
+      // Manual override takes priority - disable zone selection
     });
+  }
+
+  void _onZoneSelected(ParkingZone zone) {
+    // Only update selected zone if no manual override is active
+    if (_selectedDuration == null) {
+      setState(() {
+        _selectedZone = zone;
+      });
+    }
   }
 
   Widget _buildTimeDisplay() {
@@ -97,26 +157,104 @@ class _ParkingDetectedBottomSheetState extends State<ParkingDetectedBottomSheet>
 
           // Description
           Text(
-            'Select a time limit or ignore to use the nearest restriction',
+            _isLoadingZones
+                ? 'Loading nearby parking zones...'
+                : _selectedDuration != null
+                    ? 'Using manual override: ${_selectedDuration} minutes'
+                    : 'Select a parking zone or manually override the time limit',
             style: TextStyle(
               fontSize: 11,
-              color: Colors.grey.shade600,
+              color: _selectedDuration != null ? _primaryGreen : Colors.grey.shade600,
+              fontWeight: _selectedDuration != null ? FontWeight.w600 : FontWeight.normal,
             ),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
 
-          // Duration Selection Badges
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildDurationBadge('30 mins', 30),
-              const SizedBox(width: 12),
-              _buildDurationBadge('60 mins', 60),
-              const SizedBox(width: 12),
-              _buildDurationBadge('120 mins', 120),
-            ],
-          ),
-          const SizedBox(height: 32),
+          // Parking Zone Carousel
+          if (_isLoadingZones)
+            const SizedBox(
+              height: 200,
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: _primaryGreen,
+                ),
+              ),
+            )
+          else if (_nearbyZones != null && _nearbyZones!.isNotEmpty)
+            Opacity(
+              opacity: _selectedDuration != null ? 0.4 : 1.0,
+              child: IgnorePointer(
+                ignoring: _selectedDuration != null,
+                child: ParkingZoneCarousel(
+                  parkingZones: _nearbyZones!,
+                  onZoneSelected: _onZoneSelected,
+                  initialSelectedZone: _selectedZone,
+                ),
+              ),
+            )
+          else
+            Container(
+              height: 150,
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.location_off,
+                    size: 32,
+                    color: Colors.grey.shade400,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'No parking zones found nearby',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          const SizedBox(height: 16),
+
+          // Duration Override Badges (Optional)
+          if (_selectedZone != null)
+            Column(
+              children: [
+                Text(
+                  'Or manually set time limit',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildDurationBadge('30 min', 30),
+                    const SizedBox(width: 12),
+                    _buildDurationBadge('60 min', 60),
+                    const SizedBox(width: 12),
+                    _buildDurationBadge('120 min', 120),
+                  ],
+                ),
+                if (_selectedDuration != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      'Zone selection disabled',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.grey.shade500,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 16),
+              ],
+            ),
 
           // Slide to Park Button
           _buildSlideToParButton(),
@@ -163,7 +301,7 @@ class _ParkingDetectedBottomSheetState extends State<ParkingDetectedBottomSheet>
 
         // Auto-confirm when threshold reached
         if (_slidePosition >= maxSlideDistance * _slideThreshold) {
-          widget.onConfirm(_selectedDuration);
+          widget.onConfirm(_selectedDuration, _selectedZone);
         }
       },
       onHorizontalDragEnd: (details) {

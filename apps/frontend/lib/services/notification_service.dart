@@ -65,9 +65,12 @@ class NotificationService {
   }) async {
     await cancelTimerNotification();
 
-    final zoneText = zoneName != null && zoneNumber != null
-        ? 'Zone $zoneNumber ($zoneName)'
-        : 'your parking zone';
+    // Use zoneName if it's different from "Zone {number}", otherwise just use zone number
+    final zoneText = zoneName != null && zoneName != 'Zone $zoneNumber'
+        ? zoneName
+        : zoneNumber != null
+            ? 'Zone $zoneNumber'
+            : 'your parking zone';
 
     const androidDetails = AndroidNotificationDetails(
       'timer_channel',
@@ -104,9 +107,12 @@ class NotificationService {
     String? zoneName,
     int? zoneNumber,
   }) async {
-    final zoneText = zoneName != null && zoneNumber != null
-        ? 'Zone $zoneNumber ($zoneName)'
-        : 'your parking zone';
+    // Use zoneName if it's different from "Zone {number}", otherwise just use zone number
+    final zoneText = zoneName != null && zoneName != 'Zone $zoneNumber'
+        ? zoneName
+        : zoneNumber != null
+            ? 'Zone $zoneNumber'
+            : 'your parking zone';
 
     const androidDetails = AndroidNotificationDetails(
       'timer_channel',
