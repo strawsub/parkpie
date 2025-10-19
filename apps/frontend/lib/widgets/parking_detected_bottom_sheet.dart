@@ -160,7 +160,7 @@ class _ParkingDetectedBottomSheetState extends State<ParkingDetectedBottomSheet>
             _isLoadingZones
                 ? 'Loading nearby parking zones...'
                 : _selectedDuration != null
-                    ? 'Using manual override: ${_selectedDuration} minutes'
+                    ? 'Using manual override: $_selectedDuration minutes'
                     : 'Select a parking zone or manually override the time limit',
             style: TextStyle(
               fontSize: 11,
