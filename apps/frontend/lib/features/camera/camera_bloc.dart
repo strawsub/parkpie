@@ -183,7 +183,7 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
 
       final rawText = (ocrResponse.text ?? '').trim();
       if (rawText.isEmpty) {
-        emit(CameraError("Gemini returned no text for this sign"));
+        emit(CameraError("AI returned no text for this sign"));
         return;
       }
 

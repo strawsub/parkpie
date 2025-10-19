@@ -455,7 +455,7 @@ class _CameraViewState extends State<CameraView> {
 
                   const SizedBox(height: 20),
 
-                  // Gemini Explanation Card
+                  // AI Explanation Card
                   Container(
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
@@ -474,7 +474,7 @@ class _CameraViewState extends State<CameraView> {
                             ),
                             SizedBox(width: 8),
                             Text(
-                              'Gemini explanation',
+                              'AI explanation',
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 14,
@@ -486,7 +486,7 @@ class _CameraViewState extends State<CameraView> {
                         const SizedBox(height: 12),
                         Text(
                           state.explanation.trim().isEmpty
-                              ? 'Gemini could not summarise this sign. Please review the restrictions below.'
+                              ? 'AI could not summarise this sign. Please review the restrictions below.'
                               : state.explanation.trim(),
                           style: const TextStyle(
                             fontSize: 15,

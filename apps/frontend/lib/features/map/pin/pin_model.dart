@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class Pin {
   final String? id;
@@ -11,7 +12,7 @@ class Pin {
   final String? description;
   final List<ParkingRestriction> restrictions;
 
-  const Pin({
+  Pin({
     required this.lat,
     required this.lng,
     this.id,
@@ -22,6 +23,8 @@ class Pin {
     this.description,
     this.restrictions = const [],
   });
+
+  LatLng get location => LatLng(lat ?? 0.0, lng ?? 0.0);
 
   factory Pin.fromJson(Map<String, dynamic> json) {
     double? parseDouble(dynamic value) {
