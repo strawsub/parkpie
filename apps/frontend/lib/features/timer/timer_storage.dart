@@ -64,11 +64,14 @@ class TimerStorage {
   }
 
   // Save restriction duration
+  // Note: -1 is a valid value (indicates "no time limit")
   Future<void> saveRestrictionDuration(int? minutes) async {
     final prefs = await SharedPreferences.getInstance();
-    if (minutes != null && minutes > 0) {
+    if (minutes != null) {
+      // Save any non-null value, including -1 (no time limit) and 0 (count-up)
       await prefs.setInt(_keyRestrictionDuration, minutes);
     } else {
+      // Only remove if explicitly null
       await prefs.remove(_keyRestrictionDuration);
     }
   }

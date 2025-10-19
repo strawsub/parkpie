@@ -13,95 +13,59 @@ class BottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // get the bottom safe area padding
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
-
-    return Container(
-      color: Colors.transparent,
-      padding: EdgeInsets.only(bottom: bottomPadding + 16, left: 20, right: 20),
-      height: 70 + bottomPadding + 16,
-      child: Center(
-        child: Container(
-          height: 72,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildNavItem(
-                index: 0,
-                iconPath: 'assets/parking_nav.svg',
-                label: 'Parking',
-              ),
-              _buildNavItem(
-                index: 1,
-                iconPath: 'assets/contribute_nav.svg',
-                label: 'Scan',
-              ),
-              _buildNavItem(
-                index: 2,
-                iconPath: 'assets/timer_nav.svg',
-                label: 'Timer',
-              ),
-            ],
-          ),
-        ),
+    return BottomNavigationBar(
+      currentIndex: currentIndex,
+      onTap: onTap,
+      type: BottomNavigationBarType.fixed,
+      backgroundColor: Colors.white,
+      selectedItemColor: const Color(0xFF7FAC58),
+      unselectedItemColor: Colors.grey.shade600,
+      selectedLabelStyle: const TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
       ),
-    );
-  }
-
-  Widget _buildNavItem({
-    required int index,
-    required String iconPath,
-    required String label,
-  }) {
-    final isSelected = index == currentIndex;
-    final Color iconColor = isSelected ? const Color(0xFF7FAC58) : Colors.grey.shade600;
-    final Color textColor = isSelected
-        ? const Color(0xFF7FAC58)
-        : Colors.grey.shade600;
-    const double iconSize = 22;
-    const double labelSpacing = 4;
-
-    return Semantics(
-      button: true,
-      selected: isSelected,
-      label: label,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => onTap(index),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SvgPicture.asset(
-              iconPath,
-              width: iconSize,
-              height: iconSize,
-              colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
-            ),
-            const SizedBox(height: labelSpacing),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                height: 1.1,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: textColor,
-              ),
-            ),
-          ],
-        ),
+      unselectedLabelStyle: const TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
       ),
+      items: [
+        BottomNavigationBarItem(
+          icon: SvgPicture.asset(
+            'assets/parking_nav.svg',
+            width: 24,
+            height: 24,
+            colorFilter: ColorFilter.mode(
+              currentIndex == 0 ? const Color(0xFF7FAC58) : Colors.grey.shade600,
+              BlendMode.srcIn,
+            ),
+          ),
+          label: 'Parking',
+        ),
+        BottomNavigationBarItem(
+          icon: SvgPicture.asset(
+            'assets/contribute_nav.svg',
+            width: 24,
+            height: 24,
+            colorFilter: ColorFilter.mode(
+              currentIndex == 1 ? const Color(0xFF7FAC58) : Colors.grey.shade600,
+              BlendMode.srcIn,
+            ),
+          ),
+          label: 'Scan',
+        ),
+        BottomNavigationBarItem(
+          icon: SvgPicture.asset(
+            'assets/timer_nav.svg',
+            width: 24,
+            height: 24,
+            colorFilter: ColorFilter.mode(
+              currentIndex == 2 ? const Color(0xFF7FAC58) : Colors.grey.shade600,
+              BlendMode.srcIn,
+            ),
+          ),
+          label: 'Timer',
+        ),
+      ],
     );
   }
 }

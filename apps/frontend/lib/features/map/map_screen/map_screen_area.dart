@@ -29,6 +29,31 @@ LatLng _ewkbPointToLatLng(String hex) {
 }
 
 extension MapScreenAreaLogic on MapScreenCubit {
+  Future<void> _preloadClusterIcons() async {
+    final counts = [
+      ...List.generate(50, (i) => i + 1),
+      60,
+      70,
+      80,
+      90,
+      100,
+      150,
+      200,
+      300,
+      500,
+      999,
+    ];
+
+    for (final count in counts) {
+      _clusterIconCache[count] = await _createClusterIcon(count);
+    }
+
+    if (!isClosed) {
+      _emitState(state.copyWith(iconsLoaded: true));
+      _rebuildMarkers();
+    }
+  }
+
   Future<void> _loadAreasFromApi() async {
     const endpoint =
         'https://parkpie-90018.azurewebsites.net/api/map/getallsegments';
@@ -88,31 +113,6 @@ extension MapScreenAreaLogic on MapScreenCubit {
       debugPrint('Failed to load segments: ${error.runtimeType}: $error');
       debugPrintStack(stackTrace: stackTrace);
       _emitState(state.copyWith(isLoadingAreas: false));
-    }
-  }
-
-  Future<void> _preloadClusterIcons() async {
-    final counts = [
-      ...List.generate(50, (i) => i + 1),
-      60,
-      70,
-      80,
-      90,
-      100,
-      150,
-      200,
-      300,
-      500,
-      999,
-    ];
-
-    for (final count in counts) {
-      _clusterIconCache[count] = await _createClusterIcon(count);
-    }
-
-    if (!isClosed) {
-      _emitState(state.copyWith(iconsLoaded: true));
-      _rebuildMarkers();
     }
   }
 
@@ -207,14 +207,17 @@ extension MapScreenAreaLogic on MapScreenCubit {
       return state.filteredRawMarkers;
     }
 
+    // Show individual markers when zoomed in
     if (state.renderZoom >= state.pinZoomThreshold) {
       return _buildParkingMarkers(pins);
     }
 
+    // Wait for cluster icons to load
     if (!state.iconsLoaded) {
       return {};
     }
 
+    // Show cluster markers when zoomed out
     if (state.areas.isNotEmpty) {
       final grouped = _groupPinsByArea(pins);
       final markers = <Marker>{};
@@ -229,6 +232,7 @@ extension MapScreenAreaLogic on MapScreenCubit {
       }
     }
 
+    // Fallback: show average marker
     if (pins.isEmpty) {
       return {};
     }
@@ -236,6 +240,7 @@ extension MapScreenAreaLogic on MapScreenCubit {
     return {_buildAverageMarker(pins)};
   }
 
+  // Build individual parking markers
   Set<Marker> _buildParkingMarkers(List<Pin> pins) {
     return pins.where((p) => p.lat != null && p.lng != null).map((pin) {
       final pos = LatLng(pin.lat!, pin.lng!);
@@ -244,7 +249,7 @@ extension MapScreenAreaLogic on MapScreenCubit {
         markerId: MarkerId(markerId),
         position: pos,
         onTap: () => _handleParkingMarkerTap(pin, pos),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet),
+        icon: BitmapDescriptor.defaultMarkerWithHue(214.0),
       );
     }).toSet();
   }
@@ -288,6 +293,26 @@ extension MapScreenAreaLogic on MapScreenCubit {
     );
   }
 
+  BitmapDescriptor _getClusterIcon(int count) {
+    if (_clusterIconCache.containsKey(count)) {
+      return _clusterIconCache[count]!;
+    }
+
+    int closestCount = 1;
+    for (final cachedCount in _clusterIconCache.keys) {
+      if (cachedCount <= count && cachedCount > closestCount) {
+        closestCount = cachedCount;
+      }
+    }
+
+    if (count > 999) {
+      return _clusterIconCache[999] ?? _clusterIconCache[1]!;
+    }
+
+    return _clusterIconCache[closestCount] ?? _clusterIconCache[1]!;
+  }
+
+  // Create cluster icon with green theme
   Future<BitmapDescriptor> _createClusterIcon(int count) async {
     final recorder = PictureRecorder();
     final canvas = Canvas(recorder);
@@ -299,7 +324,8 @@ extension MapScreenAreaLogic on MapScreenCubit {
       displaySize = 35.0;
     }
 
-    const double pixelRatio = 1;
+    // Use 3.0 for high-resolution retina displays (iPhone, modern Android)
+    const double pixelRatio = 3.0;
     final double renderSize = displaySize * pixelRatio;
 
     final paint = Paint()
@@ -342,25 +368,10 @@ extension MapScreenAreaLogic on MapScreenCubit {
     final picture = recorder.endRecording();
     final image = await picture.toImage(renderSize.toInt(), renderSize.toInt());
     final bytes = await image.toByteData(format: ImageByteFormat.png);
-    return BitmapDescriptor.bytes(bytes!.buffer.asUint8List());
-  }
-
-  BitmapDescriptor _getClusterIcon(int count) {
-    if (_clusterIconCache.containsKey(count)) {
-      return _clusterIconCache[count]!;
-    }
-
-    int closestCount = 1;
-    for (final cachedCount in _clusterIconCache.keys) {
-      if (cachedCount <= count && cachedCount > closestCount) {
-        closestCount = cachedCount;
-      }
-    }
-
-    if (count > 999) {
-      return _clusterIconCache[999] ?? _clusterIconCache[1]!;
-    }
-
-    return _clusterIconCache[closestCount] ?? _clusterIconCache[1]!;
+    return BitmapDescriptor.bytes(
+      bytes!.buffer.asUint8List(),
+      width: displaySize,  // Display at original size, but render at high-res
+      height: displaySize,
+    );
   }
 }

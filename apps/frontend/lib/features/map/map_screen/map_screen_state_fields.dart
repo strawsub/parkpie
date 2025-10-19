@@ -113,7 +113,7 @@ class MapScreenState {
     pinZoomThreshold: 15,
     hysteresis: 0.5,
     initialPosition: const LatLng(-37.8035820, 144.9593280),
-    showAreasDebug: true, // DEBUGGER!!!
+    showAreasDebug: false, // DEBUGGER!!!
     commands: const [],
   );
 
