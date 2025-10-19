@@ -280,44 +280,52 @@ class _TimerScreenState extends State<TimerScreen> {
   }
 
   Widget _buildFailureView(BuildContext context, TimerFailure state) {
-    final theme = Theme.of(context);
     final zoneLabel = state.zoneNumber != null
         ? 'Zone ${state.zoneNumber}'
         : 'this location';
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.orange.shade50,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.orange.shade200),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const Icon(
+          Icon(
             Icons.warning_amber_rounded,
-            color: Colors.orange,
-            size: 48,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            "We couldn't find signage for $zoneLabel",
-            textAlign: TextAlign.center,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: Colors.orange.shade800,
-            ),
+            color: Colors.orange.shade600,
+            size: 36,
           ),
           const SizedBox(height: 12),
           Text(
+            "We couldn't find signage for $zoneLabel",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.orange.shade800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
             state.message,
             textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
+            style: TextStyle(
+              fontSize: 13,
               color: Colors.orange.shade700,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -329,19 +337,24 @@ class _TimerScreenState extends State<TimerScreen> {
                   ),
                 );
               },
-              icon: const Icon(Icons.refresh),
+              icon: const Icon(Icons.refresh, size: 18),
               label: const Text('Retry lookup'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF7FAC58),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
-                  vertical: 14,
+                  vertical: 12,
                   horizontal: 16,
+                ),
+                elevation: 0,
+                textStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
@@ -349,18 +362,42 @@ class _TimerScreenState extends State<TimerScreen> {
                   onPressed: () {
                     context.read<NavigationCubit>().setIndex(0);
                   },
-                  icon: const Icon(Icons.map_outlined),
+                  icon: const Icon(Icons.map_outlined, size: 16),
                   label: const Text('Choose on map'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.grey.shade700,
+                    side: BorderSide(color: Colors.grey.shade300),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 10,
+                      horizontal: 12,
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () {
                     context.read<NavigationCubit>().setIndex(1);
                   },
-                  icon: const Icon(Icons.camera_alt_outlined),
+                  icon: const Icon(Icons.camera_alt_outlined, size: 16),
                   label: const Text('Scan sign'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.grey.shade700,
+                    side: BorderSide(color: Colors.grey.shade300),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 10,
+                      horizontal: 12,
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
             ],
