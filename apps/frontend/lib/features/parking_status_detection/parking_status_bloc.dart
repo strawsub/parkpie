@@ -184,7 +184,7 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
     // UNKNOWN → DRIVING
     // ------------------------------
     if (state is ParkingUnknown) {
-      // Only GPS detection: speed ≥ 4.1 m/s AND distance > 10m for 3s
+      // Only GPS detection: speed > 2.78 m/s (10 km/h) AND distance > 20m for 10s
       if (gpsVote == SensorVote.driving) {
         return Driving(
           sensorVotes: sensorVotes,
@@ -334,7 +334,7 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
   }
 
   // Check revert conditions with hysteresis
-  // Same logic as Unknown → Driving: GPS votes "driving" (speed ≥ 4.1 m/s AND distance > 10m)
+  // Same logic as Unknown → Driving: GPS votes "driving" (speed > 2.78 m/s / 10 km/h AND distance > 20m for 10s)
   bool _checkRevertConditions(
       Map<String, SensorVote> sensorVotes,
       double currentAccRMS,
@@ -343,7 +343,7 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
       ) {
     final gpsVote = sensorVotes['gps_speed'] ?? SensorVote.unknown;
 
-    // Only revert if GPS votes "driving" (speed ≥ 4.1 m/s AND distance > 10m for 3s)
+    // Only revert if GPS votes "driving" (speed > 2.78 m/s / 10 km/h AND distance > 20m for 10s)
     // No GPS stale handling, no accelerometer-only revert
     if (gpsVote == SensorVote.driving) {
       return true; // REVERT to Driving
@@ -446,14 +446,18 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
       Emitter<ParkingState> emit,
       ) {
     _cancelParkingDetectionTimer();
-    _cancelCandidateProgressTimer();
     _resetRevertTracking();
 
-    // Revert to Driving state (don't reset sensor blocs)
-    emit(Driving(
+    // Revert to StoppedCandidate state (not Driving)
+    // User dismissed parking dialog, but we should stay in candidate state
+    // This allows the system to re-detect parking if user stays stopped
+    _startCandidateProgressTimer();
+    emit(StoppedCandidate(
       sensorVotes: state.sensorVotes,
       drivingVotes: state.drivingVotes,
       parkedVotes: state.parkedVotes,
+      candidateStartTime: DateTime.now(),  // Reset timer
+      latchedGyroSpikeTime: null,
     ));
   }
 

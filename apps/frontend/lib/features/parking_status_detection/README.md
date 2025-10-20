@@ -1,33 +1,5 @@
 # Complete Parking Detection System Documentation
 
-**Last Updated:** 2025-01-21
-
-## Recent Architecture Changes
-
-### 2025-01-21: State Machine Refinements & Bug Fixes
-- **Stricter driving detection**: Changed from 3s/10m to 10s/20m requirements for driving confirmation
-- **Fixed dialog race condition**: Added `_confirmedParking` flag to prevent state revert when user confirms parking
-- **Fixed bluetooth reset delay**: Now uses `forceRefresh()` to immediately update bluetooth status after reset
-- **Bluetooth disconnect trigger**: Removed requirement for low speed/still - now triggers instantly in StoppedCandidate
-- **ParkingDetected state stability**: Added guards to block sensor votes and timer ticks while in ParkingDetected state
-- **CarPlay support**: Now detects both Bluetooth (`AudioPort.bluetooth`) and CarPlay (`AudioPort.carAudio`) as car connections
-- **Fixed Driving→StoppedCandidate transition**: Now accepts GPS voting `unknown` (while waiting for parked confirmation) to allow smooth transition when slowing down
-
-### 2025-01-21: GPS Voting Behavior Fix
-- **Fixed initial state bug**: GPS now votes `unknown` until driving/parked is confirmed, preventing premature Unknown→Driving transition on app start
-- **Confirmation-based voting**: GPS only votes "driving" after meeting both time (10s) AND distance (20m) thresholds
-- **Relaxed transition requirements**: `Driving → StoppedCandidate` now requires GPS to NOT be voting "driving" (allows `unknown` or `parked`), preventing GPS confirmation delay from blocking the transition
-
-### 2025-01-20: GPS Filtering Optimization
-- **Eliminated double filtering**: GPS speed now uses pre-filtered coordinates from LocationCubit
-- **Unified speed threshold**: Changed from hysteresis (1.2-4.1 m/s) to single threshold (2.78 m/s / 10 km/h)
-- **Fixed bluetooth initialization**: Now detects existing connections when app starts with CarPlay already connected
-
-### Previous Bug Fixes
-- Fixed bluetooth vote update bug: Now listens to ALL BluetoothState types (including BluetoothInitial)
-- Fixed dialog dismissal bug: Only resets bluetooth if it was the actual trigger (conditional check added)
-- Fixed timeout/gyro dialog loop: Bluetooth reset clears disconnect event, preventing infinite re-showing
-
 ---
 
 ## System Overview
@@ -264,7 +236,7 @@ if (event.sensorName == 'gyroscope' && event.vote == SensorVote.parked) {
 
 **Supported Audio Routes:**
 - **Bluetooth**: `AudioPort.bluetooth` (wireless car audio, Bluetooth headsets)
-- **CarPlay**: `AudioPort.carAudio` (wired or wireless CarPlay connection)
+- **CarPlay**: Detected by checking if audio route name contains "carplay" (case-insensitive)
 
 **Key State Tracking:**
 ```dart
@@ -288,9 +260,27 @@ if (isConnected) {
 
 **How It Works:**
 1. **Bluetooth Connection**: Route = `AudioPort.bluetooth` → `isConnected = true`
-2. **CarPlay Connection**: Route = `AudioPort.carAudio` → `isConnected = true`
+2. **CarPlay Connection**: Route name contains "carplay" (case-insensitive) → `isConnected = true`
 3. **Disconnection**: Route changes to `builtInSpeaker` or other → `isConnected = false`
 4. If `_wasConnected = true`, votes `parked` → triggers parking detection
+
+**CarPlay Detection (Fixed 2025-01-21):**
+```dart
+bool _isCarConnection(AudioInput? route) {
+  if (route == null) return false;
+
+  // Check if it's a Bluetooth connection
+  if (route.port == AudioPort.bluetooth) return true;
+
+  // CarPlay typically shows up with "CarPlay" in the name
+  final name = route.name?.toLowerCase() ?? '';
+  if (name.contains('carplay') || name.contains('car play')) return true;
+
+  return false;
+}
+```
+
+**Rationale:** The `AudioPort.carAudio` constant doesn't exist in `flutter_audio_output` package. CarPlay connections are detected by checking the audio route name instead.
 
 **Service Initialization (Fixed 2025-01-20):**
 
@@ -330,12 +320,12 @@ Future<void> _onReset(ResetBluetooth event, Emitter<BluetoothState> emit) async 
 
 ### State 1: Unknown → Driving
 
-**Location:** `parking_status_bloc.dart:173-183`
+**Location:** `parking_status_bloc.dart:183-196`
 
 **Trigger:**
 ```dart
 if (state is ParkingUnknown) {
-  // Only GPS detection: speed > 10 km/h + distance > 20m for 10s
+  // Only GPS detection: speed > 2.78 m/s (10 km/h) AND distance > 20m for 10s
   if (gpsVote == SensorVote.driving) {
     return Driving(...);
   }
@@ -344,24 +334,27 @@ if (state is ParkingUnknown) {
 ```
 
 **Requirements:**
-- GPS speed > 2.78 m/s (10 km/h) for ≥10 seconds (increased from 3s for stricter detection)
-- AND linear distance > 20 meters (increased from 10m for stricter detection)
+- GPS speed > 2.78 m/s (10 km/h) sustained for ≥10 seconds
+- AND linear distance > 20 meters accumulated during that time
 
 **Design Rationale:**
 - App starts in Unknown to avoid false driving detection
 - Only GPS can trigger initial driving detection (most reliable indicator)
 - Once in Driving, never revert back to Unknown
+- Stricter thresholds (10s + 20m) prevent false positives from GPS drift or brief movements
 
 ---
 
 ### State 2: Driving → StoppedCandidate
 
-**Location:** `parking_status_bloc.dart:188-207`
+**Location:** `parking_status_bloc.dart:198-222`
 
 **Trigger:**
 ```dart
 if (state is Driving) {
-  if (isStopped) {  // GPS parked AND Acc still
+  // Transition when GPS is not actively voting "driving" AND accelerometer is still
+  // This allows transition even when GPS votes "unknown" (waiting for parked confirmation)
+  if (isStoppedOrSlowing) {
     _startCandidateProgressTimer();  // 1.5s wall-clock timer
     return StoppedCandidate(
       candidateStartTime: now,
@@ -373,17 +366,23 @@ if (state is Driving) {
 ```
 
 **Requirements:**
-- GPS votes `SensorVote.parked` (speed ≤ 2.78 m/s, low displacement)
+- GPS is NOT actively voting "driving" (can be "parked" or "unknown")
 - AND Accelerometer votes `SensorVote.parked` (RMS < 0.40 m/s² for 5s)
 
 **Helper Definitions:**
 ```dart
 final gpsVote = sensorVotes['gps_speed'];
 final accVote = sensorVotes['accelerometer'];
-final isLowSpeed = gpsVote == SensorVote.parked;
+final isNotDriving = gpsVote != SensorVote.driving;  // unknown or parked = not actively driving
 final isStill = accVote == SensorVote.parked;
-final isStopped = isLowSpeed && isStill;
+final isStoppedOrSlowing = isNotDriving && isStill;  // For Driving→StoppedCandidate transition
 ```
+
+**Rationale for "isStoppedOrSlowing":**
+- GPS needs 4-6 seconds to confirm "parked" state (confirmation-based voting)
+- During this confirmation period, GPS votes "unknown"
+- Waiting for GPS "parked" vote would delay transition by 4-6 seconds
+- Using "isNotDriving" allows faster transition when car stops
 
 **Candidate Progress Timer:**
 - Fires every 1.5 seconds (wall-clock)
@@ -394,19 +393,20 @@ final isStopped = isLowSpeed && isStill;
 
 ### State 3: StoppedCandidate → ParkingDetected or Driving
 
-**Location:** `parking_status_bloc.dart:212-276`
+**Location:** `parking_status_bloc.dart:224-302`
 
 StoppedCandidate is a **waiting state** where the system looks for evidence that the user has actually parked and left the vehicle. There are 3 promotion paths and 1 revert path.
 
 #### Promotion Path 1: Gyro Spike ⚡ (Instant)
 
-**Location:** `parking_status_bloc.dart:245-253`
+**Location:** `parking_status_bloc.dart:270-279`
 
 ```dart
-// 3. GYRO SPIKE LOGIC: Instant Promotion
+// 3. GYRO SPIKE LOGIC: Instant Promotion (no freeze window)
 if (hasGyroSpike) {
   _cancelCandidateProgressTimer();
-  return ParkingDetected(...);  // IMMEDIATE
+  // Immediate promotion to ParkingDetected on gyro spike
+  return ParkingDetected(...);
 }
 ```
 
@@ -422,21 +422,31 @@ if (hasGyroSpike) {
 
 #### Promotion Path 2: Bluetooth Disconnect (Instant)
 
-**Location:** `parking_status_bloc.dart:238-248`
+**Location:** `parking_status_bloc.dart:248-268`
 
 ```dart
+// 2. CHECK FOR BT DISCONNECT (instant promotion in StoppedCandidate)
 // Accept bluetooth disconnect even if not fully stopped yet (transitioning)
+
+// DEBUG LOGGING
+debugPrint('=== BLUETOOTH DISCONNECT CHECK ===');
+debugPrint('Current state: StoppedCandidate');
+debugPrint('btVote: ${sensorVotes['bluetooth']}');
+debugPrint('hasBtDisconnect: $hasBtDisconnect');
+debugPrint('All sensor votes: $sensorVotes');
+debugPrint('===================================');
+
 if (hasBtDisconnect) {
+  debugPrint('>>> BLUETOOTH DISCONNECT DETECTED - Transitioning to ParkingDetected');
   _cancelCandidateProgressTimer();
+  // No auto-confirm timer - stay in ParkingDetected until user confirms
   return ParkingDetected(...);
 }
 ```
 
-**Requirements (Fixed 2025-01-21):**
+**Requirements:**
 - Bluetooth disconnected after being connected (`_wasConnected = true`)
 - Only active in StoppedCandidate state (no additional speed/stillness requirements)
-
-**Bug Fix:** Removed the requirement for `(isLowSpeed || isStill)`. Previously, bluetooth disconnect was only triggered if GPS or accelerometer also voted parked. Now triggers instantly when disconnected in StoppedCandidate, even if sensors are still transitioning.
 
 **Timing:** Instant
 
@@ -446,11 +456,15 @@ if (hasBtDisconnect) {
 
 #### Promotion Path 3: 60-Second Timeout
 
-**Location:** `parking_status_bloc.dart:256-266`
+**Location:** `parking_status_bloc.dart:281-292`
 
 ```dart
-if (candidateDuration >= 60.0s && (isLowSpeed || isGpsStale)) {
+// 4. CHECK CANDIDATE TIMEOUT (T_limit = 60s) → AUTO-PROMOTE if no motion
+final candidateDuration = now.difference(candidateState.candidateStartTime);
+if (candidateDuration >= _candidateTimeout && (isLowSpeed || isGpsStale)) {
+  // After 60s with no gyro spike but still stopped, promote to ParkingDetected
   _cancelCandidateProgressTimer();
+  // No auto-confirm timer - stay in ParkingDetected until user confirms
   return ParkingDetected(...);
 }
 ```
@@ -467,20 +481,29 @@ if (candidateDuration >= 60.0s && (isLowSpeed || isGpsStale)) {
 
 #### Revert Path: Back to Driving
 
-**Location:** `parking_status_bloc.dart:216-231`
+**Location:** `parking_status_bloc.dart:230-246`
 
 ```dart
+// 1. CHECK FOR REVERT TO DRIVING (with hysteresis)
+final shouldRevert = _checkRevertConditions(
+  sensorVotes,
+  currentAccRMS,
+  isGpsStale,
+  now,
+);
+
 if (shouldRevert) {
   _cancelCandidateProgressTimer();
   _resetRevertTracking();
   return Driving(...);
 }
 
-// Revert check
+// Revert check (lines 336-353)
 bool _checkRevertConditions(...) {
   final gpsVote = sensorVotes['gps_speed'];
 
-  // Only revert if GPS votes "driving"
+  // Only revert if GPS votes "driving" (speed > 2.78 m/s / 10 km/h AND distance > 20m for 10s)
+  // No GPS stale handling, no accelerometer-only revert
   if (gpsVote == SensorVote.driving) {
     return true;  // REVERT to Driving
   }
@@ -490,50 +513,54 @@ bool _checkRevertConditions(...) {
 ```
 
 **Requirements:**
-- GPS speed > 2.78 m/s (10 km/h) for ≥10s (same as Unknown → Driving)
-- AND linear distance > 20m (same as Unknown → Driving)
+- GPS speed > 2.78 m/s (10 km/h) sustained for ≥10 seconds
+- AND linear distance > 20 meters (same thresholds as Unknown → Driving)
 
 **Scenario:** User stopped at red light, then continues driving
 
 ---
 
-### State 4: ParkingDetected → Parked or Driving
+### State 4: ParkingDetected → Parked or StoppedCandidate
 
-**Location:** `main.dart:151-238`
+**Location:** `main.dart:130-248`
 
 When ParkingDetected is reached, a modal bottom sheet appears asking the user to confirm parking.
 
-**State Stability (Fixed 2025-01-21):**
+**State Stability:**
 
-ParkingDetected is now a **stable state** - sensor votes and timer ticks are blocked while awaiting user confirmation:
+ParkingDetected is a **stable state** - sensor votes and timer ticks are blocked while awaiting user confirmation:
 
 ```dart
-// parking_status_bloc.dart:106-109
+// parking_status_bloc.dart:98-110
 void _onUpdateSensorVote(...) {
+  // IGNORE sensor votes when in Parked state (terminal state)
   if (state is Parked) {
-    return;  // Block sensor votes in Parked
+    return;  // Don't process sensor votes in terminal state
   }
 
+  // IGNORE sensor votes when in ParkingDetected state (awaiting user confirmation)
   if (state is ParkingDetected) {
-    return;  // Block sensor votes in ParkingDetected
+    return;  // Don't process sensor votes while showing confirmation dialog
   }
   // Process vote normally
 }
 
-// parking_status_bloc.dart:375-378
+// parking_status_bloc.dart:381-393
 void _onCandidateProgressTick(...) {
+  // IGNORE timer ticks when in Parked state (terminal state)
   if (state is Parked) {
-    return;  // Block timer ticks in Parked
+    return;  // Don't process timer ticks in terminal state
   }
 
+  // IGNORE timer ticks when in ParkingDetected state (awaiting user confirmation)
   if (state is ParkingDetected) {
-    return;  // Block timer ticks in ParkingDetected
+    return;  // Don't process timer ticks while showing confirmation dialog
   }
   // Process tick normally
 }
 ```
 
-This prevents the state from reverting to Driving or StoppedCandidate while the dialog is shown.
+This prevents the state from changing while the dialog is shown.
 
 #### Dialog Display
 
@@ -592,77 +619,89 @@ onConfirm: (selectedMinutes, selectedZone) {
 
 ---
 
-#### Outcome B: User Denies Parking (Swipe Down / Cancel)
+#### Outcome B: User Denies Parking (Cancel Button)
 
-**Location:** `main.dart:212-222`
+**Location:** `main.dart:218-228`
 
 ```dart
 onCancel: () {
-  Navigator.pop();
+  _isParkingDialogShowing = false;
+  Navigator.of(parentContext).pop();
 
-  // Only reset Bluetooth if it was the trigger
+  // Only reset Bluetooth if it was the trigger (bluetooth vote = parked)
   final btVote = parkingBloc.state.sensorVotes['bluetooth'];
   if (btVote == SensorVote.parked) {
-    bluetoothBloc.add(ResetBluetooth());
+    bluetoothBloc.add(const ResetBluetooth());
   }
 
   // Revert to Driving state
-  parkingBloc.add(RevertToDriving());
+  parkingBloc.add(const RevertToDriving());
 }
 ```
 
-**State Transition:** ParkingDetected → **Driving**
+**State Transition:** ParkingDetected → **StoppedCandidate** (Fixed 2025-01-21)
 
 **Sensor Reset Behavior:**
 - **Bluetooth:** Reset only if it was the trigger (conditional check)
 - **GPS/Accelerometer:** NOT reset (reflect actual physical state)
-- **Gyroscope:** NOT reset (will vote driving in Driving state due to conditional voting)
+- **Gyroscope:** NOT reset (will vote driving in non-StoppedCandidate states due to conditional voting)
 
-**Rationale:** User was stopped at red light, not actually parked
+**Bug Fix (2025-01-21):** Previously reverted to **Driving** state, skipping StoppedCandidate entirely. Now reverts to **StoppedCandidate** with reset timer (`candidateStartTime = DateTime.now()`), allowing the system to re-detect parking if user stays stopped.
+
+**Rationale:** User dismissed the dialog but is still stopped. Reverting to StoppedCandidate allows:
+- If user stays stopped: System can re-detect parking via gyro spike, BT disconnect, or 60s timeout
+- If user starts driving: GPS will detect motion and revert to Driving normally
 
 ---
 
 #### Outcome C: Dialog Dismissed (Swipe Down Gesture)
 
-**Location:** `main.dart:227-245`
+**Location:** `main.dart:230-248`
 
 ```dart
 .then((_) {
   if (!mounted) return;
+  // Handle dismissal by swipe down (or any other dismissal method)
+  _isParkingDialogShowing = false;
 
   // CRITICAL: Only revert if user did NOT confirm parking
   // Prevents race condition where .then() fires before UserConfirmedParking processes
   if (!_confirmedParking && parkingBloc.state is ParkingDetected) {
-    // Only reset Bluetooth if it was the trigger
+    // Only reset Bluetooth if it was the trigger (bluetooth vote = parked)
     final btVote = parkingBloc.state.sensorVotes['bluetooth'];
     if (btVote == SensorVote.parked) {
-      bluetoothBloc.add(ResetBluetooth());
+      bluetoothBloc.add(const ResetBluetooth());
     }
-    parkingBloc.add(RevertToDriving());
+    parkingBloc.add(const RevertToDriving());
   }
 
   // Reset confirmation flag for next dialog
   _confirmedParking = false;
-}
+})
 ```
 
-**Behavior:** Same as Outcome B (treated as denial), but with race condition protection
+**State Transition:** ParkingDetected → **StoppedCandidate** (same as Outcome B)
 
-**Bug Fix (2025-01-21):** Previously, the `.then()` callback would fire when dialog closed for ANY reason, including user confirmation. This caused a race between `UserConfirmedParking()` and `RevertToDriving()`, sometimes resulting in the state reverting to Driving instead of staying Parked. Now uses `_confirmedParking` flag to prevent revert when user confirmed.
+**Bug Fix (2025-01-21):**
+1. **Race condition fix:** Previously, the `.then()` callback would fire when dialog closed for ANY reason, including user confirmation. This caused a race between `UserConfirmedParking()` and `RevertToDriving()`, sometimes resulting in the state reverting instead of staying Parked. Now uses `_confirmedParking` flag to prevent revert when user confirmed.
+2. **Unified dismissal behavior:** Now both gyro spike dismissal AND bluetooth disconnect dismissal revert to **StoppedCandidate** (not Driving), providing consistent behavior regardless of trigger type.
 
 **Dialog Re-showing Logic:**
-- When re-entering StoppedCandidate, `candidateStartTime` resets to `now`
-- Timeout counter restarts from 0
+- When re-entering StoppedCandidate, `candidateStartTime` resets to `now` (fresh 60-second window)
 - Bluetooth vote cleared to "unknown" (if it was trigger), prevents instant re-promotion
 - Gyro/timeout triggers can occur again after meeting their conditions
+- If user stays stopped, system can re-detect parking faster
 
 ---
 
 ### State 5: Parked (Terminal State)
 
-**Location:** `parking_status_bloc.dart:294-302`
+**Location:** `parking_status_bloc.dart:317-328`
 
 ```dart
+// ------------------------------
+// PARKED (Terminal State - No transitions out)
+// ------------------------------
 if (state is Parked) {
   // Parked is a terminal state - no automatic transitions
   // User must manually reset if they want to return to driving detection
@@ -676,7 +715,7 @@ if (state is Parked) {
 
 **Characteristics:**
 - No automatic transitions out
-- Sensors continue updating votes, but state machine ignores them
+- Sensors continue updating votes, but state machine ignores them (blocked at event handler level)
 - Timer is running in background
 - User can manually reset via `ResetParking` event
 
@@ -685,14 +724,16 @@ if (state is Parked) {
 void _onResetParking(ResetParking event, Emitter<ParkingState> emit) {
   _cancelParkingDetectionTimer();
   _cancelCandidateProgressTimer();
+  _resetRevertTracking();
 
   // Reset all sensor blocs
-  gyroBloc.add(ResetGyro());
-  accBloc.add(ResetAcc());
-  bluetoothBloc.add(ResetBluetooth());
-  gpsSpeedBloc.add(GpsSpeedReset());
+  gyroBloc.add(const ResetGyro());
+  accBloc.add(const ResetAcc());
+  bluetoothBloc.add(const ResetBluetooth());
+  gpsSpeedBloc.add(const GpsSpeedReset());
 
-  emit(ParkingUnknown());
+  // Reset to unknown state
+  emit(const ParkingUnknown());
 }
 ```
 
@@ -720,7 +761,7 @@ void _onResetParking(ResetParking event, Emitter<ParkingState> emit) {
 | **StoppedCandidate** | ParkingDetected   | Timeout                                  | 60 seconds + stopped                            |
 | **StoppedCandidate** | Driving           | GPS driving                              | Speed > 10 km/h + distance > 20m for 10s        |
 | **ParkingDetected**  | Parked            | User confirms                            | Slide-to-park gesture                           |
-| **ParkingDetected**  | Driving           | User denies                              | Swipe down or cancel button                     |
+| **ParkingDetected**  | StoppedCandidate  | User denies                              | Swipe down or cancel button (timer resets)      |
 | **Parked**          | Unknown            | Manual reset                             | ResetParking event                              |
 
 ### Promotion Path Comparison
@@ -731,266 +772,6 @@ void _onResetParking(ResetParking event, Emitter<ParkingState> emit) {
 | BT Disconnect     | Bluetooth unpaired   | After connection (no additional checks) | Instant      | Exiting vehicle          |
 | 60s Timeout       | Time elapsed         | 60 seconds + stopped                  | After 60s      | Phone left in car        |
 | Revert to Driving | GPS driving          | Speed > 10 km/h + distance > 20m for 10s | After GPS confirms | Red light, not parked |
-
----
-
-## Bug Fixes & Implementation Notes
-
-### Bug Fix 1: Dialog Race Condition (CRITICAL - Fixed 2025-01-21)
-
-**Issue:** After user confirmed parking by sliding, the state would sometimes revert to Driving or StoppedCandidate instead of staying Parked.
-
-**Root Cause:** Race condition between dialog dismiss handler and parking confirmation event:
-1. User slides to confirm
-2. `onConfirm` calls `Navigator.pop()` → dialog closes
-3. `onConfirm` sends `UserConfirmedParking()` event → queued for processing
-4. `.then()` callback fires immediately when dialog closes
-5. **RACE:** If `UserConfirmedParking` hasn't been processed yet, state is still `ParkingDetected`
-6. `.then()` sees `ParkingDetected` → sends `RevertToDriving()` → **OVERRIDES confirmation!**
-
-**Fix (main.dart:103, 169, 232-244):**
-```dart
-class _HomeContainerState extends State<HomeContainer> {
-  bool _confirmedParking = false;  // NEW FLAG
-
-  onConfirm: (...) {
-    _confirmedParking = true;  // Mark as confirmed
-    Navigator.pop();
-    parkingBloc.add(UserConfirmedParking());
-  }
-
-  .then((_) {
-    if (!_confirmedParking && parkingBloc.state is ParkingDetected) {
-      // Only revert if user did NOT confirm
-      parkingBloc.add(RevertToDriving());
-    }
-    _confirmedParking = false;  // Reset
-  });
-}
-```
-
-**Result:** User confirmation is now protected from being overridden.
-
----
-
-### Bug Fix 2: Bluetooth Status Not Showing After Reset (Fixed 2025-01-21)
-
-**Issue:** After clicking "Reset Parking", bluetooth status would show "not connected" even when CarPlay was plugged in, and would never update even after several minutes.
-
-**Root Cause:**
-- `bluetooth_bloc.dart` calls `_service.getCurrentStatus()` after reset
-- `getCurrentStatus()` returns cached `_currentRoute` value
-- If cache is null or stale, returns wrong status
-- Timer polls every 1 second, but only emits if route **changed** (line 55-57 in audio_bluetooth_service.dart)
-- If route hasn't changed (still bluetooth), it never emits!
-
-**Fix (audio_bluetooth_service.dart:33-37, bluetooth_bloc.dart:67-75):**
-```dart
-// audio_bluetooth_service.dart
-Future<void> forceRefresh() async {
-  await _checkAudioRoute();
-  _emitStatus();  // Always emit, even if route unchanged
-}
-
-// bluetooth_bloc.dart
-Future<void> _onReset(ResetBluetooth event, Emitter<BluetoothState> emit) async {
-  _wasConnected = false;
-  emit(BluetoothInitial());
-
-  // Force immediate refresh to check hardware and emit status
-  await _service.forceRefresh();
-}
-```
-
-**Result:** After reset, bluetooth status updates immediately with correct hardware state.
-
----
-
-### Bug Fix 3: ParkingDetected State Instability (Fixed 2025-01-21)
-
-**Issue:** While ParkingDetected dialog was shown, if sensors changed votes (e.g., GPS started voting "driving"), the state could revert to Driving before user confirmed.
-
-**Fix (parking_status_bloc.dart:106-109, 375-378):**
-```dart
-void _onUpdateSensorVote(...) {
-  if (state is ParkingDetected) {
-    return;  // Block sensor votes while showing dialog
-  }
-}
-
-void _onCandidateProgressTick(...) {
-  if (state is ParkingDetected) {
-    return;  // Block timer ticks while showing dialog
-  }
-}
-```
-
-**Result:** ParkingDetected is now a stable state - only user input can change it.
-
----
-
-### Bug Fix 4: Bluetooth Disconnect Not Triggering (Fixed 2025-01-21)
-
-**Issue:** When unplugging CarPlay in StoppedCandidate state, parking detection dialog did not appear.
-
-**Root Cause:** Line 239 had requirement `if (hasBtDisconnect && (isLowSpeed || isStill))`. If GPS or accelerometer hadn't voted "parked" yet, bluetooth disconnect was ignored.
-
-**Fix (parking_status_bloc.dart:240):**
-```dart
-// OLD: if (hasBtDisconnect && (isLowSpeed || isStill))
-// NEW: if (hasBtDisconnect)
-```
-
-**Result:** Bluetooth disconnect now triggers parking detection instantly in StoppedCandidate, regardless of other sensor states.
-
----
-
-### Bug Fix 5: Bluetooth Vote Not Updating After Reset
-
-**Issue:** When `ResetBluetooth` was called, it emitted `BluetoothInitial` with `vote="unknown"`, but `ParkingBloc` only listened for `BluetoothConnectionStatus` events. This caused bluetooth vote to stay "parked" in `sensorVotes` map, triggering infinite dialog loop.
-
-**Fix (parking_status_bloc.dart:77-84):**
-```dart
-_bluetoothSubscription = bluetoothBloc.stream.listen((bluetoothState) {
-  // Listen to all bluetooth states (including BluetoothInitial for reset)
-  add(UpdateSensorVote(
-    sensorName: 'bluetooth',
-    vote: bluetoothState.vote,
-  ));
-});
-```
-
-**Result:** Now properly updates vote to "unknown" when bluetooth is reset, preventing instant re-promotion after dialog dismissal.
-
----
-
-### Bug Fix 6: Unconditional Bluetooth Reset
-
-**Issue:** `ResetBluetooth()` was called whenever dialog was dismissed, regardless of which trigger (bluetooth/gyro/timeout) caused `ParkingDetected`. This could clear legitimate bluetooth state.
-
-**Fix (main.dart:216-218, 231-233):**
-```dart
-// Only reset Bluetooth if it was the trigger
-final btVote = parkingBloc.state.sensorVotes['bluetooth'];
-if (btVote == SensorVote.parked) {
-  bluetoothBloc.add(ResetBluetooth());
-}
-```
-
-**Result:** Preserves bluetooth state when timeout or gyro triggered the dialog. Bluetooth only resets if it was actually the trigger.
-
----
-
-### Bug Fix 7: GPS Double Filtering
-
-**Issue:** Both `LocationCubit` and `GpsSpeedBloc` applied separate Kalman filters, causing slow response and redundant computation.
-
-**Fix (2025-01-20):**
-- `GpsSpeedBloc` now subscribes to `LocationCubit.stream` instead of raw GPS
-- Uses pre-filtered coordinates to calculate speed
-- Removed Kalman speed filter entirely
-- Single filtering point: coordinates only
-
-**Result:** Faster GPS speed response, cleaner architecture, eliminated redundancy.
-
----
-
-### Bug Fix 8: GPS Unknown Votes During Driving
-
-**Issue:** GPS voted "unknown" when speed was between 1.2-4.1 m/s (hysteresis gap), causing state machine confusion during slowdown.
-
-**Fix (2025-01-20):**
-- Unified `vIn` and `vOut` to 2.78 m/s (10 km/h)
-- GPS always votes driving or parked based on actual state
-- "Unknown" only used during initialization (first 2 samples)
-
-**Result:** GPS sensor now honestly reports current state, no more ambiguous votes.
-
----
-
-### Bug Fix 9: Initial State Always Shows Driving (Fixed 2025-01-21)
-
-**Issue:** When opening the app, the initial state would quickly transition from `Unknown` to `Driving` or `StoppedCandidate`, even when not actually driving yet.
-
-**Root Cause:** GPS bloc used "honest reporting" - it voted `driving` or `parked` **immediately** based on current speed, even before meeting confirmation requirements (10s + 20m). The parking_status_bloc would see `gpsVote == SensorVote.driving` and immediately transition `Unknown → Driving`.
-
-**Fix (gps_speed_bloc.dart:398-399, 416-417, 422):**
-```dart
-// OLD: Return SensorVote.driving/parked immediately (honest reporting)
-if (speed > vThreshold) {
-  if (duration >= tCandidate && linearDistance > dDrivingThreshold) {
-    return SensorVote.driving;  // CONFIRMED
-  }
-  return SensorVote.driving;  // ← BUG: votes immediately without confirmation
-}
-
-// NEW: Return SensorVote.unknown until confirmed
-if (speed > vThreshold) {
-  if (duration >= tCandidate && linearDistance > dDrivingThreshold) {
-    return SensorVote.driving;  // CONFIRMED
-  }
-  return SensorVote.unknown;  // ← FIX: wait for confirmation
-}
-```
-
-**Result:** App now stays in `Unknown` state until GPS **confirms** driving (10s + 20m), preventing premature state transitions on app start.
-
----
-
-### Bug Fix 10: Bluetooth Not Detecting Existing Connections
-
-**Issue:** When app started with CarPlay already connected, `initialize()` returned early because `_isInitialized = true`, never checking current audio route.
-
-**Fix (audio_bluetooth_service.dart:33-57):**
-```dart
-Future<void> initialize() async {
-  // Always check current audio route, even if already initialized
-  await _checkAudioRoute();
-
-  if (_isInitialized) {
-    _emitStatus();  // Emit current status for new listeners
-    return;
-  }
-
-  _startMonitoring();
-  _isInitialized = true;
-}
-```
-
-**Result:** Now detects bluetooth connections regardless of when they occurred relative to app start.
-
----
-
-### Bug Fix 11: CarPlay Disconnect Not Triggering Parking Detection (Fixed 2025-01-21)
-
-**Issue:** Bluetooth disconnect worked for wireless Bluetooth, but wired CarPlay disconnect did not trigger parking detection dialog.
-
-**Root Cause:** The code only checked for `AudioPort.bluetooth`, but CarPlay uses `AudioPort.carAudio`. When CarPlay cable was unplugged:
-- Route changed: `carAudio` → `builtInSpeaker`
-- But `isBluetoothConnected` remained `false` (both before and after)
-- No change detected → no `parked` vote → no dialog
-
-**Fix (audio_bluetooth_service.dart:37-40):**
-```dart
-// Check if audio route is a car connection (Bluetooth or CarPlay)
-bool _isCarConnection(AudioInput? route) {
-  if (route == null) return false;
-  return route.port == AudioPort.bluetooth || route.port == AudioPort.carAudio;
-}
-```
-
-Updated `getCurrentStatus()` and `_emitStatus()` to use `_isCarConnection()` helper.
-
-**Result:** Now detects **both** Bluetooth and CarPlay as car connections:
-- **Bluetooth connected**: `AudioPort.bluetooth` → `isConnected = true` → votes `driving`
-- **CarPlay connected**: `AudioPort.carAudio` → `isConnected = true` → votes `driving`
-- **Disconnect**: Route changes to `builtInSpeaker` → `isConnected = false` → votes `parked`
-
-**Supported Scenarios:**
-- Wireless Bluetooth car audio ✅
-- Wired CarPlay ✅
-- Wireless CarPlay ✅
-- Bluetooth headphones (not treated as car connection) ❌
 
 ---
 
@@ -1028,16 +809,40 @@ This prevents false positives while preserving detection when actually needed.
 
 **Question:** When user dismisses dialog, does the 60-second timeout reset?
 
-**Answer:** YES, automatically.
+**Answer:** YES, explicitly reset.
 
-**How:**
-1. User dismisses dialog → state transitions to Driving
-2. Car still stopped → GPS + Acc still vote parked
-3. State transitions back to StoppedCandidate
-4. **NEW** `candidateStartTime` is set to `DateTime.now()`
-5. Timeout counter restarts from 0
+**How (Fixed 2025-01-21):**
+```dart
+// parking_status_bloc.dart:444-462
+void _onRevertToDriving(
+    RevertToDriving event,
+    Emitter<ParkingState> emit,
+    ) {
+  _cancelParkingDetectionTimer();
+  _resetRevertTracking();
 
-No explicit reset needed - the state transition creates a fresh `StoppedCandidate` with new timestamp.
+  // Revert to StoppedCandidate state (not Driving)
+  // User dismissed parking dialog, but we should stay in candidate state
+  // This allows the system to re-detect parking if user stays stopped
+  _startCandidateProgressTimer();
+  emit(StoppedCandidate(
+    sensorVotes: state.sensorVotes,
+    drivingVotes: state.drivingVotes,
+    parkedVotes: state.parkedVotes,
+    candidateStartTime: DateTime.now(),  // Reset timer to NOW
+    latchedGyroSpikeTime: null,
+  ));
+}
+```
+
+**Process:**
+1. User dismisses dialog → `RevertToDriving()` event fires
+2. State transitions to **StoppedCandidate** (not Driving)
+3. `candidateStartTime` is explicitly set to `DateTime.now()`
+4. Timeout counter restarts from 0
+5. Candidate progress timer re-starts
+
+**Benefit:** Fresh 60-second window allows the system to re-detect parking if user stays stopped, rather than immediately showing the dialog again.
 
 ---
 
@@ -1166,7 +971,7 @@ parkingBloc.add(ResetParking());
    - Unknown → Driving (GPS confirms) → StoppedCandidate (GPS+Acc stopped) → ParkingDetected (gyro spike) → Parked (user confirms)
 
 2. **Red light false positive:**
-   - Driving → StoppedCandidate (stopped at red) → dialog appears → user dismisses → Driving (light turns green, GPS detects motion)
+   - Driving → StoppedCandidate (stopped at red) → dialog appears → user dismisses → StoppedCandidate (timer resets) → light turns green → GPS detects motion → Driving
 
 3. **Bluetooth disconnect:**
    - Driving → StoppedCandidate (car stopped) → ParkingDetected (CarPlay disconnects) → Parked (user confirms)
@@ -1225,9 +1030,12 @@ parkingBloc.add(ResetParking());
 ## License & Credits
 
 **Author:** ParkPie Team
-**Last Updated:** 2025-01-20
+**Last Updated:** 2025-01-21
 **Flutter Version:** 3.x
 **Dependencies:** sensors_plus, geolocator, flutter_audio_output, flutter_bloc
+
+**Recent Changes:**
+- 2025-01-21: Fixed dialog dismissal to revert to StoppedCandidate (not Driving), updated CarPlay detection to use name-based matching, corrected GPS threshold documentation (10 km/h, 20m, 10s)
 
 ---
 
