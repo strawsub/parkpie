@@ -577,16 +577,6 @@ class _CameraViewState extends State<CameraView> {
             context.read<TimerBloc>().add(
               SetKnownZone(zoneNumber: state.zoneNumber),
             );
-            final replaced = state.replacedPrevious;
-            final message = replaced > 0
-                ? l10n.format('camera.updateMessage', {
-                    'zone': state.zoneNumber.toString(),
-                    'count': replaced.toString(),
-                  })
-                : l10n.format('camera.storeMessage', {
-                    'zone': state.zoneNumber.toString(),
-                    'count': state.restrictionsSaved.toString(),
-                  });
           } else if (state is CameraCanceled) {
             _hasTriggeredCamera = false;
             context.read<CameraBloc>().add(CameraClosed());

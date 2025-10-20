@@ -97,7 +97,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
     final mapCubit = context.read<MapScreenCubit>();
 
     if (state is SearchSuccess) {
-      _searchController.clear();
+      _searchController.text = state.query;
       FocusScope.of(context).unfocus();
 
       await mapCubit.handleSearchSuccess(state);
