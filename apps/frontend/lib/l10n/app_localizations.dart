@@ -8,6 +8,7 @@ import 'package:intl/intl.dart' as intl;
 import 'app_localizations_en.dart';
 import 'app_localizations_ja.dart';
 import 'app_localizations_ko.dart';
+import 'app_localizations_th.dart';
 import 'app_localizations_zh_hans.dart';
 import 'app_localizations_zh_hant.dart';
 
@@ -102,6 +103,7 @@ abstract class AppLocalizations {
     Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hans'),
     Locale('ko'),
     Locale('ja'),
+    Locale('th'),
   ];
 
   /// Returns a translated string for the provided [key]. Implementations should
@@ -180,7 +182,7 @@ class _AppLocalizationsDelegate
     if (locale.languageCode == 'zh') {
       return true;
     }
-    return <String>['en', 'ko', 'ja'].contains(locale.languageCode);
+    return <String>['en', 'ko', 'ja', 'th'].contains(locale.languageCode);
   }
 
   @override
@@ -217,6 +219,8 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
       return AppLocalizationsKo();
     case 'ja':
       return AppLocalizationsJa();
+    case 'th':
+      return AppLocalizationsTh();
   }
 
   throw FlutterError(

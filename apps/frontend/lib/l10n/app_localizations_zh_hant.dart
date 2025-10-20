@@ -48,6 +48,7 @@ class AppLocalizationsZhHant extends AppLocalizations {
     'language.chineseSimplified': '簡體中文',
     'language.korean': '韓文',
     'language.japanese': '日文',
+    'language.thai': '泰文',
     'privacy.settingsTitle': '隱私與合規',
     'privacy.settingsSubtitle':
         '查看 ParkPie 如何針對 App Store 與 Google Play 的資料揭露要求進行說明。',

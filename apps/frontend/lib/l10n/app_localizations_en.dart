@@ -54,6 +54,7 @@ class AppLocalizationsEn extends AppLocalizations {
     'language.chineseSimplified': 'Simplified Chinese',
     'language.korean': 'Korean',
     'language.japanese': 'Japanese',
+    'language.thai': 'Thai',
     'privacy.settingsTitle': 'Privacy & Compliance',
     'privacy.settingsSubtitle':
         'Review how ParkPie discloses data practices for App Store Privacy Labels and Google Play Data Safety.',
