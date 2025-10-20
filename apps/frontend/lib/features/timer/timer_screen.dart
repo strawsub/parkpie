@@ -32,6 +32,11 @@ class _TimerScreenState extends State<TimerScreen> {
   }
 
   Future<void> _fetchNearbyZones() async {
+    final timerState = context.read<TimerBloc>().state;
+    if (timerState is TimerRunning) {
+      return;
+    }
+
     setState(() {
       _isLoadingZones = true;
     });
