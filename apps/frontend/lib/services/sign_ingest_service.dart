@@ -25,6 +25,7 @@ Guidelines:
 - Multiple entries for the same day are allowed and should be ordered top-to-bottom from the sign.
 - Use 24-hour "HH:mm" format; use "00:00" for midnight.
 - If the stay duration is unlimited or not stated, set "maximum_stay_minutes" to null.
+- If the sign applies every day (no specific days are written), generate seven entries covering days_of_week 1 through 7 with identical times.
 Return strict JSON only.
 ''';
 
@@ -58,7 +59,10 @@ location: {"lat": $lat, "lng": $lng}
 CRITICAL: You MUST respond with ONLY valid JSON matching the exact schema. No markdown, no prose, no extra text. Start with { and end with }. Previous error: $lastError
 
 REQUIRED JSON FORMAT:
-{"location": {"lat": $lat, "lng": $lng}, "restrictions": [{"day_of_week": 1, "start_time": "HH:mm", "end_time": "HH:mm", "maximum_stay_minutes": 120}]}''';
+{"location": {"lat": $lat, "lng": $lng}, "restrictions": [{"day_of_week": 1, "start_time": "HH:mm", "end_time": "HH:mm", "maximum_stay_minutes": 120}]}
+
+RULES:
+- If the sign text applies every day (no days listed), generate seven entries with day_of_week 1..7 and identical times.''';
 
         final content = [Content.text(prompt)];
         final resp = await model.generateContent(content);
