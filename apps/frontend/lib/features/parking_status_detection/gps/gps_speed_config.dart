@@ -26,13 +26,6 @@ class GpsSpeedConfig {
   final double goodAccuracyThreshold; // Threshold for "good" GPS scenario
   final double mediumAccuracyThreshold; // Threshold for "medium" GPS scenario
 
-  // Kalman filter parameters
-  final double processNoise;
-  final double measurementNoise;
-
-  // Raw speed margin for detecting transitions
-  final double rawSpeedMargin; // Margin for detecting transitions: 0.5 m/s
-
   // Zero-speed detection (stationary phone)
   final double zeroSpeedThreshold; // Force speed to 0 if below this: 0.5 m/s (~1.8 km/h)
   final double zeroSpeedAccuracyThreshold; // Only apply zero-speed if accuracy worse than: 20m
@@ -48,13 +41,13 @@ class GpsSpeedConfig {
   final double minUpdateInterval; // Minimum seconds between updates for timer progress
 
   const GpsSpeedConfig({
-    // Adaptive hysteresis: narrower gaps, scenario-based
-    this.vInGood = 1.2,                   // 1.2 m/s (~4.3 km/h) - good GPS
-    this.vInMedium = 1.3,                 // 1.3 m/s (~4.7 km/h) - medium GPS
-    this.vInPoor = 1.5,                   // 1.5 m/s (~5.4 km/h) - poor GPS
-    this.vOutGood = 4.1,                  // 4.1 m/s (~14.8 km/h) - good GPS
-    this.vOutMedium = 4.1,                // 4.1 m/s (~14.8 km/h) - medium GPS
-    this.vOutPoor = 4.1,                  // 4.1 m/s (~14.8 km/h) - poor GPS
+    // Unified speed threshold: 10 km/h (2.78 m/s) for all scenarios
+    this.vInGood = 2.78,                  // 2.78 m/s (10 km/h) - good GPS
+    this.vInMedium = 2.78,                // 2.78 m/s (10 km/h) - medium GPS
+    this.vInPoor = 2.78,                  // 2.78 m/s (10 km/h) - poor GPS
+    this.vOutGood = 2.78,                 // 2.78 m/s (10 km/h) - good GPS
+    this.vOutMedium = 2.78,               // 2.78 m/s (10 km/h) - medium GPS
+    this.vOutPoor = 2.78,                 // 2.78 m/s (10 km/h) - poor GPS
 
     // Scenario-based time thresholds
     this.tCandidateGood = 3.0,            // 3.0 seconds - good GPS
@@ -74,13 +67,6 @@ class GpsSpeedConfig {
     this.maxAccuracyThreshold = 50.0,     // 50 meters - relaxed for cold start
     this.goodAccuracyThreshold = 10.0,    // ≤10m = good GPS
     this.mediumAccuracyThreshold = 20.0,  // 10-20m = medium GPS, >20m = poor GPS
-
-    // Kalman filter parameters
-    this.processNoise = 0.01,             // Process noise
-    this.measurementNoise = 0.1,          // Measurement noise (reduced from 0.5 for faster response)
-
-    // Raw speed margin for transition detection
-    this.rawSpeedMargin = 0.5,            // 0.5 m/s margin for rawSpeed candidate start
 
     // Zero-speed detection (GPS drift suppression)
     this.zeroSpeedThreshold = 0.5,        // Force to 0 if speed <0.5 m/s (~1.8 km/h)

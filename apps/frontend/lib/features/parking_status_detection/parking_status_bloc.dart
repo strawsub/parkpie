@@ -83,7 +83,7 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
       ));
     });
 
-    // Listen to GPS speed state changes
+    // Listen to GPS speed sta te changes
     _gpsSpeedSubscription = gpsSpeedBloc.stream.listen((gpsSpeedState) {
       if (gpsSpeedState is GpsSpeedReading) {
         add(UpdateSensorVote(

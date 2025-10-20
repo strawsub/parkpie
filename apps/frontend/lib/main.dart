@@ -42,10 +42,11 @@ class ParkPieApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locationCubit = LocationCubit();
     final accBloc = AccBloc();
     final gyroBloc = GyroBloc();
     final bluetoothBloc = BluetoothBloc();
-    final gpsSpeedBloc = GpsSpeedBloc();
+    final gpsSpeedBloc = GpsSpeedBloc(locationCubit: locationCubit);
     final parkingBloc = ParkingBloc(
       accBloc: accBloc,
       gyroBloc: gyroBloc,
@@ -57,7 +58,7 @@ class ParkPieApp extends StatelessWidget {
       providers: [
         BlocProvider(create: (_) => NavigationCubit()),
         BlocProvider(create: (_) => FilterTriggerCubit()),
-        BlocProvider(create: (_) => LocationCubit()),
+        BlocProvider<LocationCubit>.value(value: locationCubit),
         BlocProvider(
           create: (context) =>
               CameraBloc(locationCubit: context.read<LocationCubit>()),
