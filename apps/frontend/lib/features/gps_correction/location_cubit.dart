@@ -56,7 +56,7 @@ class LocationCubit extends Cubit<LocationState> {
     _positionStream = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high,
-        distanceFilter: 1,
+        distanceFilter: 0,  // Changed from 1 → Updates every GPS sample for faster response
       ),
     ).listen((pos) {
       _filter ??= KalmanFilter(pos.latitude, pos.longitude);

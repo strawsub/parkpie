@@ -293,24 +293,27 @@ class _DebugScreenState extends State<DebugScreen> {
                   final accuracy = state.accuracy ?? -1;
                   final scenario = state.accuracyScenario;
 
-                  // Scenario-based thresholds (updated to match current config)
-                  final String vIn, vOut, dWindow, tCandidate, tConfirm;
+                  // Scenario-based thresholds (updated to match current unified threshold)
+                  final String vThreshold, dWindow, tCandidate, tConfirm;
                   final String scenarioIcon;
 
                   switch (scenario) {
                     case "good":
-                      vIn = "1.2"; vOut = "4.1"; dWindow = "12.0";
+                      vThreshold = "2.78";  // Unified threshold (10 km/h)
+                      dWindow = "12.0";
                       tCandidate = "3.0"; tConfirm = "4.0";
                       scenarioIcon = "🟢";
                       break;
                     case "medium":
-                      vIn = "1.3"; vOut = "4.1"; dWindow = "16.0";
+                      vThreshold = "2.78";  // Unified threshold (10 km/h)
+                      dWindow = "16.0";
                       tCandidate = "3.0"; tConfirm = "5.0";
                       scenarioIcon = "🟡";
                       break;
                     case "poor":
                     default:
-                      vIn = "1.5"; vOut = "4.1"; dWindow = "20.0";
+                      vThreshold = "2.78";  // Unified threshold (10 km/h)
+                      dWindow = "20.0";
                       tCandidate = "3.0"; tConfirm = "6.0";
                       scenarioIcon = "🔴";
                       break;
@@ -320,12 +323,13 @@ class _DebugScreenState extends State<DebugScreen> {
                     title: Text('🛰️ GPS Speed Sensor $voteIcon'),
                     subtitle: Text(
                         'Vote: $vote | Scenario: $scenario $scenarioIcon\n'
-                            'Speed: ${filteredSpeedKmh.toStringAsFixed(1)} km/h (filtered) | ${rawSpeedKmh.toStringAsFixed(1)} km/h (raw)\n'
-                            'Thresholds: vIn=${vIn}m/s (${(double.parse(vIn) * 3.6).toStringAsFixed(1)}km/h), vOut=${vOut}m/s (${(double.parse(vOut) * 3.6).toStringAsFixed(1)}km/h)\n'
+                            'Speed: ${filteredSpeedKmh.toStringAsFixed(1)} km/h (from filtered coordinates)\n'
+                            'Speed Threshold: ${vThreshold}m/s (10.0 km/h) - UNIFIED for all speeds\n'
                             'Displacement: ${displacement.toStringAsFixed(1)} m [dWindow=${dWindow}m]\n'
-                            'Linear Distance Required: 10.0 m for driving\n'
+                            'Linear Distance Required: 10.0 m for driving confirmation\n'
                             'Candidate: ${candidateSec.toStringAsFixed(1)} s [tCand=${tCandidate}s, tConf=${tConfirm}s]\n'
-                            'Accuracy: ${accuracy.toStringAsFixed(1)} m'
+                            'Accuracy: ${accuracy.toStringAsFixed(1)} m\n'
+                            'Logic: Speed > 10km/h = driving, ≤10km/h = parked (no "unknown")'
                     ),
                   );
                 }

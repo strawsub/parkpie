@@ -50,9 +50,9 @@ class GpsSpeedConfig {
     this.vOutPoor = 2.78,                 // 2.78 m/s (10 km/h) - poor GPS
 
     // Scenario-based time thresholds
-    this.tCandidateGood = 3.0,            // 3.0 seconds - good GPS
-    this.tCandidateMedium = 3.0,          // 3.0 seconds - medium GPS
-    this.tCandidatePoor = 3.0,            // 3.0 seconds - poor GPS
+    this.tCandidateGood = 10.0,           // 10.0 seconds - good GPS (increased for stricter driving detection)
+    this.tCandidateMedium = 10.0,         // 10.0 seconds - medium GPS
+    this.tCandidatePoor = 10.0,           // 10.0 seconds - poor GPS
     this.tConfirmGood = 4.0,              // 4.0 seconds - good GPS (reduced from 5)
     this.tConfirmMedium = 5.0,            // 5.0 seconds - medium GPS
     this.tConfirmPoor = 6.0,              // 6.0 seconds - poor GPS (increased for stability)
@@ -61,7 +61,7 @@ class GpsSpeedConfig {
     this.dWindowGood = 12.0,              // 12.0 meters - good GPS (widened from 8)
     this.dWindowMedium = 16.0,            // 16.0 meters - medium GPS (widened from 10)
     this.dWindowPoor = 20.0,              // 20.0 meters - poor GPS (widened from 15)
-    this.dDrivingThreshold = 10.0,        // 10.0 meters - linear distance for driving confirmation
+    this.dDrivingThreshold = 20.0,        // 20.0 meters - linear distance for driving confirmation (increased from 10.0)
 
     // GPS accuracy scenario boundaries
     this.maxAccuracyThreshold = 50.0,     // 50 meters - relaxed for cold start
@@ -80,6 +80,6 @@ class GpsSpeedConfig {
     this.initializationDuration = 15.0,   // 15 seconds of dense sampling
     this.distanceFilterInitialization = 0, // No distance filter during init (max density)
     this.distanceFilterNormal = 1,        // 1 meter after initialization
-    this.minUpdateInterval = 1.0,         // Minimum 1.0s between updates (reduced for faster response)
+    this.minUpdateInterval = 0.5,         // Minimum 0.5s between updates (faster UI response)
   });
 }

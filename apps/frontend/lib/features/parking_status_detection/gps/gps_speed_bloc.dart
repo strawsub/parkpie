@@ -361,8 +361,9 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
         break;
     }
 
-    // Simple binary voting: speed > 10 km/h = driving, speed ≤ 10 km/h = parked
-    // No more "unknown" votes - GPS always reports current state
+    // Voting logic: vote "unknown" until driving/parked is confirmed
+    // - Driving: confirmed after speed > 10 km/h AND distance > 20m for 10s
+    // - Parked: confirmed after speed ≤ 10 km/h AND small displacement for required duration
 
     // Check for driving: speed > threshold (2.78 m/s / 10 km/h)
     if (speed > vThreshold) {
@@ -395,8 +396,8 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
           _drivingLinearDistance > _config.dDrivingThreshold) {
         return SensorVote.driving;
       }
-      // Still driving but not confirmed yet - vote driving anyway (honest reporting)
-      return SensorVote.driving;
+      // Still driving but not confirmed yet - vote unknown (wait for confirmation)
+      return SensorVote.unknown;
     }
 
     // Check for parked: speed ≤ threshold AND small displacement
@@ -413,17 +414,13 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
       if (durParked >= tConfirm) {
         return SensorVote.parked;
       }
-      // Stopped but not confirmed yet - vote parked anyway (honest reporting)
-      return SensorVote.parked;
+      // Stopped but not confirmed yet - vote unknown (wait for confirmation)
+      return SensorVote.unknown;
     }
 
     // Edge case: low speed but large displacement (GPS drift or very slow movement)
-    // Vote based on speed threshold
-    if (speed <= vThreshold) {
-      return SensorVote.parked;
-    } else {
-      return SensorVote.driving;
-    }
+    // Vote unknown until we can confirm (this is an ambiguous state)
+    return SensorVote.unknown;
   }
 
   void _resetCandidates() {

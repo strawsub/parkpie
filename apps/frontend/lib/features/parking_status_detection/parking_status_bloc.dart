@@ -15,6 +15,7 @@ import 'package:frontend/features/parking_status_detection/gps/gps_speed_event.d
 import 'package:frontend/features/parking_status_detection/parking_status_event.dart';
 import 'package:frontend/features/parking_status_detection/parking_status_state.dart';
 import 'package:frontend/features/parking_status_detection/utils.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 
 class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
   // Sensor blocs
@@ -103,6 +104,11 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
       return;  // Don't process sensor votes in terminal state
     }
 
+    // IGNORE sensor votes when in ParkingDetected state (awaiting user confirmation)
+    if (state is ParkingDetected) {
+      return;  // Don't process sensor votes while showing confirmation dialog
+    }
+
     // Update sensor votes
     final updatedVotes = Map<String, SensorVote>.from(state.sensorVotes);
 
@@ -152,8 +158,10 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
     final gpsVote = sensorVotes['gps_speed'] ?? SensorVote.unknown;
     final accVote = sensorVotes['accelerometer'] ?? SensorVote.unknown;
     final isLowSpeed = gpsVote == SensorVote.parked;
+    final isNotDriving = gpsVote != SensorVote.driving;  // unknown or parked = not actively driving
     final isStill = accVote == SensorVote.parked;
-    final isStopped = isLowSpeed && isStill;
+    final isStopped = isLowSpeed && isStill;  // For strict checks (like timeout condition)
+    final isStoppedOrSlowing = isNotDriving && isStill;  // For Driving→StoppedCandidate transition
 
     // Helper: Check for leave-vehicle evidence
     final gyroVote = sensorVotes['gyroscope'] ?? SensorVote.unknown;
@@ -191,7 +199,9 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
     // DRIVING → STOPPED CANDIDATE
     // ------------------------------
     if (state is Driving) {
-      if (isStopped) {
+      // Transition when GPS is not actively voting "driving" AND accelerometer is still
+      // This allows transition even when GPS votes "unknown" (waiting for parked confirmation)
+      if (isStoppedOrSlowing) {
         // NO BT fast path from Driving - always enter StoppedCandidate first
         _startCandidateProgressTimer();
         return StoppedCandidate(
@@ -236,7 +246,18 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
       }
 
       // 2. CHECK FOR BT DISCONNECT (instant promotion in StoppedCandidate)
-      if (hasBtDisconnect && (isLowSpeed || isStill)) {
+      // Accept bluetooth disconnect even if not fully stopped yet (transitioning)
+
+      // DEBUG LOGGING
+      debugPrint('=== BLUETOOTH DISCONNECT CHECK ===');
+      debugPrint('Current state: StoppedCandidate');
+      debugPrint('btVote: ${sensorVotes['bluetooth']}');
+      debugPrint('hasBtDisconnect: $hasBtDisconnect');
+      debugPrint('All sensor votes: $sensorVotes');
+      debugPrint('===================================');
+
+      if (hasBtDisconnect) {
+        debugPrint('>>> BLUETOOTH DISCONNECT DETECTED - Transitioning to ParkingDetected');
         _cancelCandidateProgressTimer();
         // No auto-confirm timer - stay in ParkingDetected until user confirms
         return ParkingDetected(
@@ -364,6 +385,11 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
     // IGNORE timer ticks when in Parked state (terminal state)
     if (state is Parked) {
       return;  // Don't process timer ticks in terminal state
+    }
+
+    // IGNORE timer ticks when in ParkingDetected state (awaiting user confirmation)
+    if (state is ParkingDetected) {
+      return;  // Don't process timer ticks while showing confirmation dialog
     }
 
     // Re-evaluate state using current sensor votes and wall-clock time

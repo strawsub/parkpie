@@ -44,17 +44,27 @@ class BluetoothBloc extends Bloc<BluetoothEvent, BluetoothState> {
   ) {
     SensorVote vote;
 
+    debugPrint('=== BluetoothBloc._onStatusChanged ===');
+    debugPrint('event.isConnected: ${event.isConnected}');
+    debugPrint('_wasConnected: $_wasConnected');
+
     if (event.isConnected) {
       // Bluetooth connected - likely driving
       vote = SensorVote.driving;
       _wasConnected = true;
+      debugPrint('CONNECTED → vote: driving, _wasConnected set to true');
     } else if (_wasConnected) {
       // Bluetooth disconnected after being connected - likely parked
       vote = SensorVote.parked;
+      debugPrint('DISCONNECTED (was connected) → vote: PARKED');
     } else {
       // No connection history
       vote = SensorVote.unknown;
+      debugPrint('DISCONNECTED (no history) → vote: unknown');
     }
+
+    debugPrint('Emitting BluetoothConnectionStatus with vote: $vote');
+    debugPrint('=======================================');
 
     emit(BluetoothConnectionStatus(
       vote: vote,
@@ -64,9 +74,14 @@ class BluetoothBloc extends Bloc<BluetoothEvent, BluetoothState> {
     ));
   }
 
-  void _onReset(ResetBluetooth event, Emitter<BluetoothState> emit) {
+  Future<void> _onReset(ResetBluetooth event, Emitter<BluetoothState> emit) async {
     _wasConnected = false;
     emit(const BluetoothInitial());
+
+    // Force immediate refresh of audio route - this will check hardware and emit status
+    await _service.forceRefresh();
+    // The emission will be caught by the stream listener (line 29-34)
+    // No need to manually add BluetoothStatusChanged - stream will handle it
   }
 
   @override

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter_audio_output/flutter_audio_output.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 
 class AudioBluetoothService {
   static final AudioBluetoothService _instance = AudioBluetoothService._internal();
@@ -28,6 +29,12 @@ class AudioBluetoothService {
       }(),
       error: null,
     );
+  }
+
+  // Force an immediate check and emit, even if route hasn't changed
+  Future<void> forceRefresh() async {
+    await _checkAudioRoute();
+    _emitStatus();  // Always emit, even if route unchanged
   }
 
   Future<void> initialize() async {
@@ -59,7 +66,7 @@ class AudioBluetoothService {
   void _startMonitoring() {
     _routeCheckTimer?.cancel();
     _routeCheckTimer = Timer.periodic(
-      const Duration(seconds: 2),
+      const Duration(seconds: 1),  // Faster polling for quicker reconnection detection
       (_) => _checkAudioRoute(),
     );
   }
@@ -67,7 +74,15 @@ class AudioBluetoothService {
   Future<void> _checkAudioRoute() async {
     try {
       final current = await FlutterAudioOutput.getCurrentOutput();
-      
+
+      // DEBUG: Log audio route changes to identify CarPlay port type
+      debugPrint('=== Audio Route Check ===');
+      debugPrint('Current route port: ${current?.port}');
+      debugPrint('Current route name: ${current?.name}');
+      debugPrint('Previous route port: ${_currentRoute?.port}');
+      debugPrint('Previous route name: ${_currentRoute?.name}');
+      debugPrint('========================');
+
       if (_hasRouteChanged(_currentRoute, current)) {
         _currentRoute = current;
         _emitStatus();
