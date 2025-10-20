@@ -49,6 +49,7 @@ class AppLocalizationsJa extends AppLocalizations {
     'language.korean': '韓国語',
     'language.japanese': '日本語',
     'language.thai': 'タイ語',
+    'language.vietnamese': 'ベトナム語',
     'privacy.settingsTitle': 'プライバシーとコンプライアンス',
     'privacy.settingsSubtitle':
         'ParkPie が App Store と Google Play のデータ開示要件をどのように満たしているかをご確認ください。',

@@ -55,6 +55,7 @@ class AppLocalizationsEn extends AppLocalizations {
     'language.korean': 'Korean',
     'language.japanese': 'Japanese',
     'language.thai': 'Thai',
+    'language.vietnamese': 'Vietnamese',
     'privacy.settingsTitle': 'Privacy & Compliance',
     'privacy.settingsSubtitle':
         'Review how ParkPie discloses data practices for App Store Privacy Labels and Google Play Data Safety.',

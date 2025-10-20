@@ -106,6 +106,10 @@ class LanguageSelectionPage extends StatelessWidget {
         locale: const Locale('th'),
         label: l10n.getString('language.thai'),
       ),
+      _LanguageOption(
+        locale: const Locale('vi'),
+        label: l10n.getString('language.vietnamese'),
+      ),
     ];
   }
 }

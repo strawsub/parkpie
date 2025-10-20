@@ -49,6 +49,7 @@ class AppLocalizationsZhHans extends AppLocalizations {
     'language.korean': '韩文',
     'language.japanese': '日文',
     'language.thai': '泰语',
+    'language.vietnamese': '越南语',
     'privacy.settingsTitle': '隐私与合规',
     'privacy.settingsSubtitle':
         '了解 ParkPie 如何满足 App Store 与 Google Play 的数据披露要求。',

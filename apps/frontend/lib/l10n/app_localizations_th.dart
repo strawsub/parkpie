@@ -53,6 +53,7 @@ class AppLocalizationsTh extends AppLocalizations {
     'language.korean': 'ภาษาเกาหลี',
     'language.japanese': 'ภาษาญี่ปุ่น',
     'language.thai': 'ภาษาไทย',
+    'language.vietnamese': 'ภาษาเวียดนาม',
     'privacy.settingsTitle': 'ความเป็นส่วนตัวและการปฏิบัติตาม',
     'privacy.settingsSubtitle':
         'ดูรายละเอียดการเปิดเผยข้อมูลของ ParkPie สำหรับ App Store และ Google Play',
