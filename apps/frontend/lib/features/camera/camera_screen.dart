@@ -8,6 +8,7 @@ import 'package:frontend/features/camera/camera_state.dart';
 import 'package:frontend/features/navigation/navigation_cubit.dart';
 import 'package:frontend/features/timer/timer_bloc.dart';
 import 'package:frontend/features/timer/timer_event.dart';
+import 'package:frontend/l10n/app_localizations_ext.dart';
 
 class CameraScreen extends StatelessWidget {
   const CameraScreen({super.key});
@@ -44,6 +45,7 @@ class _CameraViewState extends State<CameraView> {
 
   Widget _buildCameraPreview(BuildContext context, CameraBloc cameraBloc) {
     final controller = cameraBloc.cameraController;
+    final l10n = context.l10n;
     if (controller == null || !controller.value.isInitialized) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -87,7 +89,7 @@ class _CameraViewState extends State<CameraView> {
                     ),
                     Expanded(
                       child: Text(
-                        'TAKE PHOTO OF PARKING SIGN',
+                        l10n.getString('camera.takePhotoHeader'),
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontFamily: 'Plus Jakarta Sans',
@@ -154,7 +156,7 @@ class _CameraViewState extends State<CameraView> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'Point your camera at the parking sign and capture the full view',
+                            l10n.getString('camera.instructions'),
                             style: const TextStyle(
                               fontFamily: 'Plus Jakarta Sans',
                               fontSize: 14,
@@ -203,6 +205,7 @@ class _CameraViewState extends State<CameraView> {
   }
 
   Widget _buildProcessingView(String imagePath) {
+    final l10n = context.l10n;
     return Stack(
       children: [
         SizedBox.expand(child: Image.file(File(imagePath), fit: BoxFit.cover)),
@@ -238,8 +241,8 @@ class _CameraViewState extends State<CameraView> {
                 valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7FAC58)),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Analyzing parking sign...',
+              Text(
+                l10n.getString('camera.analyzing'),
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -250,7 +253,7 @@ class _CameraViewState extends State<CameraView> {
               SizedBox(
                 width: 260,
                 child: Text(
-                  'Extracting text, summarising the rules and syncing with ParkPie.',
+                  l10n.getString('camera.analyzingDetail'),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.85),
@@ -266,6 +269,7 @@ class _CameraViewState extends State<CameraView> {
   }
 
   Widget _buildErrorView(String message) {
+    final l10n = context.l10n;
     return Container(
       color: Colors.black,
       width: double.infinity,
@@ -278,8 +282,8 @@ class _CameraViewState extends State<CameraView> {
               children: [
                 const Icon(Icons.error_outline, color: Colors.white, size: 72),
                 const SizedBox(height: 16),
-                const Text(
-                  "We couldn't read that sign",
+                Text(
+                  l10n.getString('camera.errorTitle'),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,
@@ -304,7 +308,7 @@ class _CameraViewState extends State<CameraView> {
                       context.read<CameraBloc>().add(PhotoRetaken());
                     },
                     icon: const Icon(Icons.camera_alt_outlined),
-                    label: const Text('Retake photo'),
+                    label: Text(l10n.getString('camera.retake')),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF7FAC58),
                       foregroundColor: Colors.white,
@@ -328,7 +332,7 @@ class _CameraViewState extends State<CameraView> {
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.white.withValues(alpha: 0.75),
                   ),
-                  child: const Text('Back to map'),
+                  child: Text(l10n.getString('camera.errorBack')),
                 ),
               ],
             ),
@@ -339,6 +343,7 @@ class _CameraViewState extends State<CameraView> {
   }
 
   Widget _buildAnalysisResultsView(SignAnalysisSuccess state) {
+    final l10n = context.l10n;
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
@@ -359,11 +364,11 @@ class _CameraViewState extends State<CameraView> {
                       context.read<NavigationCubit>().setIndex(0);
                     },
                   ),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Sign Summary',
+                      l10n.getString('camera.analysisTitle'),
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: Colors.black,
                         fontWeight: FontWeight.w600,
                         fontSize: 18,
@@ -399,7 +404,7 @@ class _CameraViewState extends State<CameraView> {
                   // Zone Header
                   Center(
                     child: Text(
-                      'Zone Added',
+                      l10n.getString('camera.zoneAdded'),
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -429,7 +434,9 @@ class _CameraViewState extends State<CameraView> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            '${state.restrictionsSaved} restriction${state.restrictionsSaved != 1 ? 's' : ''} synced',
+                            l10n.format('camera.restrictionsSynced', {
+                              'count': state.restrictionsSaved.toString(),
+                            }),
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w600,
@@ -444,7 +451,9 @@ class _CameraViewState extends State<CameraView> {
                     const SizedBox(height: 8),
                     Center(
                       child: Text(
-                        '${state.replacedPrevious} old restriction${state.replacedPrevious != 1 ? 's' : ''} replaced',
+                        l10n.format('camera.restrictionsReplaced', {
+                          'count': state.replacedPrevious.toString(),
+                        }),
                         style: const TextStyle(
                           fontSize: 12,
                           color: Colors.black54,
@@ -466,16 +475,16 @@ class _CameraViewState extends State<CameraView> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
-                          children: const [
-                            Icon(
+                          children: [
+                            const Icon(
                               Icons.lightbulb_outline,
                               color: Color(0xFF7FAC58),
                               size: 20,
                             ),
-                            SizedBox(width: 8),
+                            const SizedBox(width: 8),
                             Text(
-                              'AI explanation',
-                              style: TextStyle(
+                              l10n.getString('camera.aiExplanation'),
+                              style: const TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 14,
                                 color: Colors.black54,
@@ -486,7 +495,7 @@ class _CameraViewState extends State<CameraView> {
                         const SizedBox(height: 12),
                         Text(
                           state.explanation.trim().isEmpty
-                              ? 'AI could not summarise this sign. Please review the restrictions below.'
+                              ? l10n.getString('camera.aiExplanationFallback')
                               : state.explanation.trim(),
                           style: const TextStyle(
                             fontSize: 15,
@@ -502,7 +511,7 @@ class _CameraViewState extends State<CameraView> {
                   // Location Info
                   Center(
                     child: Text(
-                      'Location: ${state.latitude.toStringAsFixed(5)}, ${state.longitude.toStringAsFixed(5)}',
+                      '${l10n.getString('camera.locationLabel')}: ${state.latitude.toStringAsFixed(5)}, ${state.longitude.toStringAsFixed(5)}',
                       style: const TextStyle(
                         color: Colors.black54,
                         fontSize: 12,
@@ -529,9 +538,9 @@ class _CameraViewState extends State<CameraView> {
                             ),
                             elevation: 0,
                           ),
-                          child: const Text(
-                            'Retake Photo',
-                            style: TextStyle(
+                          child: Text(
+                            l10n.getString('camera.buttonRetake'),
+                            style: const TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 16,
                             ),
@@ -545,7 +554,9 @@ class _CameraViewState extends State<CameraView> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
-                                  'Manual zone ${state.zoneNumber} saved to ParkPie.',
+                                  l10n.format('camera.manualZoneSaved', {
+                                    'zone': state.zoneNumber.toString(),
+                                  }),
                                 ),
                               ),
                             );
@@ -561,9 +572,9 @@ class _CameraViewState extends State<CameraView> {
                             ),
                             elevation: 0,
                           ),
-                          child: const Text(
-                            'Done',
-                            style: TextStyle(
+                          child: Text(
+                            l10n.getString('camera.buttonDone'),
+                            style: const TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 16,
                             ),
@@ -587,6 +598,7 @@ class _CameraViewState extends State<CameraView> {
       backgroundColor: Colors.black,
       body: BlocConsumer<CameraBloc, CameraState>(
         listener: (context, state) {
+          final l10n = context.l10n;
           if (state is CameraError) {
             ScaffoldMessenger.of(
               context,
@@ -597,8 +609,14 @@ class _CameraViewState extends State<CameraView> {
             );
             final replaced = state.replacedPrevious;
             final message = replaced > 0
-                ? 'Updated zone ${state.zoneNumber} ($replaced window(s) replaced).'
-                : 'Stored zone ${state.zoneNumber} with ${state.restrictionsSaved} window(s).';
+                ? l10n.format('camera.updateMessage', {
+                    'zone': state.zoneNumber.toString(),
+                    'count': replaced.toString(),
+                  })
+                : l10n.format('camera.storeMessage', {
+                    'zone': state.zoneNumber.toString(),
+                    'count': state.restrictionsSaved.toString(),
+                  });
             ScaffoldMessenger.of(
               context,
             ).showSnackBar(SnackBar(content: Text(message)));
