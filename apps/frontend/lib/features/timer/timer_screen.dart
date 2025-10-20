@@ -219,46 +219,6 @@ class _TimerScreenState extends State<TimerScreen> {
     );
   }
 
-  Widget _buildTimerDisplay(TimerState state) {
-    final elapsed = state.elapsed;
-    final hours = elapsed.inHours;
-    final minutes = elapsed.inMinutes.remainder(60);
-    final seconds = elapsed.inSeconds.remainder(60);
-
-    final timeString = hours > 0
-        ? '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}'
-        : '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.access_time_rounded,
-            color: Colors.grey.shade600,
-            size: 18,
-          ),
-          const SizedBox(width: 12),
-          Text(
-            timeString,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey.shade800,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildFailureView(BuildContext context, TimerFailure state) {
     final zoneLabel = state.zoneNumber != null
         ? 'Zone ${state.zoneNumber}'
