@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:frontend/l10n/app_localizations_ext.dart';
 
-class BottomNavBar extends StatelessWidget {
+class BottomTabBar extends StatelessWidget {
   final int currentIndex;
   final Function(int) onTap;
 
-  const BottomNavBar({
+  const BottomTabBar({
     super.key,
     required this.currentIndex,
     required this.onTap,

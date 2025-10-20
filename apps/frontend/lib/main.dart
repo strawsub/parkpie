@@ -28,7 +28,7 @@ import 'features/parking_status_detection/gps/gps_speed_bloc.dart';
 
 import 'l10n/app_localizations.dart';
 import 'features/settings/language/language_cubit.dart';
-import 'widgets/nav_bar.dart';
+import 'widgets/tab_bar.dart';
 import 'widgets/parking_detected_bottom_sheet.dart';
 import 'services/timer_service.dart';
 import 'services/api_config.dart';
@@ -137,7 +137,7 @@ class _HomeContainerState extends State<HomeContainer> {
           return Scaffold(
             body: _getSelectedView(selectedIndex),
             bottomNavigationBar: selectedIndex != 1
-                ? BottomNavBar(
+                ? BottomTabBar(
                     currentIndex: selectedIndex,
                     onTap: (index) =>
                         _handleNavTap(context, index, selectedIndex),
