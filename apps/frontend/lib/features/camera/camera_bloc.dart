@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:camera/camera.dart';
 import 'package:crypto/crypto.dart';
@@ -149,7 +150,13 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
       emit(CameraLoading());
       try {
         final XFile image = await _cameraController!.takePicture();
-        add(PhotoUploaded(image.path));
+        add(
+          PhotoUploaded(
+            imagePath: image.path,
+            locale: event.locale,
+            capturedAt: event.capturedAt,
+          ),
+        );
       } catch (e) {
         emit(CameraError("Failed to capture photo: ${e.toString()}"));
       }
@@ -202,11 +209,13 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
         lng: longitude,
         apiKey: apiKey,
       );
-      
+
       try {
         _signService.validatePayload(parsed);
       } catch (validationError) {
-        emit(CameraError("Sign validation failed: ${validationError.toString()}"));
+        emit(
+          CameraError("Sign validation failed: ${validationError.toString()}"),
+        );
         return;
       }
 
@@ -216,11 +225,7 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
           .map((e) => SignRestriction.fromJson(e))
           .toList(growable: false);
 
-      final fingerprint = _fingerprint(
-        latitude,
-        longitude,
-        restrictions,
-      );
+      final fingerprint = _fingerprint(latitude, longitude, restrictions);
       final cachedZone = await _zoneStorage.readZone(fingerprint);
 
       final payload = Map<String, dynamic>.from(parsed)
@@ -240,6 +245,8 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
           lng: longitude,
           rawText: rawText,
           apiKey: apiKey,
+          localeTag: _localeTag(event.locale),
+          capturedAt: event.capturedAt.toLocal(),
         );
       } catch (_) {
         explanation = '';
@@ -325,5 +332,23 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
     }
 
     return sha1.convert(utf8.encode(buffer.toString())).toString();
+  }
+
+  String _localeTag(Locale locale) {
+    final language = locale.languageCode;
+    final script = locale.scriptCode;
+    final country = locale.countryCode;
+    final buffer = StringBuffer(language);
+    if (script != null && script.isNotEmpty) {
+      buffer
+        ..write('-')
+        ..write(script);
+    }
+    if (country != null && country.isNotEmpty) {
+      buffer
+        ..write('-')
+        ..write(country);
+    }
+    return buffer.toString();
   }
 }

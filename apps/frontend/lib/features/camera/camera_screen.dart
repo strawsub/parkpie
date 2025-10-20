@@ -175,7 +175,13 @@ class _CameraViewState extends State<CameraView> {
                     const SizedBox(height: 20),
                     GestureDetector(
                       onTap: () {
-                        context.read<CameraBloc>().add(PhotoCaptured());
+                        final locale = Localizations.localeOf(context);
+                        context.read<CameraBloc>().add(
+                          PhotoCaptured(
+                            locale: locale,
+                            capturedAt: DateTime.now(),
+                          ),
+                        );
                       },
                       child: Container(
                         width: 80,
