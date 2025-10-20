@@ -15,6 +15,7 @@ import 'package:frontend/features/parking_status_detection/gps/gps_speed_event.d
 import 'package:frontend/features/parking_status_detection/parking_status_event.dart';
 import 'package:frontend/features/parking_status_detection/parking_status_state.dart';
 import 'package:frontend/features/parking_status_detection/utils.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 
 class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
   // Sensor blocs
@@ -83,7 +84,7 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
       ));
     });
 
-    // Listen to GPS speed state changes
+    // Listen to GPS speed sta te changes
     _gpsSpeedSubscription = gpsSpeedBloc.stream.listen((gpsSpeedState) {
       if (gpsSpeedState is GpsSpeedReading) {
         add(UpdateSensorVote(
@@ -98,6 +99,16 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
       UpdateSensorVote event,
       Emitter<ParkingState> emit,
       ) {
+    // IGNORE sensor votes when in Parked state (terminal state)
+    if (state is Parked) {
+      return;  // Don't process sensor votes in terminal state
+    }
+
+    // IGNORE sensor votes when in ParkingDetected state (awaiting user confirmation)
+    if (state is ParkingDetected) {
+      return;  // Don't process sensor votes while showing confirmation dialog
+    }
+
     // Update sensor votes
     final updatedVotes = Map<String, SensorVote>.from(state.sensorVotes);
 
@@ -147,8 +158,10 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
     final gpsVote = sensorVotes['gps_speed'] ?? SensorVote.unknown;
     final accVote = sensorVotes['accelerometer'] ?? SensorVote.unknown;
     final isLowSpeed = gpsVote == SensorVote.parked;
+    final isNotDriving = gpsVote != SensorVote.driving;  // unknown or parked = not actively driving
     final isStill = accVote == SensorVote.parked;
-    final isStopped = isLowSpeed && isStill;
+    final isStopped = isLowSpeed && isStill;  // For strict checks (like timeout condition)
+    final isStoppedOrSlowing = isNotDriving && isStill;  // For Driving→StoppedCandidate transition
 
     // Helper: Check for leave-vehicle evidence
     final gyroVote = sensorVotes['gyroscope'] ?? SensorVote.unknown;
@@ -171,7 +184,7 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
     // UNKNOWN → DRIVING
     // ------------------------------
     if (state is ParkingUnknown) {
-      // Only GPS detection: speed ≥ 4.1 m/s AND distance > 10m for 3s
+      // Only GPS detection: speed > 2.78 m/s (10 km/h) AND distance > 20m for 10s
       if (gpsVote == SensorVote.driving) {
         return Driving(
           sensorVotes: sensorVotes,
@@ -186,7 +199,9 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
     // DRIVING → STOPPED CANDIDATE
     // ------------------------------
     if (state is Driving) {
-      if (isStopped) {
+      // Transition when GPS is not actively voting "driving" AND accelerometer is still
+      // This allows transition even when GPS votes "unknown" (waiting for parked confirmation)
+      if (isStoppedOrSlowing) {
         // NO BT fast path from Driving - always enter StoppedCandidate first
         _startCandidateProgressTimer();
         return StoppedCandidate(
@@ -231,7 +246,18 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
       }
 
       // 2. CHECK FOR BT DISCONNECT (instant promotion in StoppedCandidate)
-      if (hasBtDisconnect && (isLowSpeed || isStill)) {
+      // Accept bluetooth disconnect even if not fully stopped yet (transitioning)
+
+      // DEBUG LOGGING
+      debugPrint('=== BLUETOOTH DISCONNECT CHECK ===');
+      debugPrint('Current state: StoppedCandidate');
+      debugPrint('btVote: ${sensorVotes['bluetooth']}');
+      debugPrint('hasBtDisconnect: $hasBtDisconnect');
+      debugPrint('All sensor votes: $sensorVotes');
+      debugPrint('===================================');
+
+      if (hasBtDisconnect) {
+        debugPrint('>>> BLUETOOTH DISCONNECT DETECTED - Transitioning to ParkingDetected');
         _cancelCandidateProgressTimer();
         // No auto-confirm timer - stay in ParkingDetected until user confirms
         return ParkingDetected(
@@ -308,7 +334,7 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
   }
 
   // Check revert conditions with hysteresis
-  // Same logic as Unknown → Driving: GPS votes "driving" (speed ≥ 4.1 m/s AND distance > 10m)
+  // Same logic as Unknown → Driving: GPS votes "driving" (speed > 2.78 m/s / 10 km/h AND distance > 20m for 10s)
   bool _checkRevertConditions(
       Map<String, SensorVote> sensorVotes,
       double currentAccRMS,
@@ -317,7 +343,7 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
       ) {
     final gpsVote = sensorVotes['gps_speed'] ?? SensorVote.unknown;
 
-    // Only revert if GPS votes "driving" (speed ≥ 4.1 m/s AND distance > 10m for 3s)
+    // Only revert if GPS votes "driving" (speed > 2.78 m/s / 10 km/h AND distance > 20m for 10s)
     // No GPS stale handling, no accelerometer-only revert
     if (gpsVote == SensorVote.driving) {
       return true; // REVERT to Driving
@@ -356,6 +382,16 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
       CandidateProgressTick event,
       Emitter<ParkingState> emit,
       ) {
+    // IGNORE timer ticks when in Parked state (terminal state)
+    if (state is Parked) {
+      return;  // Don't process timer ticks in terminal state
+    }
+
+    // IGNORE timer ticks when in ParkingDetected state (awaiting user confirmation)
+    if (state is ParkingDetected) {
+      return;  // Don't process timer ticks while showing confirmation dialog
+    }
+
     // Re-evaluate state using current sensor votes and wall-clock time
     // This allows progression even if GPS samples are stale
     if (state is StoppedCandidate) {
@@ -410,14 +446,18 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
       Emitter<ParkingState> emit,
       ) {
     _cancelParkingDetectionTimer();
-    _cancelCandidateProgressTimer();
     _resetRevertTracking();
 
-    // Revert to Driving state (don't reset sensor blocs)
-    emit(Driving(
+    // Revert to StoppedCandidate state (not Driving)
+    // User dismissed parking dialog, but we should stay in candidate state
+    // This allows the system to re-detect parking if user stays stopped
+    _startCandidateProgressTimer();
+    emit(StoppedCandidate(
       sensorVotes: state.sensorVotes,
       drivingVotes: state.drivingVotes,
       parkedVotes: state.parkedVotes,
+      candidateStartTime: DateTime.now(),  // Reset timer
+      latchedGyroSpikeTime: null,
     ));
   }
 

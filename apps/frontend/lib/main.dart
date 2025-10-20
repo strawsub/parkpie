@@ -42,10 +42,11 @@ class ParkPieApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locationCubit = LocationCubit();
     final accBloc = AccBloc();
     final gyroBloc = GyroBloc();
     final bluetoothBloc = BluetoothBloc();
-    final gpsSpeedBloc = GpsSpeedBloc();
+    final gpsSpeedBloc = GpsSpeedBloc(locationCubit: locationCubit);
     final parkingBloc = ParkingBloc(
       accBloc: accBloc,
       gyroBloc: gyroBloc,
@@ -57,6 +58,7 @@ class ParkPieApp extends StatelessWidget {
       providers: [
         BlocProvider(create: (_) => NavigationCubit()),
         BlocProvider(create: (_) => FilterTriggerCubit()),
+        BlocProvider<LocationCubit>.value(value: locationCubit),
         BlocProvider(create: (_) => LanguageCubit()),
         BlocProvider(create: (_) => LocationCubit()),
         BlocProvider(
@@ -100,6 +102,7 @@ class HomeContainer extends StatefulWidget {
 
 class _HomeContainerState extends State<HomeContainer> {
   bool _isParkingDialogShowing = false;
+  bool _confirmedParking = false;  // Track if user confirmed (vs dismissed/cancelled)
 
   void _handleNavTap(BuildContext context, int index, int currentIndex) {
     // Regular navigation for all tabs
@@ -162,6 +165,7 @@ class _HomeContainerState extends State<HomeContainer> {
         timerService: timerService,
         onConfirm: (selectedMinutes, selectedZone) {
           _isParkingDialogShowing = false;
+          _confirmedParking = true;  // Mark as confirmed to prevent .then() from reverting
           Navigator.of(parentContext).pop();
           parkingBloc.add(const UserConfirmedParking());
 
@@ -224,8 +228,10 @@ class _HomeContainerState extends State<HomeContainer> {
       if (!mounted) return;
       // Handle dismissal by swipe down (or any other dismissal method)
       _isParkingDialogShowing = false;
-      // Revert to Driving state if dialog was dismissed without confirming
-      if (parkingBloc.state is ParkingDetected) {
+
+      // CRITICAL: Only revert if user did NOT confirm parking
+      // Prevents race condition where .then() fires before UserConfirmedParking processes
+      if (!_confirmedParking && parkingBloc.state is ParkingDetected) {
         // Only reset Bluetooth if it was the trigger (bluetooth vote = parked)
         final btVote = parkingBloc.state.sensorVotes['bluetooth'];
         if (btVote == SensorVote.parked) {
@@ -233,6 +239,9 @@ class _HomeContainerState extends State<HomeContainer> {
         }
         parkingBloc.add(const RevertToDriving());
       }
+
+      // Reset confirmation flag for next dialog
+      _confirmedParking = false;
     });
   }
 }

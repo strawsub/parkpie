@@ -3,7 +3,7 @@ import 'dart:collection';
 import 'dart:math' as math;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/foundation.dart';
-import 'package:geolocator/geolocator.dart';
+import '../../../features/gps_correction/location_cubit.dart';
 import '../utils.dart';
 import 'gps_speed_event.dart';
 import 'gps_speed_state.dart';
@@ -27,11 +27,8 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
   // Configuration
   static const _config = GpsSpeedConfig();
 
-  // Kalman filter for speed smoothing
-  final KalmanFilter1D _speedFilter = KalmanFilter1D(
-    processNoise: _config.processNoise,
-    measurementNoise: _config.measurementNoise,
-  );
+  // LocationCubit for filtered GPS coordinates
+  final LocationCubit locationCubit;
 
   // Sliding window of location samples
   final ListQueue<LocationSample> _window = ListQueue();
@@ -54,59 +51,35 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
   static const double _maxReasonableSpeed = 50.0; // m/s (~180 km/h)
   static const double _minReasonableSpeed = 0.0;
 
-  // GPS subscription
-  StreamSubscription<Position>? _positionSubscription;
+  // LocationCubit subscription
+  StreamSubscription<LocationState>? _locationSubscription;
 
-  GpsSpeedBloc() : super(const GpsSpeedInitial()) {
+  GpsSpeedBloc({required this.locationCubit}) : super(const GpsSpeedInitial()) {
     on<GpsSpeedLocationSampleArrived>(_onLocationSampleArrived);
     on<GpsSpeedReset>(_onReset);
     _startTime = DateTime.now();
-    _initializeGps();
+    _initializeLocationTracking();
   }
 
-  Future<void> _initializeGps() async {
-    try {
-      // Check permissions
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          debugPrint('GPS location permission denied');
-          return;
-        }
+  void _initializeLocationTracking() {
+    // Start location tracking in LocationCubit
+    locationCubit.startTracking();
+
+    // Subscribe to filtered GPS coordinates from LocationCubit
+    _locationSubscription = locationCubit.stream.listen((locationState) {
+      if (locationState.filteredPosition != null && locationState.rawPosition != null) {
+        final filteredLat = locationState.filteredPosition![0];
+        final filteredLng = locationState.filteredPosition![1];
+        final rawPosition = locationState.rawPosition!;
+
+        add(GpsSpeedLocationSampleArrived(
+          lat: filteredLat,  // Use filtered coordinates instead of raw
+          lon: filteredLng,
+          horizAcc: rawPosition.accuracy,
+          timestamp: rawPosition.timestamp,
+        ));
       }
-
-      if (permission == LocationPermission.deniedForever) {
-        debugPrint('GPS location permission denied forever');
-        return;
-      }
-
-      // Start listening to position updates
-      // Dynamic sampling: dense during initialization (0m filter), then relaxed (1m filter)
-      final locationSettings = LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: _config.distanceFilterInitialization, // Start with 0m for dense sampling
-        // Note: No timeLimit set - allows GPS time to acquire initial fix
-      );
-
-      _positionSubscription = Geolocator.getPositionStream(
-        locationSettings: locationSettings,
-      ).listen(
-        (position) {
-          add(GpsSpeedLocationSampleArrived(
-            lat: position.latitude,
-            lon: position.longitude,
-            horizAcc: position.accuracy,
-            timestamp: position.timestamp,
-          ));
-        },
-        onError: (error) {
-          debugPrint('GPS position error: $error');
-        },
-      );
-    } catch (e) {
-      debugPrint('Failed to initialize GPS: $e');
-    }
+    });
   }
 
   void _onLocationSampleArrived(
@@ -178,7 +151,9 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
       return; // Avoid division by zero
     }
 
-    final rawSpeed = distance / timeDiff;
+    // Speed is calculated from already-filtered GPS coordinates
+    // No additional speed filtering needed
+    double speed = distance / timeDiff;
 
     // Discard outliers (stricter check for unrealistic speeds)
     // Also check: if accuracy is very poor, lower the max reasonable speed
@@ -186,20 +161,17 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
         ? 15.0  // Poor GPS (>30m accuracy): max 15 m/s (~54 km/h)
         : _maxReasonableSpeed;  // Good GPS: max 50 m/s (~180 km/h)
 
-    if (rawSpeed < _minReasonableSpeed || rawSpeed > maxSpeedForAccuracy) {
-      debugPrint('GPS speed outlier discarded: ${rawSpeed.toStringAsFixed(2)} m/s (accuracy: ${event.horizAcc?.toStringAsFixed(1) ?? "null"}m)');
+    if (speed < _minReasonableSpeed || speed > maxSpeedForAccuracy) {
+      debugPrint('GPS speed outlier discarded: ${speed.toStringAsFixed(2)} m/s (accuracy: ${event.horizAcc?.toStringAsFixed(1) ?? "null"}m)');
       _window.removeLast(); // Remove the outlier sample
       return;
     }
 
-    // Smooth speed using Kalman filter
-    double filteredSpeed = _speedFilter.filter(rawSpeed);
-
     // Zero-speed detection: Suppress GPS drift when stationary
     // If speed is very low AND GPS accuracy is poor, force speed to 0
-    if (filteredSpeed < _config.zeroSpeedThreshold &&
+    if (speed < _config.zeroSpeedThreshold &&
         (event.horizAcc == null || event.horizAcc! > _config.zeroSpeedAccuracyThreshold)) {
-      filteredSpeed = 0.0; // Force to zero (GPS drift, not real movement)
+      speed = 0.0; // Force to zero (GPS drift, not real movement)
     }
 
     // Calculate accuracy-weighted window displacement
@@ -208,10 +180,9 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
     // Determine accuracy scenario
     final accuracyScenario = _determineAccuracyScenario(event.horizAcc);
 
-    // Determine vote using BOTH rawSpeed (for candidate start) and filteredSpeed (for confirmation)
+    // Determine vote using speed calculated from filtered coordinates
     final vote = _determineVote(
-      rawSpeed,           // Use raw for early candidate detection
-      filteredSpeed,      // Use filtered for confirmation
+      speed,  // Single speed value from filtered coordinates
       windowStats.displacement,
       event.timestamp,
       accuracyScenario,
@@ -221,8 +192,7 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
     final candidateSeconds = _getCandidateSeconds(event.timestamp);
 
     // Debug logging
-    // debugPrint('GPS: raw=${rawSpeed.toStringAsFixed(2)}m/s, '
-    //     'filtered=${filteredSpeed.toStringAsFixed(2)}m/s, '
+    // debugPrint('GPS: speed=${speed.toStringAsFixed(2)}m/s, '
     //     'disp=${windowStats.displacement.toStringAsFixed(1)}m, '
     //     'acc=${event.horizAcc?.toStringAsFixed(1) ?? "null"}m, '
     //     'scenario=$accuracyScenario, '
@@ -231,8 +201,8 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
 
     emit(GpsSpeedReading(
       vote: vote,
-      rawSpeed: rawSpeed,
-      filteredSpeed: filteredSpeed,
+      rawSpeed: speed,  // Now represents speed from filtered coordinates
+      filteredSpeed: speed,  // Same value - no additional filtering
       windowDisplacement: windowStats.displacement,
       candidateSeconds: candidateSeconds,
       accuracy: event.horizAcc,
@@ -361,45 +331,42 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
   }
 
   SensorVote _determineVote(
-    double rawSpeed,
-    double filteredSpeed,
+    double speed,  // Single speed value from filtered coordinates
     double displacement,
     DateTime timestamp,
     String scenario,
   ) {
     // Select thresholds based on accuracy scenario
-    final double vIn, vOut, tCandidate, tConfirm, dWindow;
+    final double vThreshold, tCandidate, tConfirm, dWindow;
 
     switch (scenario) {
       case "good":
-        vIn = _config.vInGood;
-        vOut = _config.vOutGood;
+        vThreshold = _config.vInGood;  // vIn == vOut now (2.78 m/s)
         tCandidate = _config.tCandidateGood;
         tConfirm = _config.tConfirmGood;
         dWindow = _config.dWindowGood;
         break;
       case "medium":
-        vIn = _config.vInMedium;
-        vOut = _config.vOutMedium;
+        vThreshold = _config.vInMedium;
         tCandidate = _config.tCandidateMedium;
         tConfirm = _config.tConfirmMedium;
         dWindow = _config.dWindowMedium;
         break;
       case "poor":
       default:
-        vIn = _config.vInPoor;
-        vOut = _config.vOutPoor;
+        vThreshold = _config.vInPoor;
         tCandidate = _config.tCandidatePoor;
         tConfirm = _config.tConfirmPoor;
         dWindow = _config.dWindowPoor;
         break;
     }
 
-    // Check for driving speed using RAW speed for early candidate start
-    // Use FILTERED speed for confirmation to avoid false positives
+    // Voting logic: vote "unknown" until driving/parked is confirmed
+    // - Driving: confirmed after speed > 10 km/h AND distance > 20m for 10s
+    // - Parked: confirmed after speed ≤ 10 km/h AND small displacement for required duration
 
-    // START candidate if RAW speed crosses threshold (fast response)
-    if (rawSpeed >= vOut + _config.rawSpeedMargin) {  // 4.6 m/s with margin
+    // Check for driving: speed > threshold (2.78 m/s / 10 km/h)
+    if (speed > vThreshold) {
       _parkedCandidateStartTime = null;
 
       // Start or continue driving candidate
@@ -424,17 +391,17 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
 
       final durDriving = timestamp.difference(_drivingCandidateStartTime!).inMilliseconds / 1000.0;
 
-      // CONFIRM with FILTERED speed and distance (avoid noise spikes)
+      // Confirm driving with time and distance thresholds
       if (durDriving >= tCandidate &&
-          filteredSpeed >= vOut &&
           _drivingLinearDistance > _config.dDrivingThreshold) {
         return SensorVote.driving;
       }
+      // Still driving but not confirmed yet - vote unknown (wait for confirmation)
       return SensorVote.unknown;
     }
 
-    // Check for parked: BOTH low speed AND small displacement required (scenario-aware)
-    if (filteredSpeed <= vIn && displacement <= dWindow) {
+    // Check for parked: speed ≤ threshold AND small displacement
+    if (speed <= vThreshold && displacement <= dWindow) {
       _drivingCandidateStartTime = null;
       _drivingDistanceStartSample = null;
       _lastDrivingSegmentSample = null;
@@ -447,38 +414,12 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
       if (durParked >= tConfirm) {
         return SensorVote.parked;
       }
+      // Stopped but not confirmed yet - vote unknown (wait for confirmation)
       return SensorVote.unknown;
     }
 
-    // Speed in middle range (between vIn and vOut)
-    // KEEP driving candidate alive if it exists (don't reset)
-    // This prevents oscillation when speed fluctuates while driving
-    if (_drivingCandidateStartTime != null) {
-      // Continue tracking piecewise distance if we have a driving candidate
-      if (_lastDrivingSegmentSample != null && _window.isNotEmpty) {
-        // Add this segment's distance to total
-        final segmentDistance = _calculateDistance(
-          _lastDrivingSegmentSample!.latitude,
-          _lastDrivingSegmentSample!.longitude,
-          _window.last.latitude,
-          _window.last.longitude,
-        );
-        _drivingLinearDistance += segmentDistance;
-        _lastDrivingSegmentSample = _window.last;
-      }
-
-      final durDriving = timestamp.difference(_drivingCandidateStartTime!).inMilliseconds / 1000.0;
-
-      // Check if we've met the driving criteria (use filtered speed for confirmation)
-      if (durDriving >= tCandidate &&
-          filteredSpeed >= vOut &&
-          _drivingLinearDistance > _config.dDrivingThreshold) {
-        return SensorVote.driving;
-      }
-      return SensorVote.unknown;
-    }
-
-    // No active candidates, speed in middle range
+    // Edge case: low speed but large displacement (GPS drift or very slow movement)
+    // Vote unknown until we can confirm (this is an ambiguous state)
     return SensorVote.unknown;
   }
 
@@ -521,7 +462,6 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
   void _onReset(GpsSpeedReset event, Emitter<GpsSpeedState> emit) {
     _window.clear();
     _resetCandidates();
-    _speedFilter.reset();
     _lastUpdateTime = null;
     _startTime = DateTime.now();
     _isInitializing = true;
@@ -530,7 +470,7 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
 
   @override
   Future<void> close() async {
-    await _positionSubscription?.cancel();
+    await _locationSubscription?.cancel();
     return super.close();
   }
 }

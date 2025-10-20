@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter_audio_output/flutter_audio_output.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 
 class AudioBluetoothService {
   static final AudioBluetoothService _instance = AudioBluetoothService._internal();
@@ -16,25 +17,56 @@ class AudioBluetoothService {
   Stream<AudioRouteStatus> get statusStream => _statusController.stream;
 
   AudioRouteStatus getCurrentStatus() {
+    // Treat both Bluetooth and CarPlay as "car connections"
+    final isCarConnection = _isCarConnection(_currentRoute);
+
     return AudioRouteStatus(
-      isBluetoothConnected: _currentRoute?.port == AudioPort.bluetooth,
+      isBluetoothConnected: isCarConnection,
       currentRouteName: _currentRoute?.name ?? 'Unknown',
       currentRouteType: _currentRoute?.port.toString() ?? 'Unknown',
       bluetoothDeviceNames: () {
         final route = _currentRoute;
-        final isBt = route?.port == AudioPort.bluetooth;
         final name = route?.name;
-        return isBt && name != null ? [name] : <String>[];
+        return isCarConnection && name != null ? [name] : <String>[];
       }(),
       error: null,
     );
   }
 
-  Future<void> initialize() async {
-    if (_isInitialized) return;
+  // Check if audio route is a car connection (Bluetooth or CarPlay)
+  bool _isCarConnection(AudioInput? route) {
+    if (route == null) return false;
 
+    // Check if it's a Bluetooth connection
+    if (route.port == AudioPort.bluetooth) return true;
+
+    // CarPlay typically shows up as bluetooth port with "CarPlay" in the name
+    // or as a different port type. Check the name for CarPlay indication.
+    final name = route.name?.toLowerCase() ?? '';
+    if (name.contains('carplay') || name.contains('car play')) return true;
+
+    return false;
+  }
+
+  // Force an immediate check and emit, even if route hasn't changed
+  Future<void> forceRefresh() async {
+    await _checkAudioRoute();
+    _emitStatus();  // Always emit, even if route unchanged
+  }
+
+  Future<void> initialize() async {
     try {
+      // Always check current audio route, even if already initialized
+      // This ensures new listeners get the current state immediately
       await _checkAudioRoute();
+
+      if (_isInitialized) {
+        // Already initialized - just emit current status for new listeners
+        _emitStatus();
+        return;
+      }
+
+      // First time initialization - start continuous monitoring
       _startMonitoring();
       _isInitialized = true;
     } catch (e) {
@@ -51,7 +83,7 @@ class AudioBluetoothService {
   void _startMonitoring() {
     _routeCheckTimer?.cancel();
     _routeCheckTimer = Timer.periodic(
-      const Duration(seconds: 2),
+      const Duration(seconds: 1),  // Faster polling for quicker reconnection detection
       (_) => _checkAudioRoute(),
     );
   }
@@ -59,7 +91,15 @@ class AudioBluetoothService {
   Future<void> _checkAudioRoute() async {
     try {
       final current = await FlutterAudioOutput.getCurrentOutput();
-      
+
+      // DEBUG: Log audio route changes to identify CarPlay port type
+      debugPrint('=== Audio Route Check ===');
+      debugPrint('Current route port: ${current?.port}');
+      debugPrint('Current route name: ${current?.name}');
+      debugPrint('Previous route port: ${_currentRoute?.port}');
+      debugPrint('Previous route name: ${_currentRoute?.name}');
+      debugPrint('========================');
+
       if (_hasRouteChanged(_currentRoute, current)) {
         _currentRoute = current;
         _emitStatus();
@@ -80,15 +120,17 @@ class AudioBluetoothService {
   }
 
   void _emitStatus() {
+    // Treat both Bluetooth and CarPlay as "car connections"
+    final isCarConnection = _isCarConnection(_currentRoute);
+
     _statusController.add(AudioRouteStatus(
-      isBluetoothConnected: _currentRoute?.port == AudioPort.bluetooth,
+      isBluetoothConnected: isCarConnection,
       currentRouteName: _currentRoute?.name ?? 'Unknown',
       currentRouteType: _currentRoute?.port.toString() ?? 'Unknown',
       bluetoothDeviceNames: () {
         final route = _currentRoute;
-        final isBt = route?.port == AudioPort.bluetooth;
         final name = route?.name;
-        return isBt && name != null ? [name] : <String>[];
+        return isCarConnection && name != null ? [name] : <String>[];
       }(),
       error: null,
     ));
