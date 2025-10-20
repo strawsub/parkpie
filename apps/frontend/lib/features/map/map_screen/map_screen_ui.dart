@@ -135,14 +135,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
     final mapCubit = context.read<MapScreenCubit>();
 
     for (final command in state.commands) {
-      if (command is MapScreenSnackBarCommand) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(command.message),
-            duration: command.duration ?? const Duration(seconds: 4),
-          ),
-        );
-      } else if (command is MapScreenAnimateCameraCommand) {
+      if (command is MapScreenAnimateCameraCommand) {
         final controller = _googleMapController;
         if (controller == null) {
           continue;
@@ -196,10 +189,11 @@ class _MapScreenViewState extends State<_MapScreenView> {
       polygons: {
         ...mapState.areaPolygons,
         if (cubit.showSegments) ...mapState.segmentPolygons,
-
       },
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).padding.bottom, // Position GPS button above tab bar
+        bottom: MediaQuery.of(
+          context,
+        ).padding.bottom, // Position GPS button above tab bar
       ),
     );
   }
@@ -311,10 +305,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Text(
                 'Debug Settings',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
             ),
             const Divider(height: 1),
