@@ -31,10 +31,18 @@ class AudioBluetoothService {
   }
 
   Future<void> initialize() async {
-    if (_isInitialized) return;
-
     try {
+      // Always check current audio route, even if already initialized
+      // This ensures new listeners get the current state immediately
       await _checkAudioRoute();
+
+      if (_isInitialized) {
+        // Already initialized - just emit current status for new listeners
+        _emitStatus();
+        return;
+      }
+
+      // First time initialization - start continuous monitoring
       _startMonitoring();
       _isInitialized = true;
     } catch (e) {
