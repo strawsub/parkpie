@@ -67,26 +67,6 @@ class _CameraViewState extends State<CameraView> {
                 ),
                 child: Row(
                   children: [
-                    // Back button
-                    GestureDetector(
-                      onTap: () {
-                        context.read<CameraBloc>().add(CameraClosed());
-                        context.read<NavigationCubit>().setIndex(0);
-                      },
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.3),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Icon(
-                          Icons.arrow_back_ios_new,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      ),
-                    ),
                     Expanded(
                       child: Text(
                         l10n.getString('camera.takePhotoHeader'),
@@ -215,7 +195,6 @@ class _CameraViewState extends State<CameraView> {
     return Stack(
       children: [
         SizedBox.expand(child: Image.file(File(imagePath), fit: BoxFit.cover)),
-        Container(color: Colors.black.withValues(alpha: 0.35)),
         Positioned(
           top: 60,
           left: 20,
@@ -230,12 +209,7 @@ class _CameraViewState extends State<CameraView> {
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.35),
                 borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Icon(
-                Icons.arrow_back_ios_new,
-                color: Colors.white,
-                size: 20,
-              ),
+              )
             ),
           ),
         ),
@@ -360,16 +334,6 @@ class _CameraViewState extends State<CameraView> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
               child: Row(
                 children: [
-                  IconButton(
-                    icon: const Icon(
-                      Icons.arrow_back_ios_new,
-                      color: Colors.black,
-                    ),
-                    onPressed: () {
-                      context.read<CameraBloc>().add(CameraClosed());
-                      context.read<NavigationCubit>().setIndex(0);
-                    },
-                  ),
                   Expanded(
                     child: Text(
                       l10n.getString('camera.analysisTitle'),
@@ -623,9 +587,6 @@ class _CameraViewState extends State<CameraView> {
                     'zone': state.zoneNumber.toString(),
                     'count': state.restrictionsSaved.toString(),
                   });
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(message)));
           } else if (state is CameraCanceled) {
             _hasTriggeredCamera = false;
             context.read<CameraBloc>().add(CameraClosed());

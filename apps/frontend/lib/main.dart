@@ -136,13 +136,10 @@ class _HomeContainerState extends State<HomeContainer> {
         builder: (context, selectedIndex) {
           return Scaffold(
             body: _getSelectedView(selectedIndex),
-            bottomNavigationBar: selectedIndex != 1
-                ? BottomTabBar(
-                    currentIndex: selectedIndex,
-                    onTap: (index) =>
-                        _handleNavTap(context, index, selectedIndex),
-                  )
-                : null, // Hide nav bar on camera screen
+            bottomNavigationBar: BottomTabBar(
+              currentIndex: selectedIndex,
+              onTap: (index) => _handleNavTap(context, index, selectedIndex),
+            ),
           );
         },
       ),
