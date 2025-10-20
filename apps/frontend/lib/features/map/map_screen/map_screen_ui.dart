@@ -96,23 +96,12 @@ class _MapScreenViewState extends State<_MapScreenView> {
     final messenger = ScaffoldMessenger.of(context);
     final mapCubit = context.read<MapScreenCubit>();
 
-    if (state is SearchLoading) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Searching...'),
-          duration: Duration(seconds: 1),
-        ),
-      );
-      return;
-    }
-
     if (state is SearchSuccess) {
       _searchController.clear();
       FocusScope.of(context).unfocus();
 
       await mapCubit.handleSearchSuccess(state);
 
-      messenger.showSnackBar(SnackBar(content: Text('Found: ${state.query}')));
       return;
     }
 
