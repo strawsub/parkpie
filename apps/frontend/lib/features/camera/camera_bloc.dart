@@ -266,7 +266,7 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
         ),
       );
     } catch (e) {
-      emit(CameraError("Sign analysis failed: ${e.toString()}"));
+      emit(CameraError("Sign analysis failed"));
     }
   }
 

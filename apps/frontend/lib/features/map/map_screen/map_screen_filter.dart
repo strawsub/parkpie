@@ -81,7 +81,7 @@ extension MapScreenFilterLogic on MapScreenCubit {
         state.copyWith(isApplyingFilter: false),
         commands: [
           MapScreenSnackBarCommand(
-            'Failed to filter pins: ${error.toString()}',
+            'Failed to filter pins',
           ),
         ],
       );

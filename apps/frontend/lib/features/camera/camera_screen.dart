@@ -209,7 +209,7 @@ class _CameraViewState extends State<CameraView> {
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.35),
                 borderRadius: BorderRadius.circular(20),
-              )
+              ),
             ),
           ),
         ),
@@ -521,15 +521,6 @@ class _CameraViewState extends State<CameraView> {
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  l10n.format('camera.manualZoneSaved', {
-                                    'zone': state.zoneNumber.toString(),
-                                  }),
-                                ),
-                              ),
-                            );
                             context.read<CameraBloc>().add(CameraClosed());
                             context.read<NavigationCubit>().setIndex(0);
                           },
@@ -568,11 +559,18 @@ class _CameraViewState extends State<CameraView> {
       backgroundColor: Colors.black,
       body: BlocConsumer<CameraBloc, CameraState>(
         listener: (context, state) {
-          final l10n = context.l10n;
+          final messenger = ScaffoldMessenger.of(context);
+          final l10n = context.l10n; // for localization if needed
+
           if (state is CameraError) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(state.message)));
+            // Friendly, user-focused message
+            messenger.showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Unable to access the camera. Please check permissions or try again.',
+                ),
+              ),
+            );
           } else if (state is SignAnalysisSuccess) {
             context.read<TimerBloc>().add(
               SetKnownZone(zoneNumber: state.zoneNumber),

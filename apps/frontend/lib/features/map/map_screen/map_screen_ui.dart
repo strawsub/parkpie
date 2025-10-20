@@ -106,7 +106,14 @@ class _MapScreenViewState extends State<_MapScreenView> {
     }
 
     if (state is SearchError) {
-      messenger.showSnackBar(SnackBar(content: Text(state.message)));
+      final userMessage = state.message.isNotEmpty
+          ? state.message
+          : 'Could not find the location. Please try again.'; // fallback
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(userMessage),
+        ),
+      );
       return;
     }
 
