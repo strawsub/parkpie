@@ -9,6 +9,7 @@ import 'package:frontend/features/navigation/navigation_cubit.dart';
 import 'package:frontend/features/timer/timer_bloc.dart';
 import 'package:frontend/features/timer/timer_event.dart';
 import 'package:frontend/l10n/app_localizations_ext.dart';
+import 'package:frontend/features/map/pin/pin_cubit.dart';
 
 class CameraScreen extends StatelessWidget {
   const CameraScreen({super.key});
@@ -573,6 +574,7 @@ class _CameraViewState extends State<CameraView> {
             context.read<TimerBloc>().add(
               SetKnownZone(zoneNumber: state.zoneNumber),
             );
+            context.read<PinCubit>().loadPins(forceRefresh: true);
           } else if (state is CameraCanceled) {
             _hasTriggeredCamera = false;
             context.read<CameraBloc>().add(CameraClosed());
