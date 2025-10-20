@@ -98,6 +98,11 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
       UpdateSensorVote event,
       Emitter<ParkingState> emit,
       ) {
+    // IGNORE sensor votes when in Parked state (terminal state)
+    if (state is Parked) {
+      return;  // Don't process sensor votes in terminal state
+    }
+
     // Update sensor votes
     final updatedVotes = Map<String, SensorVote>.from(state.sensorVotes);
 
@@ -356,6 +361,11 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
       CandidateProgressTick event,
       Emitter<ParkingState> emit,
       ) {
+    // IGNORE timer ticks when in Parked state (terminal state)
+    if (state is Parked) {
+      return;  // Don't process timer ticks in terminal state
+    }
+
     // Re-evaluate state using current sensor votes and wall-clock time
     // This allows progression even if GPS samples are stale
     if (state is StoppedCandidate) {
