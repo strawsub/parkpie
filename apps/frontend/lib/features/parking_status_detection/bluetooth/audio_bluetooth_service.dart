@@ -36,7 +36,16 @@ class AudioBluetoothService {
   // Check if audio route is a car connection (Bluetooth or CarPlay)
   bool _isCarConnection(AudioInput? route) {
     if (route == null) return false;
-    return route.port == AudioPort.bluetooth || route.port == AudioPort.carAudio;
+
+    // Check if it's a Bluetooth connection
+    if (route.port == AudioPort.bluetooth) return true;
+
+    // CarPlay typically shows up as bluetooth port with "CarPlay" in the name
+    // or as a different port type. Check the name for CarPlay indication.
+    final name = route.name?.toLowerCase() ?? '';
+    if (name.contains('carplay') || name.contains('car play')) return true;
+
+    return false;
   }
 
   // Force an immediate check and emit, even if route hasn't changed
