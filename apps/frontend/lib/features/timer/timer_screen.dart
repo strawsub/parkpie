@@ -302,28 +302,6 @@ class _TimerScreenState extends State<TimerScreen> {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () {
-                    context.read<NavigationCubit>().setIndex(0);
-                  },
-                  icon: const Icon(Icons.map_outlined, size: 16),
-                  label: const Text('Choose on map'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.grey.shade700,
-                    side: BorderSide(color: Colors.grey.shade300),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 10,
-                      horizontal: 12,
-                    ),
-                    textStyle: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
                     context.read<NavigationCubit>().setIndex(1);
                   },
                   icon: const Icon(Icons.camera_alt_outlined, size: 16),
