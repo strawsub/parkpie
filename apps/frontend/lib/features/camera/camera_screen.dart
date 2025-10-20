@@ -560,10 +560,8 @@ class _CameraViewState extends State<CameraView> {
       body: BlocConsumer<CameraBloc, CameraState>(
         listener: (context, state) {
           final messenger = ScaffoldMessenger.of(context);
-          final l10n = context.l10n; // for localization if needed
 
           if (state is CameraError) {
-            // Friendly, user-focused message
             messenger.showSnackBar(
               SnackBar(
                 content: Text(

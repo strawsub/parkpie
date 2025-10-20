@@ -6,7 +6,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:frontend/services/timer_service.dart';
 import 'package:frontend/services/api_config.dart';
 import 'package:frontend/widgets/parking_zone_carousel.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'timer_bloc.dart';
 import 'timer_event.dart';
 import 'timer_state.dart';
@@ -119,11 +118,18 @@ class _TimerScreenState extends State<TimerScreen> {
                   _buildTitle(),
                   const SizedBox(height: 20),
                   _buildAnimation(),
-                  const SizedBox(height: 20),
-                  _buildTimerDisplay(state),
                   const SizedBox(height: 16),
                   // Add parking zone carousel
-                  if (!_isLoadingZones && state is! TimerRunning) ...[
+                  if (_isLoadingZones)
+                    const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF7FAC58), // green spinner
+                        ),
+                      ),
+                    )
+                  else if (!_isLoadingZones && state is! TimerRunning) ...[
                     if (_nearbyZones != null && _nearbyZones!.isNotEmpty) ...[
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -160,7 +166,7 @@ class _TimerScreenState extends State<TimerScreen> {
                       ),
                       const SizedBox(height: 16),
                     ],
-                  ] else if (state is! TimerRunning)
+                  ] else if (_nearbyZones != null && _nearbyZones!.isEmpty)
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       child: Text(
