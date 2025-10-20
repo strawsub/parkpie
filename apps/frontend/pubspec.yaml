@@ -55,6 +55,8 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
+  intl: ^0.20.2
+
   # image recognition
   google_generative_ai: ^0.4.7
 

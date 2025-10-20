@@ -108,11 +108,6 @@ class NotificationService {
     int? zoneNumber,
   }) async {
     // Use zoneName if it's different from "Zone {number}", otherwise just use zone number
-    final zoneText = zoneName != null && zoneName != 'Zone $zoneNumber'
-        ? zoneName
-        : zoneNumber != null
-            ? 'Zone $zoneNumber'
-            : 'your parking zone';
 
     const androidDetails = AndroidNotificationDetails(
       'timer_channel',
@@ -137,8 +132,8 @@ class NotificationService {
 
     await _notifications.show(
       0,
-      'Parking Timer Expired!',
-      'Your parking time in $zoneText has ended. Please move your vehicle.',
+      'Parking Timer Expiring Soon!',
+      'Your parking time is ending in 5 minutes. Please move your vehicle.',
       details,
     );
   }

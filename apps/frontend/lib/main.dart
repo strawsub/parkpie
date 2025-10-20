@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'features/navigation/navigation_cubit.dart';
 import 'features/navigation/filter_trigger_cubit.dart';
@@ -28,7 +27,8 @@ import 'features/parking_status_detection/accelerometer/acc_bloc.dart';
 import 'features/parking_status_detection/gps/gps_speed_bloc.dart';
 
 import 'l10n/app_localizations.dart';
-import 'widgets/nav_bar.dart';
+import 'features/settings/language/language_cubit.dart';
+import 'widgets/tab_bar.dart';
 import 'widgets/parking_detected_bottom_sheet.dart';
 import 'services/timer_service.dart';
 import 'services/api_config.dart';
@@ -59,6 +59,8 @@ class ParkPieApp extends StatelessWidget {
         BlocProvider(create: (_) => NavigationCubit()),
         BlocProvider(create: (_) => FilterTriggerCubit()),
         BlocProvider<LocationCubit>.value(value: locationCubit),
+        BlocProvider(create: (_) => LanguageCubit()),
+        BlocProvider(create: (_) => LocationCubit()),
         BlocProvider(
           create: (context) =>
               CameraBloc(locationCubit: context.read<LocationCubit>()),
@@ -76,16 +78,16 @@ class ParkPieApp extends StatelessWidget {
                 ..add(const LoadTimer()),
         ),
       ],
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        localizationsDelegates: const [
-          AppLocalizations.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: const [Locale('en')],
-        home: const HomeContainer(),
+      child: BlocBuilder<LanguageCubit, Locale>(
+        builder: (context, locale) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            locale: locale,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const HomeContainer(),
+          );
+        },
       ),
     );
   }
@@ -137,13 +139,10 @@ class _HomeContainerState extends State<HomeContainer> {
         builder: (context, selectedIndex) {
           return Scaffold(
             body: _getSelectedView(selectedIndex),
-            bottomNavigationBar: selectedIndex != 1
-                ? BottomNavBar(
-                    currentIndex: selectedIndex,
-                    onTap: (index) =>
-                        _handleNavTap(context, index, selectedIndex),
-                  )
-                : null, // Hide nav bar on camera screen
+            bottomNavigationBar: BottomTabBar(
+              currentIndex: selectedIndex,
+              onTap: (index) => _handleNavTap(context, index, selectedIndex),
+            ),
           );
         },
       ),
@@ -187,7 +186,8 @@ class _HomeContainerState extends State<HomeContainer> {
           }
           // Otherwise, use zone's restriction and store zone info
           else if (selectedZone != null) {
-            if (selectedZone.maximumStayMinutes != null && selectedZone.maximumStayMinutes! > 0) {
+            if (selectedZone.maximumStayMinutes != null &&
+                selectedZone.maximumStayMinutes! > 0) {
               // Zone has a time limit - use it
               parentContext.read<TimerBloc>().add(
                 UpdateRestrictionDuration(selectedZone.maximumStayMinutes!),

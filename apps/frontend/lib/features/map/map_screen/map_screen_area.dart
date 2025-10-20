@@ -141,13 +141,7 @@ extension MapScreenAreaLogic on MapScreenCubit {
           consumeTapEvents: true,
           onTap: () {
             _emitState(
-              state,
-              commands: [
-                MapScreenSnackBarCommand(
-                  area.label,
-                  duration: const Duration(milliseconds: 800),
-                ),
-              ],
+              state
             );
           },
         ),

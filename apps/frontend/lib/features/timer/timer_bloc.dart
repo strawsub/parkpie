@@ -359,7 +359,7 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     final remainingSeconds = (restrictionMinutes * 60) - elapsed.inSeconds;
 
     // If time has expired and notification hasn't been sent yet
-    if (remainingSeconds <= 0 && !_notificationSent) {
+    if (remainingSeconds <= 5 && !_notificationSent) {
       _notificationSent = true;
       _notificationService.showImmediateNotification(
         zoneName: zoneName,

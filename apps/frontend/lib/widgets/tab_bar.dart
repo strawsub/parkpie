@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:frontend/l10n/app_localizations_ext.dart';
 
-class BottomNavBar extends StatelessWidget {
+class BottomTabBar extends StatelessWidget {
   final int currentIndex;
   final Function(int) onTap;
 
-  const BottomNavBar({
+  const BottomTabBar({
     super.key,
     required this.currentIndex,
     required this.onTap,
@@ -35,11 +36,13 @@ class BottomNavBar extends StatelessWidget {
             width: 24,
             height: 24,
             colorFilter: ColorFilter.mode(
-              currentIndex == 0 ? const Color(0xFF7FAC58) : Colors.grey.shade600,
+              currentIndex == 0
+                  ? const Color(0xFF7FAC58)
+                  : Colors.grey.shade600,
               BlendMode.srcIn,
             ),
           ),
-          label: 'Parking',
+          label: context.l10n.getString('nav.parking'),
         ),
         BottomNavigationBarItem(
           icon: SvgPicture.asset(
@@ -47,11 +50,13 @@ class BottomNavBar extends StatelessWidget {
             width: 24,
             height: 24,
             colorFilter: ColorFilter.mode(
-              currentIndex == 1 ? const Color(0xFF7FAC58) : Colors.grey.shade600,
+              currentIndex == 1
+                  ? const Color(0xFF7FAC58)
+                  : Colors.grey.shade600,
               BlendMode.srcIn,
             ),
           ),
-          label: 'Scan',
+          label: context.l10n.getString('nav.scan'),
         ),
         BottomNavigationBarItem(
           icon: SvgPicture.asset(
@@ -59,11 +64,13 @@ class BottomNavBar extends StatelessWidget {
             width: 24,
             height: 24,
             colorFilter: ColorFilter.mode(
-              currentIndex == 2 ? const Color(0xFF7FAC58) : Colors.grey.shade600,
+              currentIndex == 2
+                  ? const Color(0xFF7FAC58)
+                  : Colors.grey.shade600,
               BlendMode.srcIn,
             ),
           ),
-          label: 'Timer',
+          label: context.l10n.getString('nav.timer'),
         ),
       ],
     );

@@ -6,6 +6,12 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' as intl;
 
 import 'app_localizations_en.dart';
+import 'app_localizations_ja.dart';
+import 'app_localizations_ko.dart';
+import 'app_localizations_th.dart';
+import 'app_localizations_vi.dart';
+import 'app_localizations_zh_hans.dart';
+import 'app_localizations_zh_hant.dart';
 
 // ignore_for_file: type=lint
 
@@ -61,7 +67,8 @@ import 'app_localizations_en.dart';
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale)
+    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -69,7 +76,8 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations);
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -81,68 +89,89 @@ abstract class AppLocalizations {
   /// Additional delegates can be added by appending to this list in
   /// MaterialApp. This list does not have to be used at all if a custom list
   /// of delegates is preferred or required.
-  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates = <LocalizationsDelegate<dynamic>>[
-    delegate,
-    GlobalMaterialLocalizations.delegate,
-    GlobalCupertinoLocalizations.delegate,
-    GlobalWidgetsLocalizations.delegate,
-  ];
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
+      <LocalizationsDelegate<dynamic>>[
+        delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ];
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
-    Locale('en')
+    Locale('en'),
+    Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
+    Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hans'),
+    Locale('ko'),
+    Locale('ja'),
+    Locale('th'),
+    Locale('vi'),
   ];
+
+  /// Returns a translated string for the provided [key]. Implementations should
+  /// fall back to English when a translation is unavailable.
+  String getString(String key);
+
+  /// Returns the translated string for [key] after interpolating [params].
+  String format(String key, Map<String, String> params) {
+    var value = getString(key);
+    params.forEach((k, v) {
+      value = value.replaceAll('{$k}', v);
+    });
+    return value;
+  }
 
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:
   /// **'ParkPie'**
-  String get appTitle;
+  String get appTitle => getString('appTitle');
 
   /// No description provided for @contribute.
   ///
   /// In en, this message translates to:
   /// **'Contribute'**
-  String get contribute;
+  String get contribute => getString('contribute');
 
   /// No description provided for @scan.
   ///
   /// In en, this message translates to:
   /// **'Scan'**
-  String get scan;
+  String get scan => getString('scan');
 
   /// No description provided for @uploadSuccessful.
   ///
   /// In en, this message translates to:
   /// **'Upload successful!'**
-  String get uploadSuccessful;
+  String get uploadSuccessful => getString('uploadSuccessful');
 
   /// No description provided for @noPhotoCaptured.
   ///
   /// In en, this message translates to:
   /// **'No photo captured'**
-  String get noPhotoCaptured;
+  String get noPhotoCaptured => getString('noPhotoCaptured');
 
   /// No description provided for @takePhoto.
   ///
   /// In en, this message translates to:
   /// **'Take Photo'**
-  String get takePhoto;
+  String get takePhoto => getString('takePhoto');
 
   /// No description provided for @retake.
   ///
   /// In en, this message translates to:
   /// **'Retake'**
-  String get retake;
+  String get retake => getString('retake');
 
   /// No description provided for @useThisPhoto.
   ///
   /// In en, this message translates to:
   /// **'Use This Photo'**
-  String get useThisPhoto;
+  String get useThisPhoto => getString('useThisPhoto');
 }
 
-class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -151,24 +180,57 @@ class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> 
   }
 
   @override
-  bool isSupported(Locale locale) => <String>['en'].contains(locale.languageCode);
+  bool isSupported(Locale locale) {
+    if (locale.languageCode == 'zh') {
+      return true;
+    }
+    return <String>['en', 'ko', 'ja', 'th', 'vi'].contains(locale.languageCode);
+  }
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
 }
 
 AppLocalizations lookupAppLocalizations(Locale locale) {
+  if (locale.languageCode == 'zh') {
+    final script = locale.scriptCode;
+    final country = locale.countryCode;
+    if (script == null) {
+      if (country == 'TW' || country == 'HK' || country == 'MO') {
+        return AppLocalizationsZhHant();
+      }
+      if (country == 'CN' || country == 'SG') {
+        return AppLocalizationsZhHans();
+      }
+    }
+    switch (locale.scriptCode) {
+      case 'Hant':
+        return AppLocalizationsZhHant();
+      case 'Hans':
+        return AppLocalizationsZhHans();
+      default:
+        // Default to simplified if script missing.
+        return AppLocalizationsZhHans();
+    }
+  }
 
-
-  // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
-    case 'en': return AppLocalizationsEn();
+    case 'en':
+      return AppLocalizationsEn();
+    case 'ko':
+      return AppLocalizationsKo();
+    case 'ja':
+      return AppLocalizationsJa();
+    case 'th':
+      return AppLocalizationsTh();
+    case 'vi':
+      return AppLocalizationsVi();
   }
 
   throw FlutterError(
     'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
     'an issue with the localizations generation tool. Please file an issue '
     'on GitHub with a reproducible sample app and the gen-l10n configuration '
-    'that was used.'
+    'that was used.',
   );
 }

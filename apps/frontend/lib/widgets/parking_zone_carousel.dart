@@ -154,7 +154,7 @@ class _ParkingZoneCarouselState extends State<ParkingZoneCarousel> {
                     children: [
                       Expanded(
                         child: Text(
-                          zone.zoneName ?? 'Zone ${zone.zoneNumber ?? zone.zoneId}',
+                          zone.zoneName ?? 'Parking Zone',
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,

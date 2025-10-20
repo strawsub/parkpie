@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 
 class SignIngestService {
   final String backendBaseUrl;
@@ -24,6 +25,7 @@ Guidelines:
 - Multiple entries for the same day are allowed and should be ordered top-to-bottom from the sign.
 - Use 24-hour "HH:mm" format; use "00:00" for midnight.
 - If the stay duration is unlimited or not stated, set "maximum_stay_minutes" to null.
+- If the sign applies every day (no specific days are written), generate seven entries covering days_of_week 1 through 7 with identical times.
 Return strict JSON only.
 ''';
 
@@ -38,10 +40,10 @@ Return strict JSON only.
       apiKey: apiKey,
       systemInstruction: Content.text(_systemInstruction),
     );
-    
+
     const maxRetries = 3;
     String? lastError;
-    
+
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         final prompt = attempt == 1
@@ -57,60 +59,68 @@ location: {"lat": $lat, "lng": $lng}
 CRITICAL: You MUST respond with ONLY valid JSON matching the exact schema. No markdown, no prose, no extra text. Start with { and end with }. Previous error: $lastError
 
 REQUIRED JSON FORMAT:
-{"location": {"lat": $lat, "lng": $lng}, "restrictions": [{"day_of_week": 1, "start_time": "HH:mm", "end_time": "HH:mm", "maximum_stay_minutes": 120}]}''';
+{"location": {"lat": $lat, "lng": $lng}, "restrictions": [{"day_of_week": 1, "start_time": "HH:mm", "end_time": "HH:mm", "maximum_stay_minutes": 120}]}
+
+RULES:
+- If the sign text applies every day (no days listed), generate seven entries with day_of_week 1..7 and identical times.''';
 
         final content = [Content.text(prompt)];
         final resp = await model.generateContent(content);
         var raw = resp.text ?? '';
-        
+
         // Clean up response - extract JSON if wrapped in markdown or other text
         var jsonStr = raw.trim();
         if (jsonStr.contains('```')) {
           // Remove markdown code blocks
           jsonStr = jsonStr.replaceAll(RegExp(r'```(?:json)?'), '');
         }
-        
+
         final start = jsonStr.indexOf('{');
         final end = jsonStr.lastIndexOf('}');
         if (start >= 0 && end > start) {
           jsonStr = jsonStr.substring(start, end + 1);
         }
-        
+
         // Attempt to parse JSON
         final data = jsonDecode(jsonStr) as Map<String, dynamic>;
-        
+
         // Validate basic structure before returning
         _validateBasicJsonStructure(data);
-        
+
         return data;
-        
       } catch (e) {
         lastError = e.toString();
         if (attempt == maxRetries) {
-          throw Exception('Failed to extract valid JSON after $maxRetries attempts. Last error: $lastError');
+          throw Exception(
+            'Failed to extract valid JSON after $maxRetries attempts. Last error: $lastError',
+          );
         }
         // Wait briefly before retry
         await Future.delayed(Duration(milliseconds: 500 * attempt));
       }
     }
-    
+
     throw Exception('Unexpected error in extractSignJson');
   }
-  
+
   void _validateBasicJsonStructure(Map<String, dynamic> data) {
     // Quick validation before full validation - check essential structure
     if (!data.containsKey('location') || !data.containsKey('restrictions')) {
       throw Exception('Missing required fields: location or restrictions');
     }
-    
+
     final location = data['location'];
-    if (location is! Map<String, dynamic> || !location.containsKey('lat') || !location.containsKey('lng')) {
+    if (location is! Map<String, dynamic> ||
+        !location.containsKey('lat') ||
+        !location.containsKey('lng')) {
       throw Exception('Invalid location structure');
     }
-    
+
     final restrictions = data['restrictions'];
     if (restrictions is! List || restrictions.isEmpty) {
-      throw Exception('Invalid restrictions structure - must be non-empty array');
+      throw Exception(
+        'Invalid restrictions structure - must be non-empty array',
+      );
     }
   }
 
@@ -188,6 +198,8 @@ REQUIRED JSON FORMAT:
     required double lng,
     required String rawText,
     required String apiKey,
+    required String localeTag,
+    required DateTime capturedAt,
   }) async {
     final model = GenerativeModel(
       model: 'gemini-2.5-flash-lite',
@@ -196,6 +208,8 @@ REQUIRED JSON FORMAT:
         'You translate structured parking rules into a concise explanation for drivers.',
       ),
     );
+    final localDateTime = _formatLocalDateTime(localeTag, capturedAt);
+    final weekdayEn = DateFormat('EEEE', 'en_US').format(capturedAt);
     final prompt =
         '''
 Sign location: ($lat, $lng)
@@ -205,10 +219,24 @@ $rawText
 Structured restrictions (JSON array):
 ${jsonEncode(restrictions)}
 
-Explain these rules in friendly Australian English (<=120 words). Mention day ranges and stay limits clearly.
+Current user locale: $localeTag
+Current local date/time: ${capturedAt.toIso8601String()} (weekday: $weekdayEn, formatted: $localDateTime)
+
+Explain these rules concisely in the user's language ($localeTag) and make them aware of the restrictions that apply at the current local time. Mention day ranges, stay limits, and highlight whether parking is currently allowed.
+Keep the response under 130 words.
 ''';
     final response = await model.generateContent([Content.text(prompt)]);
     return response.text?.trim() ?? '';
+  }
+
+  String _formatLocalDateTime(String localeTag, DateTime dateTime) {
+    try {
+      final formatter = DateFormat.yMMMMEEEEd(localeTag).add_Hm();
+      return formatter.format(dateTime);
+    } catch (_) {
+      final fallback = DateFormat('y-MM-dd HH:mm');
+      return fallback.format(dateTime);
+    }
   }
 }
 

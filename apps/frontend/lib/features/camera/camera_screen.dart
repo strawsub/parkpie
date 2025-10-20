@@ -8,6 +8,8 @@ import 'package:frontend/features/camera/camera_state.dart';
 import 'package:frontend/features/navigation/navigation_cubit.dart';
 import 'package:frontend/features/timer/timer_bloc.dart';
 import 'package:frontend/features/timer/timer_event.dart';
+import 'package:frontend/l10n/app_localizations_ext.dart';
+import 'package:frontend/features/map/pin/pin_cubit.dart';
 
 class CameraScreen extends StatelessWidget {
   const CameraScreen({super.key});
@@ -44,6 +46,7 @@ class _CameraViewState extends State<CameraView> {
 
   Widget _buildCameraPreview(BuildContext context, CameraBloc cameraBloc) {
     final controller = cameraBloc.cameraController;
+    final l10n = context.l10n;
     if (controller == null || !controller.value.isInitialized) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -65,29 +68,9 @@ class _CameraViewState extends State<CameraView> {
                 ),
                 child: Row(
                   children: [
-                    // Back button
-                    GestureDetector(
-                      onTap: () {
-                        context.read<CameraBloc>().add(CameraClosed());
-                        context.read<NavigationCubit>().setIndex(0);
-                      },
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.3),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Icon(
-                          Icons.arrow_back_ios_new,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      ),
-                    ),
                     Expanded(
                       child: Text(
-                        'TAKE PHOTO OF PARKING SIGN',
+                        l10n.getString('camera.takePhotoHeader'),
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontFamily: 'Plus Jakarta Sans',
@@ -154,7 +137,7 @@ class _CameraViewState extends State<CameraView> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'Point your camera at the parking sign and capture the full view',
+                            l10n.getString('camera.instructions'),
                             style: const TextStyle(
                               fontFamily: 'Plus Jakarta Sans',
                               fontSize: 14,
@@ -173,7 +156,13 @@ class _CameraViewState extends State<CameraView> {
                     const SizedBox(height: 20),
                     GestureDetector(
                       onTap: () {
-                        context.read<CameraBloc>().add(PhotoCaptured());
+                        final locale = Localizations.localeOf(context);
+                        context.read<CameraBloc>().add(
+                          PhotoCaptured(
+                            locale: locale,
+                            capturedAt: DateTime.now(),
+                          ),
+                        );
                       },
                       child: Container(
                         width: 80,
@@ -203,10 +192,10 @@ class _CameraViewState extends State<CameraView> {
   }
 
   Widget _buildProcessingView(String imagePath) {
+    final l10n = context.l10n;
     return Stack(
       children: [
         SizedBox.expand(child: Image.file(File(imagePath), fit: BoxFit.cover)),
-        Container(color: Colors.black.withValues(alpha: 0.35)),
         Positioned(
           top: 60,
           left: 20,
@@ -222,11 +211,6 @@ class _CameraViewState extends State<CameraView> {
                 color: Colors.black.withValues(alpha: 0.35),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Icon(
-                Icons.arrow_back_ios_new,
-                color: Colors.white,
-                size: 20,
-              ),
             ),
           ),
         ),
@@ -238,8 +222,8 @@ class _CameraViewState extends State<CameraView> {
                 valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7FAC58)),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Analyzing parking sign...',
+              Text(
+                l10n.getString('camera.analyzing'),
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -250,7 +234,7 @@ class _CameraViewState extends State<CameraView> {
               SizedBox(
                 width: 260,
                 child: Text(
-                  'Extracting text, summarising the rules and syncing with ParkPie.',
+                  l10n.getString('camera.analyzingDetail'),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.85),
@@ -266,6 +250,7 @@ class _CameraViewState extends State<CameraView> {
   }
 
   Widget _buildErrorView(String message) {
+    final l10n = context.l10n;
     return Container(
       color: Colors.black,
       width: double.infinity,
@@ -278,8 +263,8 @@ class _CameraViewState extends State<CameraView> {
               children: [
                 const Icon(Icons.error_outline, color: Colors.white, size: 72),
                 const SizedBox(height: 16),
-                const Text(
-                  "We couldn't read that sign",
+                Text(
+                  l10n.getString('camera.errorTitle'),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,
@@ -304,7 +289,7 @@ class _CameraViewState extends State<CameraView> {
                       context.read<CameraBloc>().add(PhotoRetaken());
                     },
                     icon: const Icon(Icons.camera_alt_outlined),
-                    label: const Text('Retake photo'),
+                    label: Text(l10n.getString('camera.retake')),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF7FAC58),
                       foregroundColor: Colors.white,
@@ -328,7 +313,7 @@ class _CameraViewState extends State<CameraView> {
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.white.withValues(alpha: 0.75),
                   ),
-                  child: const Text('Back to map'),
+                  child: Text(l10n.getString('camera.errorBack')),
                 ),
               ],
             ),
@@ -339,6 +324,7 @@ class _CameraViewState extends State<CameraView> {
   }
 
   Widget _buildAnalysisResultsView(SignAnalysisSuccess state) {
+    final l10n = context.l10n;
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
@@ -349,21 +335,11 @@ class _CameraViewState extends State<CameraView> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
               child: Row(
                 children: [
-                  IconButton(
-                    icon: const Icon(
-                      Icons.arrow_back_ios_new,
-                      color: Colors.black,
-                    ),
-                    onPressed: () {
-                      context.read<CameraBloc>().add(CameraClosed());
-                      context.read<NavigationCubit>().setIndex(0);
-                    },
-                  ),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Sign Summary',
+                      l10n.getString('camera.analysisTitle'),
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: Colors.black,
                         fontWeight: FontWeight.w600,
                         fontSize: 18,
@@ -399,7 +375,7 @@ class _CameraViewState extends State<CameraView> {
                   // Zone Header
                   Center(
                     child: Text(
-                      'Zone Added',
+                      l10n.getString('camera.zoneAdded'),
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -429,7 +405,9 @@ class _CameraViewState extends State<CameraView> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            '${state.restrictionsSaved} restriction${state.restrictionsSaved != 1 ? 's' : ''} synced',
+                            l10n.format('camera.restrictionsSynced', {
+                              'count': state.restrictionsSaved.toString(),
+                            }),
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w600,
@@ -444,7 +422,9 @@ class _CameraViewState extends State<CameraView> {
                     const SizedBox(height: 8),
                     Center(
                       child: Text(
-                        '${state.replacedPrevious} old restriction${state.replacedPrevious != 1 ? 's' : ''} replaced',
+                        l10n.format('camera.restrictionsReplaced', {
+                          'count': state.replacedPrevious.toString(),
+                        }),
                         style: const TextStyle(
                           fontSize: 12,
                           color: Colors.black54,
@@ -466,16 +446,16 @@ class _CameraViewState extends State<CameraView> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
-                          children: const [
-                            Icon(
+                          children: [
+                            const Icon(
                               Icons.lightbulb_outline,
                               color: Color(0xFF7FAC58),
                               size: 20,
                             ),
-                            SizedBox(width: 8),
+                            const SizedBox(width: 8),
                             Text(
-                              'AI explanation',
-                              style: TextStyle(
+                              l10n.getString('camera.aiExplanation'),
+                              style: const TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 14,
                                 color: Colors.black54,
@@ -486,7 +466,7 @@ class _CameraViewState extends State<CameraView> {
                         const SizedBox(height: 12),
                         Text(
                           state.explanation.trim().isEmpty
-                              ? 'AI could not summarise this sign. Please review the restrictions below.'
+                              ? l10n.getString('camera.aiExplanationFallback')
                               : state.explanation.trim(),
                           style: const TextStyle(
                             fontSize: 15,
@@ -502,7 +482,7 @@ class _CameraViewState extends State<CameraView> {
                   // Location Info
                   Center(
                     child: Text(
-                      'Location: ${state.latitude.toStringAsFixed(5)}, ${state.longitude.toStringAsFixed(5)}',
+                      '${l10n.getString('camera.locationLabel')}: ${state.latitude.toStringAsFixed(5)}, ${state.longitude.toStringAsFixed(5)}',
                       style: const TextStyle(
                         color: Colors.black54,
                         fontSize: 12,
@@ -529,9 +509,9 @@ class _CameraViewState extends State<CameraView> {
                             ),
                             elevation: 0,
                           ),
-                          child: const Text(
-                            'Retake Photo',
-                            style: TextStyle(
+                          child: Text(
+                            l10n.getString('camera.buttonRetake'),
+                            style: const TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 16,
                             ),
@@ -542,13 +522,6 @@ class _CameraViewState extends State<CameraView> {
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Manual zone ${state.zoneNumber} saved to ParkPie.',
-                                ),
-                              ),
-                            );
                             context.read<CameraBloc>().add(CameraClosed());
                             context.read<NavigationCubit>().setIndex(0);
                           },
@@ -561,9 +534,9 @@ class _CameraViewState extends State<CameraView> {
                             ),
                             elevation: 0,
                           ),
-                          child: const Text(
-                            'Done',
-                            style: TextStyle(
+                          child: Text(
+                            l10n.getString('camera.buttonDone'),
+                            style: const TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 16,
                             ),
@@ -587,21 +560,21 @@ class _CameraViewState extends State<CameraView> {
       backgroundColor: Colors.black,
       body: BlocConsumer<CameraBloc, CameraState>(
         listener: (context, state) {
+          final messenger = ScaffoldMessenger.of(context);
+
           if (state is CameraError) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(state.message)));
+            messenger.showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Unable to access the camera. Please check permissions or try again.',
+                ),
+              ),
+            );
           } else if (state is SignAnalysisSuccess) {
             context.read<TimerBloc>().add(
               SetKnownZone(zoneNumber: state.zoneNumber),
             );
-            final replaced = state.replacedPrevious;
-            final message = replaced > 0
-                ? 'Updated zone ${state.zoneNumber} ($replaced window(s) replaced).'
-                : 'Stored zone ${state.zoneNumber} with ${state.restrictionsSaved} window(s).';
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(message)));
+            context.read<PinCubit>().loadPins(forceRefresh: true);
           } else if (state is CameraCanceled) {
             _hasTriggeredCamera = false;
             context.read<CameraBloc>().add(CameraClosed());

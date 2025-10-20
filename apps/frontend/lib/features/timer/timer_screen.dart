@@ -20,7 +20,9 @@ class TimerScreen extends StatefulWidget {
 class _TimerScreenState extends State<TimerScreen> {
   List<ParkingZone>? _nearbyZones;
   bool _isLoadingZones = false;
-  final TimerService _timerService = TimerService(backendBaseUrl: resolveApiBaseUrl());
+  final TimerService _timerService = TimerService(
+    backendBaseUrl: resolveApiBaseUrl(),
+  );
 
   @override
   void initState() {
@@ -30,6 +32,11 @@ class _TimerScreenState extends State<TimerScreen> {
   }
 
   Future<void> _fetchNearbyZones() async {
+    final timerState = context.read<TimerBloc>().state;
+    if (timerState is TimerRunning) {
+      return;
+    }
+
     setState(() {
       _isLoadingZones = true;
     });
@@ -81,9 +88,7 @@ class _TimerScreenState extends State<TimerScreen> {
         );
       } else {
         // Zone has NO time limit - use -1 to indicate "no restriction" (different from null)
-        context.read<TimerBloc>().add(
-          UpdateRestrictionDuration(-1),
-        );
+        context.read<TimerBloc>().add(UpdateRestrictionDuration(-1));
       }
     }
   }
@@ -118,8 +123,6 @@ class _TimerScreenState extends State<TimerScreen> {
                   _buildTitle(),
                   const SizedBox(height: 20),
                   _buildAnimation(),
-                  const SizedBox(height: 20),
-                  _buildTimerDisplay(state),
                   const SizedBox(height: 16),
                   // Add parking zone carousel
                   if (_isLoadingZones)
@@ -127,54 +130,33 @@ class _TimerScreenState extends State<TimerScreen> {
                       padding: EdgeInsets.all(16),
                       child: Center(
                         child: CircularProgressIndicator(
-                          color: Color(0xFF7FAC58),
+                          color: Color(0xFF7FAC58), // green spinner
                         ),
                       ),
                     )
-                  else if (_nearbyZones != null && _nearbyZones!.isNotEmpty) ...[
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Text(
-                        state is TimerRunning
-                            ? 'Current parking zone'
-                            : 'Select parking zone',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Opacity(
-                      opacity: state is TimerRunning ? 0.6 : 1.0,
-                      child: IgnorePointer(
-                        ignoring: state is TimerRunning,
-                        child: ParkingZoneCarousel(
-                          parkingZones: _nearbyZones!,
-                          onZoneSelected: (zone) => _onZoneSelected(zone, state),
-                          initialSelectedZone: _nearbyZones!.firstWhere(
-                            (zone) => zone.zoneNumber == state.zoneNumber,
-                            orElse: () => _nearbyZones!.first,
-                          ),
-                          showTitle: false, // Hide duplicate title
-                        ),
-                      ),
-                    ),
-                    if (state is TimerRunning)
+                  else if (!_isLoadingZones && state is! TimerRunning) ...[
+                    if (_nearbyZones != null && _nearbyZones!.isNotEmpty) ...[
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24),
                         child: Text(
-                          'Stop timer to change zone',
+                          'Select parking zone',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey.shade500,
-                            fontStyle: FontStyle.italic,
+                            fontSize: 11,
+                            color: Colors.grey.shade600,
                           ),
                         ),
-                      )
-                    else
+                      ),
+                      const SizedBox(height: 8),
+                      ParkingZoneCarousel(
+                        parkingZones: _nearbyZones!,
+                        onZoneSelected: (zone) => _onZoneSelected(zone, state),
+                        initialSelectedZone: _nearbyZones!.firstWhere(
+                          (zone) => zone.zoneNumber == state.zoneNumber,
+                          orElse: () => _nearbyZones!.first,
+                        ),
+                        showTitle: false,
+                      ),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24),
                         child: Text(
@@ -187,8 +169,9 @@ class _TimerScreenState extends State<TimerScreen> {
                           ),
                         ),
                       ),
-                    const SizedBox(height: 16),
-                  ] else if (state is! TimerRunning)
+                      const SizedBox(height: 16),
+                    ],
+                  ] else if (_nearbyZones != null && _nearbyZones!.isEmpty)
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       child: Text(
@@ -200,7 +183,9 @@ class _TimerScreenState extends State<TimerScreen> {
                         ),
                       ),
                     ),
-                  if (_nearbyZones != null && _nearbyZones!.isEmpty && state is! TimerRunning)
+                  if (_nearbyZones != null &&
+                      _nearbyZones!.isEmpty &&
+                      state is! TimerRunning)
                     const SizedBox(height: 16),
                   if (failureState != null)
                     _buildFailureView(context, failureState)
@@ -236,46 +221,6 @@ class _TimerScreenState extends State<TimerScreen> {
     return SizedBox(
       height: 240,
       child: Lottie.asset('assets/car-animate.json', fit: BoxFit.contain),
-    );
-  }
-
-  Widget _buildTimerDisplay(TimerState state) {
-    final elapsed = state.elapsed;
-    final hours = elapsed.inHours;
-    final minutes = elapsed.inMinutes.remainder(60);
-    final seconds = elapsed.inSeconds.remainder(60);
-
-    final timeString = hours > 0
-        ? '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}'
-        : '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.access_time_rounded,
-            color: Colors.grey.shade600,
-            size: 18,
-          ),
-          const SizedBox(width: 12),
-          Text(
-            timeString,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey.shade800,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -320,10 +265,7 @@ class _TimerScreenState extends State<TimerScreen> {
           Text(
             state.message,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.orange.shade700,
-            ),
+            style: TextStyle(fontSize: 13, color: Colors.orange.shade700),
           ),
           const SizedBox(height: 16),
           SizedBox(
@@ -357,28 +299,6 @@ class _TimerScreenState extends State<TimerScreen> {
           const SizedBox(height: 8),
           Row(
             children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    context.read<NavigationCubit>().setIndex(0);
-                  },
-                  icon: const Icon(Icons.map_outlined, size: 16),
-                  label: const Text('Choose on map'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.grey.shade700,
-                    side: BorderSide(color: Colors.grey.shade300),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 10,
-                      horizontal: 12,
-                    ),
-                    textStyle: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () {
@@ -544,7 +464,9 @@ class _TimerScreenState extends State<TimerScreen> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           backgroundColor: Colors.white,
           contentPadding: const EdgeInsets.all(0),
           content: SizedBox(
@@ -580,7 +502,10 @@ class _TimerScreenState extends State<TimerScreen> {
 
                 // Quick presets
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
@@ -598,7 +523,8 @@ class _TimerScreenState extends State<TimerScreen> {
                         children: presets.asMap().entries.map((entry) {
                           final preset = entry.value;
                           final index = entry.key;
-                          final isSelected = selectedMinutes == preset['minutes'];
+                          final isSelected =
+                              selectedMinutes == preset['minutes'];
                           return Expanded(
                             child: Padding(
                               padding: EdgeInsets.only(
@@ -612,7 +538,9 @@ class _TimerScreenState extends State<TimerScreen> {
                                   });
                                 },
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: isSelected
                                         ? primaryGreen
@@ -649,7 +577,10 @@ class _TimerScreenState extends State<TimerScreen> {
 
                 // Custom time picker
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -673,7 +604,8 @@ class _TimerScreenState extends State<TimerScreen> {
                               maxValue: 12,
                               onChanged: (hours) {
                                 setState(() {
-                                  selectedMinutes = (hours * 60) + (selectedMinutes % 60);
+                                  selectedMinutes =
+                                      (hours * 60) + (selectedMinutes % 60);
                                 });
                               },
                             ),
@@ -698,7 +630,8 @@ class _TimerScreenState extends State<TimerScreen> {
                               step: 5,
                               onChanged: (mins) {
                                 setState(() {
-                                  selectedMinutes = (selectedMinutes ~/ 60) * 60 + mins;
+                                  selectedMinutes =
+                                      (selectedMinutes ~/ 60) * 60 + mins;
                                 });
                               },
                             ),
@@ -797,7 +730,9 @@ class _TimerScreenState extends State<TimerScreen> {
                   onChanged(value + step);
                 }
               },
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(10),
+              ),
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Icon(
@@ -830,10 +765,7 @@ class _TimerScreenState extends State<TimerScreen> {
                 const SizedBox(height: 2),
                 Text(
                   label,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey.shade600,
-                  ),
+                  style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
                 ),
               ],
             ),
@@ -847,7 +779,9 @@ class _TimerScreenState extends State<TimerScreen> {
                   onChanged(value - step);
                 }
               },
-              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(10)),
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(10),
+              ),
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Icon(
@@ -907,17 +841,11 @@ class _TimerScreenState extends State<TimerScreen> {
         backgroundColor: Colors.white,
         title: const Text(
           'Stop Timer?',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
         ),
         content: const Text(
           'This will stop the timer and delete your parking session.',
-          style: TextStyle(
-            fontSize: 15,
-            color: Colors.black87,
-          ),
+          style: TextStyle(fontSize: 15, color: Colors.black87),
         ),
         actions: [
           TextButton(
@@ -928,10 +856,7 @@ class _TimerScreenState extends State<TimerScreen> {
             ),
             child: const Text(
               'Cancel',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
           ),
           ElevatedButton(
@@ -950,10 +875,7 @@ class _TimerScreenState extends State<TimerScreen> {
             ),
             child: const Text(
               'Stop',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
         ],

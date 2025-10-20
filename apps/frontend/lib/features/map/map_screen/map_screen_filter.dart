@@ -73,10 +73,6 @@ extension MapScreenFilterLogic on MapScreenCubit {
             target: center,
             zoom: nextState.liveZoom,
           ),
-          MapScreenSnackBarCommand(
-            '${pins.length} parking spots found '
-            '${normalizedConfig.mode == LocationMode.current ? "near you" : "at selected location"}',
-          ),
         ],
       );
     } catch (error) {
@@ -85,7 +81,7 @@ extension MapScreenFilterLogic on MapScreenCubit {
         state.copyWith(isApplyingFilter: false),
         commands: [
           MapScreenSnackBarCommand(
-            'Failed to filter pins: ${error.toString()}',
+            'Failed to filter pins',
           ),
         ],
       );
@@ -185,9 +181,6 @@ extension MapScreenFilterLogic on MapScreenCubit {
     _pickCompleter = Completer<LatLng?>();
     _emitState(
       state.copyWith(isPickingLocation: true),
-      commands: const [
-        MapScreenSnackBarCommand('Tap on the map to choose a point'),
-      ],
     );
 
     return _pickCompleter!.future;
@@ -235,9 +228,6 @@ extension MapScreenFilterLogic on MapScreenCubit {
 
     _emitState(
       state,
-      commands: const [
-        MapScreenSnackBarCommand('Filter cleared. Reloaded all pins.'),
-      ],
     );
   }
 }
