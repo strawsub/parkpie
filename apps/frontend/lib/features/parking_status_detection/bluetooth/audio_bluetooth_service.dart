@@ -17,18 +17,26 @@ class AudioBluetoothService {
   Stream<AudioRouteStatus> get statusStream => _statusController.stream;
 
   AudioRouteStatus getCurrentStatus() {
+    // Treat both Bluetooth and CarPlay as "car connections"
+    final isCarConnection = _isCarConnection(_currentRoute);
+
     return AudioRouteStatus(
-      isBluetoothConnected: _currentRoute?.port == AudioPort.bluetooth,
+      isBluetoothConnected: isCarConnection,
       currentRouteName: _currentRoute?.name ?? 'Unknown',
       currentRouteType: _currentRoute?.port.toString() ?? 'Unknown',
       bluetoothDeviceNames: () {
         final route = _currentRoute;
-        final isBt = route?.port == AudioPort.bluetooth;
         final name = route?.name;
-        return isBt && name != null ? [name] : <String>[];
+        return isCarConnection && name != null ? [name] : <String>[];
       }(),
       error: null,
     );
+  }
+
+  // Check if audio route is a car connection (Bluetooth or CarPlay)
+  bool _isCarConnection(AudioInput? route) {
+    if (route == null) return false;
+    return route.port == AudioPort.bluetooth || route.port == AudioPort.carAudio;
   }
 
   // Force an immediate check and emit, even if route hasn't changed
@@ -103,15 +111,17 @@ class AudioBluetoothService {
   }
 
   void _emitStatus() {
+    // Treat both Bluetooth and CarPlay as "car connections"
+    final isCarConnection = _isCarConnection(_currentRoute);
+
     _statusController.add(AudioRouteStatus(
-      isBluetoothConnected: _currentRoute?.port == AudioPort.bluetooth,
+      isBluetoothConnected: isCarConnection,
       currentRouteName: _currentRoute?.name ?? 'Unknown',
       currentRouteType: _currentRoute?.port.toString() ?? 'Unknown',
       bluetoothDeviceNames: () {
         final route = _currentRoute;
-        final isBt = route?.port == AudioPort.bluetooth;
         final name = route?.name;
-        return isBt && name != null ? [name] : <String>[];
+        return isCarConnection && name != null ? [name] : <String>[];
       }(),
       error: null,
     ));

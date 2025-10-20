@@ -10,10 +10,13 @@
 - **Fixed bluetooth reset delay**: Now uses `forceRefresh()` to immediately update bluetooth status after reset
 - **Bluetooth disconnect trigger**: Removed requirement for low speed/still - now triggers instantly in StoppedCandidate
 - **ParkingDetected state stability**: Added guards to block sensor votes and timer ticks while in ParkingDetected state
+- **CarPlay support**: Now detects both Bluetooth (`AudioPort.bluetooth`) and CarPlay (`AudioPort.carAudio`) as car connections
+- **Fixed Driving→StoppedCandidate transition**: Now accepts GPS voting `unknown` (while waiting for parked confirmation) to allow smooth transition when slowing down
 
 ### 2025-01-21: GPS Voting Behavior Fix
 - **Fixed initial state bug**: GPS now votes `unknown` until driving/parked is confirmed, preventing premature Unknown→Driving transition on app start
 - **Confirmation-based voting**: GPS only votes "driving" after meeting both time (10s) AND distance (20m) thresholds
+- **Relaxed transition requirements**: `Driving → StoppedCandidate` now requires GPS to NOT be voting "driving" (allows `unknown` or `parked`), preventing GPS confirmation delay from blocking the transition
 
 ### 2025-01-20: GPS Filtering Optimization
 - **Eliminated double filtering**: GPS speed now uses pre-filtered coordinates from LocationCubit
@@ -252,12 +255,16 @@ if (event.sensorName == 'gyroscope' && event.vote == SensorVote.parked) {
 
 ### 4. Bluetooth Sensor (`bluetooth_bloc.dart`)
 
-**Purpose:** Detect car audio disconnection (CarPlay, Bluetooth stereo)
+**Purpose:** Detect car audio disconnection (Bluetooth stereo, wired CarPlay, wireless CarPlay)
 
 **Data Source:**
 - `audio_bluetooth_service.dart` (singleton)
 - Polls `FlutterAudioOutput.getCurrentOutput()` every 1 second (reduced from 2s for faster detection)
-- Detects when audio route changes from Bluetooth to other output
+- Detects when audio route changes from car connection (Bluetooth OR CarPlay) to other output
+
+**Supported Audio Routes:**
+- **Bluetooth**: `AudioPort.bluetooth` (wireless car audio, Bluetooth headsets)
+- **CarPlay**: `AudioPort.carAudio` (wired or wireless CarPlay connection)
 
 **Key State Tracking:**
 ```dart
@@ -268,8 +275,9 @@ AudioInput? _currentRoute;   // Current audio output device
 **Voting Logic:**
 
 ```dart
+// isConnected = true when audio route is Bluetooth OR CarPlay
 if (isConnected) {
-  vote = SensorVote.driving;    // Connected to car audio = driving
+  vote = SensorVote.driving;    // Connected to car (Bluetooth/CarPlay) = driving
   _wasConnected = true;         // Remember we were connected
 } else if (_wasConnected) {
   vote = SensorVote.parked;     // Disconnected after connection = parked
@@ -277,6 +285,12 @@ if (isConnected) {
   vote = SensorVote.unknown;    // No connection history
 }
 ```
+
+**How It Works:**
+1. **Bluetooth Connection**: Route = `AudioPort.bluetooth` → `isConnected = true`
+2. **CarPlay Connection**: Route = `AudioPort.carAudio` → `isConnected = true`
+3. **Disconnection**: Route changes to `builtInSpeaker` or other → `isConnected = false`
+4. If `_wasConnected = true`, votes `parked` → triggers parking detection
 
 **Service Initialization (Fixed 2025-01-20):**
 
@@ -944,6 +958,39 @@ Future<void> initialize() async {
 ```
 
 **Result:** Now detects bluetooth connections regardless of when they occurred relative to app start.
+
+---
+
+### Bug Fix 11: CarPlay Disconnect Not Triggering Parking Detection (Fixed 2025-01-21)
+
+**Issue:** Bluetooth disconnect worked for wireless Bluetooth, but wired CarPlay disconnect did not trigger parking detection dialog.
+
+**Root Cause:** The code only checked for `AudioPort.bluetooth`, but CarPlay uses `AudioPort.carAudio`. When CarPlay cable was unplugged:
+- Route changed: `carAudio` → `builtInSpeaker`
+- But `isBluetoothConnected` remained `false` (both before and after)
+- No change detected → no `parked` vote → no dialog
+
+**Fix (audio_bluetooth_service.dart:37-40):**
+```dart
+// Check if audio route is a car connection (Bluetooth or CarPlay)
+bool _isCarConnection(AudioInput? route) {
+  if (route == null) return false;
+  return route.port == AudioPort.bluetooth || route.port == AudioPort.carAudio;
+}
+```
+
+Updated `getCurrentStatus()` and `_emitStatus()` to use `_isCarConnection()` helper.
+
+**Result:** Now detects **both** Bluetooth and CarPlay as car connections:
+- **Bluetooth connected**: `AudioPort.bluetooth` → `isConnected = true` → votes `driving`
+- **CarPlay connected**: `AudioPort.carAudio` → `isConnected = true` → votes `driving`
+- **Disconnect**: Route changes to `builtInSpeaker` → `isConnected = false` → votes `parked`
+
+**Supported Scenarios:**
+- Wireless Bluetooth car audio ✅
+- Wired CarPlay ✅
+- Wireless CarPlay ✅
+- Bluetooth headphones (not treated as car connection) ❌
 
 ---
 

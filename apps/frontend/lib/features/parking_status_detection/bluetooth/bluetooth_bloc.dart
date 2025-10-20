@@ -49,12 +49,12 @@ class BluetoothBloc extends Bloc<BluetoothEvent, BluetoothState> {
     debugPrint('_wasConnected: $_wasConnected');
 
     if (event.isConnected) {
-      // Bluetooth connected - likely driving
+      // Car connection detected (Bluetooth or CarPlay) - likely driving
       vote = SensorVote.driving;
       _wasConnected = true;
       debugPrint('CONNECTED → vote: driving, _wasConnected set to true');
     } else if (_wasConnected) {
-      // Bluetooth disconnected after being connected - likely parked
+      // Car connection disconnected after being connected - likely parked
       vote = SensorVote.parked;
       debugPrint('DISCONNECTED (was connected) → vote: PARKED');
     } else {
