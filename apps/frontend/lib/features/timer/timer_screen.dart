@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:frontend/features/navigation/navigation_cubit.dart';
+import 'package:frontend/widgets/navigation_cubit.dart';
 import 'package:lottie/lottie.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:frontend/services/timer_service.dart';

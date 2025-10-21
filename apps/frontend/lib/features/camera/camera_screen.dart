@@ -5,7 +5,7 @@ import 'package:camera/camera.dart';
 import 'package:frontend/features/camera/camera_bloc.dart';
 import 'package:frontend/features/camera/camera_event.dart';
 import 'package:frontend/features/camera/camera_state.dart';
-import 'package:frontend/features/navigation/navigation_cubit.dart';
+import 'package:frontend/widgets/navigation_cubit.dart';
 import 'package:frontend/features/timer/timer_bloc.dart';
 import 'package:frontend/features/timer/timer_event.dart';
 import 'package:frontend/l10n/app_localizations_ext.dart';

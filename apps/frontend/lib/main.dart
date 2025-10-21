@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'features/navigation/navigation_cubit.dart';
-import 'features/navigation/filter_trigger_cubit.dart';
+import 'widgets/navigation_cubit.dart';
+import 'features/map/search/filter_trigger_cubit.dart';
 
 import 'features/map/map_screen.dart';
 import 'features/map/pin/pin_cubit.dart';
