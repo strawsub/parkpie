@@ -6,6 +6,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:frontend/services/timer_service.dart';
 import 'package:frontend/services/api_config.dart';
 import 'package:frontend/widgets/parking_zone_carousel.dart';
+import 'package:frontend/theme/app_colors.dart';
+import 'package:frontend/theme/spacing.dart';
 import 'timer_bloc.dart';
 import 'timer_event.dart';
 import 'timer_state.dart';
@@ -95,8 +97,11 @@ class _TimerScreenState extends State<TimerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface,
       body: SafeArea(
         child: BlocConsumer<TimerBloc, TimerState>(
           listener: (context, state) {
@@ -115,39 +120,43 @@ class _TimerScreenState extends State<TimerScreen> {
 
             return SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              padding: EdgeInsets.symmetric(
+                horizontal: Spacing.xl,
+                vertical: Spacing.md,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const SizedBox(height: 8),
-                  _buildTitle(),
-                  const SizedBox(height: 20),
+                  SizedBox(height: Spacing.xs),
+                  _buildTitle(theme),
+                  SizedBox(height: Spacing.lg),
                   _buildAnimation(),
-                  const SizedBox(height: 16),
+                  SizedBox(height: Spacing.md),
                   // Add parking zone carousel
                   if (_isLoadingZones)
-                    const Padding(
-                      padding: EdgeInsets.all(16),
+                    Padding(
+                      padding: EdgeInsets.all(Spacing.md),
                       child: Center(
                         child: CircularProgressIndicator(
-                          color: Color(0xFF7FAC58), // green spinner
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            colorScheme.primary,
+                          ),
                         ),
                       ),
                     )
                   else if (!_isLoadingZones && state is! TimerRunning) ...[
                     if (_nearbyZones != null && _nearbyZones!.isNotEmpty) ...[
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        padding: EdgeInsets.symmetric(horizontal: Spacing.xl),
                         child: Text(
                           'Select parking zone',
                           textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey.shade600,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: AppColors.textSecondary,
                           ),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: Spacing.xs),
                       ParkingZoneCarousel(
                         parkingZones: _nearbyZones!,
                         onZoneSelected: (zone) => _onZoneSelected(zone, state),
@@ -158,45 +167,43 @@ class _TimerScreenState extends State<TimerScreen> {
                         showTitle: false,
                       ),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        padding: EdgeInsets.symmetric(horizontal: Spacing.xl),
                         child: Text(
                           'Swipe to select a zone',
                           textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: const Color(0xFF7FAC58),
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: colorScheme.primary,
                             fontStyle: FontStyle.italic,
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: Spacing.md),
                     ],
                   ] else if (_nearbyZones != null && _nearbyZones!.isEmpty)
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      padding: EdgeInsets.symmetric(horizontal: Spacing.xl),
                       child: Text(
                         'No nearby parking zones found',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
                         ),
                       ),
                     ),
                   if (_nearbyZones != null &&
                       _nearbyZones!.isEmpty &&
                       state is! TimerRunning)
-                    const SizedBox(height: 16),
+                    SizedBox(height: Spacing.md),
                   if (failureState != null)
-                    _buildFailureView(context, failureState)
+                    _buildFailureView(context, failureState, theme, colorScheme)
                   else ...[
                     if (state is TimerRunning)
-                      _buildRestrictionCard(context, state),
-                    const SizedBox(height: 16),
-                    _buildButtons(context, state),
+                      _buildRestrictionCard(context, state, theme, colorScheme),
+                    SizedBox(height: Spacing.md),
+                    _buildButtons(context, state, colorScheme),
                   ],
                   // Add extra padding at bottom to ensure buttons are always visible
-                  const SizedBox(height: 40),
+                  SizedBox(height: Spacing.huge),
                 ],
               ),
             );
@@ -206,14 +213,10 @@ class _TimerScreenState extends State<TimerScreen> {
     );
   }
 
-  Widget _buildTitle() {
+  Widget _buildTitle(ThemeData theme) {
     return Text(
       'Parking Timer',
-      style: TextStyle(
-        fontSize: 24,
-        fontWeight: FontWeight.bold,
-        color: Colors.grey.shade800,
-      ),
+      style: theme.textTheme.headlineMedium,
     );
   }
 
@@ -224,20 +227,25 @@ class _TimerScreenState extends State<TimerScreen> {
     );
   }
 
-  Widget _buildFailureView(BuildContext context, TimerFailure state) {
+  Widget _buildFailureView(
+    BuildContext context,
+    TimerFailure state,
+    ThemeData theme,
+    ColorScheme colorScheme,
+  ) {
     final zoneLabel = state.zoneNumber != null
         ? 'Zone ${state.zoneNumber}'
         : 'this location';
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(Spacing.md),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200, width: 1),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(Radii.card),
+        border: Border.all(color: AppColors.border, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: AppColors.shadowLight,
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -248,26 +256,26 @@ class _TimerScreenState extends State<TimerScreen> {
         children: [
           Icon(
             Icons.warning_amber_rounded,
-            color: Colors.orange.shade600,
+            color: AppColors.warning,
             size: 36,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: Spacing.sm),
           Text(
             "We couldn't find signage for $zoneLabel",
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.orange.shade800,
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: AppColors.warningDark,
             ),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: Spacing.xxs + 2),
           Text(
             state.message,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: Colors.orange.shade700),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppColors.warningDark,
+            ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: Spacing.md),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -281,22 +289,9 @@ class _TimerScreenState extends State<TimerScreen> {
               },
               icon: const Icon(Icons.refresh, size: 18),
               label: const Text('Retry lookup'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF7FAC58),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 16,
-                ),
-                elevation: 0,
-                textStyle: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: Spacing.xs),
           Row(
             children: [
               Expanded(
@@ -306,18 +301,6 @@ class _TimerScreenState extends State<TimerScreen> {
                   },
                   icon: const Icon(Icons.camera_alt_outlined, size: 16),
                   label: const Text('Scan sign'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.grey.shade700,
-                    side: BorderSide(color: Colors.grey.shade300),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 10,
-                      horizontal: 12,
-                    ),
-                    textStyle: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
                 ),
               ),
             ],
@@ -327,7 +310,12 @@ class _TimerScreenState extends State<TimerScreen> {
     );
   }
 
-  Widget _buildRestrictionCard(BuildContext context, TimerState state) {
+  Widget _buildRestrictionCard(
+    BuildContext context,
+    TimerState state,
+    ThemeData theme,
+    ColorScheme colorScheme,
+  ) {
     final restrictionMinutes = state.restrictionDurationMinutes;
     final restrictionDuration = Duration(minutes: restrictionMinutes);
 
@@ -351,19 +339,17 @@ class _TimerScreenState extends State<TimerScreen> {
         ? '${remainingHours}h ${remainingMinutes}m ${remainingSeconds}s'
         : '${remainingMinutes}m ${remainingSeconds}s';
 
-    final backgroundColor = isOvertime ? const Color(0x1AFF4757) : Colors.white;
+    final backgroundColor = isOvertime ? AppColors.errorLight : AppColors.surface;
 
-    final borderColor = isOvertime
-        ? const Color(0x4DFF4757)
-        : Color(0xFF7FAC58);
+    final borderColor = isOvertime ? AppColors.errorBorder : colorScheme.primary;
 
-    final iconColor = isOvertime ? const Color(0xFFFF4757) : Color(0xFF7FAC58);
+    final iconColor = isOvertime ? colorScheme.error : colorScheme.primary;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(Spacing.md),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(Radii.card),
         border: Border.all(color: borderColor),
       ),
       child: Column(
@@ -379,15 +365,19 @@ class _TimerScreenState extends State<TimerScreen> {
                     color: iconColor,
                     size: 20,
                   ),
-                  const SizedBox(width: 8),
-                  const Text(
+                  SizedBox(width: Spacing.xs),
+                  Text(
                     'Parking Restriction',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    style: theme.textTheme.titleMedium,
                   ),
                 ],
               ),
               IconButton(
-                icon: Icon(Icons.edit, size: 20, color: Colors.grey.shade600),
+                icon: Icon(
+                  Icons.edit,
+                  size: 20,
+                  color: AppColors.textSecondary,
+                ),
                 onPressed: () {
                   _showEditRestrictionDialog(context, restrictionMinutes);
                 },
@@ -396,47 +386,44 @@ class _TimerScreenState extends State<TimerScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: Spacing.sm),
           Row(
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Restriction',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: AppColors.textTertiary,
+                      ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: Spacing.xxs),
                     Text(
                       restrictionText,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: theme.textTheme.titleLarge,
                     ),
                   ],
                 ),
               ),
-              Container(width: 1, height: 40, color: Colors.grey.shade300),
-              const SizedBox(width: 16),
+              Container(width: 1, height: 40, color: AppColors.border),
+              SizedBox(width: Spacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       isOvertime ? 'Overtime' : 'Remaining',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: AppColors.textTertiary,
+                      ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: Spacing.xxs),
                     Text(
                       isOvertime ? '+$remainingText' : remainingText,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: isOvertime
-                            ? const Color(0xFFFF4757)
-                            : const Color(0xFF7FAC58),
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: isOvertime ? colorScheme.error : colorScheme.primary,
                       ),
                     ),
                   ],
@@ -450,7 +437,8 @@ class _TimerScreenState extends State<TimerScreen> {
   }
 
   void _showEditRestrictionDialog(BuildContext context, int currentMinutes) {
-    const primaryGreen = Color(0xFF7FAC58);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     int selectedMinutes = currentMinutes;
 
     // Common preset durations
@@ -465,9 +453,9 @@ class _TimerScreenState extends State<TimerScreen> {
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(Radii.modal),
           ),
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.surface,
           contentPadding: const EdgeInsets.all(0),
           content: SizedBox(
             width: MediaQuery.of(context).size.width * 0.85,
@@ -477,23 +465,24 @@ class _TimerScreenState extends State<TimerScreen> {
               children: [
                 // Header
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                  padding: EdgeInsets.fromLTRB(
+                    Spacing.md,
+                    Spacing.md,
+                    Spacing.md,
+                    Spacing.sm,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Set Time Limit',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: theme.textTheme.titleLarge,
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: Spacing.xxs),
                       Text(
                         'Choose how long you can park here',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey.shade600,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
                         ),
                       ),
                     ],
@@ -502,23 +491,21 @@ class _TimerScreenState extends State<TimerScreen> {
 
                 // Quick presets
                 Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Spacing.md,
+                    vertical: Spacing.sm,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Text(
                         'QUICK SELECT',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey.shade600,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: AppColors.textSecondary,
                           letterSpacing: 0.5,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: Spacing.xs),
                       Row(
                         children: presets.asMap().entries.map((entry) {
                           final preset = entry.value;
@@ -538,30 +525,28 @@ class _TimerScreenState extends State<TimerScreen> {
                                   });
                                 },
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 8,
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: Spacing.xs,
                                   ),
                                   decoration: BoxDecoration(
                                     color: isSelected
-                                        ? primaryGreen
-                                        : Colors.grey.shade100,
-                                    borderRadius: BorderRadius.circular(16),
+                                        ? colorScheme.primary
+                                        : AppColors.backgroundLight,
+                                    borderRadius: BorderRadius.circular(Radii.chip),
                                     border: Border.all(
                                       color: isSelected
-                                          ? primaryGreen
-                                          : Colors.grey.shade300,
+                                          ? colorScheme.primary
+                                          : AppColors.border,
                                       width: 1,
                                     ),
                                   ),
                                   child: Center(
                                     child: Text(
                                       preset['label'] as String,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
+                                      style: theme.textTheme.labelMedium?.copyWith(
                                         color: isSelected
-                                            ? Colors.white
-                                            : Colors.grey.shade700,
+                                            ? AppColors.surface
+                                            : AppColors.textSecondary,
                                       ),
                                     ),
                                   ),
@@ -577,23 +562,21 @@ class _TimerScreenState extends State<TimerScreen> {
 
                 // Custom time picker
                 Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Spacing.md,
+                    vertical: Spacing.sm,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'CUSTOM TIME',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey.shade600,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: AppColors.textSecondary,
                           letterSpacing: 0.5,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: Spacing.xs),
                       Row(
                         children: [
                           // Hours selector
@@ -611,13 +594,11 @@ class _TimerScreenState extends State<TimerScreen> {
                             ),
                           ),
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            padding: EdgeInsets.symmetric(horizontal: Spacing.xs),
                             child: Text(
                               ':',
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey.shade400,
+                              style: theme.textTheme.headlineMedium?.copyWith(
+                                color: AppColors.textTertiary,
                               ),
                             ),
                           ),
@@ -644,28 +625,20 @@ class _TimerScreenState extends State<TimerScreen> {
 
                 // Action buttons
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  padding: EdgeInsets.fromLTRB(
+                    Spacing.md,
+                    Spacing.sm,
+                    Spacing.md,
+                    Spacing.sm,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       TextButton(
                         onPressed: () => Navigator.of(dialogContext).pop(),
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.grey.shade600,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
-                        ),
-                        child: const Text(
-                          'Cancel',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                        child: const Text('Cancel'),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: Spacing.xs),
                       ElevatedButton(
                         onPressed: () {
                           if (selectedMinutes > 0) {
@@ -675,25 +648,7 @@ class _TimerScreenState extends State<TimerScreen> {
                             Navigator.of(dialogContext).pop();
                           }
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryGreen,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 10,
-                          ),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: const Text(
-                          'Save',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        child: const Text('Save'),
                       ),
                     ],
                   ),
@@ -713,11 +668,14 @@ class _TimerScreenState extends State<TimerScreen> {
     int step = 1,
     required ValueChanged<int> onChanged,
   }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.shade200),
+        color: AppColors.backgroundLight,
+        borderRadius: BorderRadius.circular(Radii.button),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: [
@@ -734,38 +692,37 @@ class _TimerScreenState extends State<TimerScreen> {
                 top: Radius.circular(10),
               ),
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 4),
+                padding: EdgeInsets.symmetric(vertical: Spacing.xxs),
                 child: Icon(
                   Icons.keyboard_arrow_up,
                   size: 20,
                   color: value + step <= maxValue
-                      ? const Color(0xFF7FAC58)
-                      : Colors.grey.shade300,
+                      ? colorScheme.primary
+                      : AppColors.border,
                 ),
               ),
             ),
           ),
           // Value display
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 6),
+            padding: EdgeInsets.symmetric(vertical: Spacing.xxs + 2),
             decoration: BoxDecoration(
               border: Border.symmetric(
-                horizontal: BorderSide(color: Colors.grey.shade200),
+                horizontal: BorderSide(color: AppColors.border),
               ),
             ),
             child: Column(
               children: [
                 Text(
                   value.toString().padLeft(2, '0'),
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: theme.textTheme.headlineMedium,
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: 2),
                 Text(
                   label,
-                  style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -783,13 +740,13 @@ class _TimerScreenState extends State<TimerScreen> {
                 bottom: Radius.circular(10),
               ),
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 4),
+                padding: EdgeInsets.symmetric(vertical: Spacing.xxs),
                 child: Icon(
                   Icons.keyboard_arrow_down,
                   size: 20,
                   color: value - step >= 0
-                      ? const Color(0xFF7FAC58)
-                      : Colors.grey.shade300,
+                      ? colorScheme.primary
+                      : AppColors.border,
                 ),
               ),
             ),
@@ -799,7 +756,11 @@ class _TimerScreenState extends State<TimerScreen> {
     );
   }
 
-  Widget _buildButtons(BuildContext context, TimerState state) {
+  Widget _buildButtons(
+    BuildContext context,
+    TimerState state,
+    ColorScheme colorScheme,
+  ) {
     if (state is TimerFailure) {
       return const SizedBox.shrink();
     }
@@ -812,8 +773,8 @@ class _TimerScreenState extends State<TimerScreen> {
           width: double.infinity,
           child: _buildButton(
             label: isRunning ? 'Stop Timer' : 'Start Timer',
-            color: isRunning ? Colors.orange : const Color(0xFF7FAC58),
-            textColor: Colors.white,
+            color: isRunning ? AppColors.warning : colorScheme.primary,
+            textColor: AppColors.surface,
             icon: isRunning
                 ? Icons.pause_circle_outline
                 : Icons.play_circle_outline,
@@ -828,36 +789,34 @@ class _TimerScreenState extends State<TimerScreen> {
           ),
         ),
 
-        const SizedBox(height: 24),
+        SizedBox(height: Spacing.xl),
       ],
     );
   }
 
   void _showResetConfirmation(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        backgroundColor: Colors.white,
-        title: const Text(
-          'Stop Timer?',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(Radii.modal),
         ),
-        content: const Text(
+        backgroundColor: AppColors.surface,
+        title: Text(
+          'Stop Timer?',
+          style: theme.textTheme.titleLarge,
+        ),
+        content: Text(
           'This will stop the timer and delete your parking session.',
-          style: TextStyle(fontSize: 15, color: Colors.black87),
+          style: theme.textTheme.bodyMedium,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.grey.shade600,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            ),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -865,21 +824,18 @@ class _TimerScreenState extends State<TimerScreen> {
               context.read<TimerBloc>().add(const ResetTimer());
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF4757),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
+              backgroundColor: colorScheme.error,
+              foregroundColor: AppColors.surface,
             ),
-            child: const Text(
-              'Stop',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
+            child: const Text('Stop'),
           ),
         ],
-        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actionsPadding: EdgeInsets.fromLTRB(
+          Spacing.md,
+          0,
+          Spacing.md,
+          Spacing.md,
+        ),
       ),
     );
   }
@@ -892,17 +848,14 @@ class _TimerScreenState extends State<TimerScreen> {
     required VoidCallback? onPressed,
   }) {
     return SizedBox(
-      height: 56,
+      height: TouchTargets.comfortable,
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
           foregroundColor: textColor,
-          disabledBackgroundColor: Colors.grey.shade200,
-          disabledForegroundColor: Colors.grey.shade400,
-          elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(Radii.modal),
           ),
         ),
         child: Row(
@@ -910,12 +863,9 @@ class _TimerScreenState extends State<TimerScreen> {
           children: [
             if (icon != null) ...[
               Icon(icon, size: 20),
-              const SizedBox(width: 8),
+              SizedBox(width: Spacing.xs),
             ],
-            Text(
-              label,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
+            Text(label),
           ],
         ),
       ),

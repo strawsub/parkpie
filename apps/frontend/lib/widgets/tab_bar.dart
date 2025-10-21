@@ -14,19 +14,20 @@ class BottomTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return BottomNavigationBar(
       currentIndex: currentIndex,
       onTap: onTap,
       type: BottomNavigationBarType.fixed,
-      backgroundColor: Colors.white,
-      selectedItemColor: const Color(0xFF7FAC58),
-      unselectedItemColor: Colors.grey.shade600,
-      selectedLabelStyle: const TextStyle(
-        fontSize: 12,
+      backgroundColor: colorScheme.surface,
+      selectedItemColor: colorScheme.primary,
+      unselectedItemColor: theme.textTheme.bodySmall?.color,
+      selectedLabelStyle: theme.textTheme.labelSmall?.copyWith(
         fontWeight: FontWeight.w600,
       ),
-      unselectedLabelStyle: const TextStyle(
-        fontSize: 12,
+      unselectedLabelStyle: theme.textTheme.labelSmall?.copyWith(
         fontWeight: FontWeight.w500,
       ),
       items: [
@@ -37,8 +38,8 @@ class BottomTabBar extends StatelessWidget {
             height: 24,
             colorFilter: ColorFilter.mode(
               currentIndex == 0
-                  ? const Color(0xFF7FAC58)
-                  : Colors.grey.shade600,
+                  ? colorScheme.primary
+                  : theme.textTheme.bodySmall!.color!,
               BlendMode.srcIn,
             ),
           ),
@@ -51,8 +52,8 @@ class BottomTabBar extends StatelessWidget {
             height: 24,
             colorFilter: ColorFilter.mode(
               currentIndex == 1
-                  ? const Color(0xFF7FAC58)
-                  : Colors.grey.shade600,
+                  ? colorScheme.primary
+                  : theme.textTheme.bodySmall!.color!,
               BlendMode.srcIn,
             ),
           ),
@@ -65,8 +66,8 @@ class BottomTabBar extends StatelessWidget {
             height: 24,
             colorFilter: ColorFilter.mode(
               currentIndex == 2
-                  ? const Color(0xFF7FAC58)
-                  : Colors.grey.shade600,
+                  ? colorScheme.primary
+                  : theme.textTheme.bodySmall!.color!,
               BlendMode.srcIn,
             ),
           ),

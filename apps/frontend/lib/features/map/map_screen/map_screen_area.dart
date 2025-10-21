@@ -323,7 +323,7 @@ extension MapScreenAreaLogic on MapScreenCubit {
     final double renderSize = displaySize * pixelRatio;
 
     final paint = Paint()
-      ..color = const Color(0xFF7FAC58)
+      ..color = AppColors.primary
       ..style = PaintingStyle.fill;
 
     final center = Offset(renderSize / 2, renderSize / 2);

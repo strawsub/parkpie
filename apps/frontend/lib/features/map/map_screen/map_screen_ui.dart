@@ -237,7 +237,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
               IconButton(
                 icon: Icon(
                   Icons.filter_list,
-                  color: mapState.filterActive ? Color(0xFF7FAC58) : null,
+                  color: mapState.filterActive ? AppColors.primary : null,
                 ),
                 tooltip: 'Filter parking spots',
                 onPressed: () => _openFilterSheet(context),
@@ -310,10 +310,10 @@ class _MapScreenViewState extends State<_MapScreenView> {
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF7FAC58).withValues(alpha: 0.2),
+                  color: AppColors.primary.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.refresh, color: Color(0xFF7FAC58)),
+                child: Icon(Icons.refresh, color: AppColors.primary),
               ),
               title: const Text('Reload Pins'),
               subtitle: const Text('Refresh all parking data'),
@@ -406,9 +406,9 @@ class _MapScreenViewState extends State<_MapScreenView> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.settings,
-              color: Color(0xFF7FAC58),
+              color: AppColors.primary,
               size: 24,
             ),
           ),
@@ -563,7 +563,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
                         fontWeight: FontWeight.bold,
                         color: isOvertime
                             ? Colors.red
-                            : const Color(0xFF7FAC58),
+                            : AppColors.primary,
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),

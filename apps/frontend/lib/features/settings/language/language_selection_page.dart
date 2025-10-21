@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:frontend/theme/app_colors.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_ext.dart';
@@ -40,14 +41,14 @@ class LanguageSelectionPage extends StatelessWidget {
                                 ? Icons.radio_button_checked
                                 : Icons.radio_button_off,
                             color: selected
-                                ? const Color(0xFF7FAC58)
+                                ? AppColors.primary
                                 : Colors.grey.shade400,
                           ),
                           title: Text(option.label),
                           trailing: selected
-                              ? const Icon(
+                              ? Icon(
                                   Icons.check_circle,
-                                  color: Color(0xFF7FAC58),
+                                  color: AppColors.primary,
                                 )
                               : null,
                           onTap: () {
