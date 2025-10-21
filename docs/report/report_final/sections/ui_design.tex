@@ -1,46 +1,35 @@
 \section{User Interface Design}
 
 \subsection{Visual Appeal}
-Describe the design philosophy and aesthetic choices:
-\begin{itemize}
-    \item Color scheme and branding
-    \item Typography choices
-    \item Visual hierarchy
-    \item Use of imagery and icons
-\end{itemize}
+
 
 \subsection{Design Guidelines}
-Explain adherence to platform-specific design guidelines:
+
+
+The app aims to adhere to the \href{https://developer.apple.com/design/human-interface-guidelines/}{Apple Human Interface Guidelines}. 
+Although development is in Flutter for both Android and iOS, we replace iOS-specific Cupertino components with Flutter components that are compatible across platforms while retaining iOS design principles where possible. Key implementations include:
+
 \begin{itemize}
-    \item Material Design (Android) or Human Interface Guidelines (iOS)
-    \item Consistency with platform conventions
-    \item Accessibility features
-    \item Touch target sizing
+    \item Navigation \& Structure: Tab bars at the bottom for consistent navigation, visible across screens with occasional hiding for quick actions (e.g., filter configuration, camera output). Navigation hierarchy is shallow (at most two layers from tab bar item), with simple and intuitive icons. Navigation bars are omitted.
+    \item Visual Design: Sans-serif fonts ensure readability, with sufficient contrast between text and background. iOS-standard spacing and minimum tap targets (44pt) are respected.
+    \item Buttons: Major buttons and search bars are prominently sized. Layout respects safe areas (notch, home indicator, dynamic island). 
+    \item Adaptability: Supports seven languages (English (default), Traditional Chinese, Simplified Chinese, Korean, Japanese, Thai, and Vietnamese) for accessibility. This applies to the app interface as well as Gemini's response.
+    \item Notification: Notifications are used sparingly, primarily for parking time alerts (e.g., 5 minutes remaining).
+\end{itemize}
+
+Across the app, standard Flutter components are consistently applied in place of platform-specific equivalents. Examples include:
+
+\begin{itemize}
+    \item Tab bars and buttons maintain consistent styling, sizing, and spacing across screens.
+    \item Typography, spacing, and color usage are consistent with iOS standards while being compatible on Android.
+    \item Use of semantic colors consistently for status indication (e.g., yellow and red for parking availability).
 \end{itemize}
 
 \subsection{User Flow}
-Describe the navigation structure and user journey:
-\begin{itemize}
-    \item Navigation patterns (tabs, drawer, etc.)
-    \item Screen transitions
-    \item User onboarding
-    \item Task completion paths
-\end{itemize}
+
 
 \subsection{Language and Communication}
-Discuss how the UI communicates with users:
-\begin{itemize}
-    \item Clear and concise messaging
-    \item Error messages and user guidance
-    \item Microcopy and labels
-    \item Internationalization support (if applicable)
-\end{itemize}
+
 
 \subsection{Reactive Interface}
-Explain how the UI responds to user interactions:
-\begin{itemize}
-    \item Visual feedback for actions
-    \item Animation and transitions
-    \item State management
-    \item Real-time updates
-\end{itemize}
+
