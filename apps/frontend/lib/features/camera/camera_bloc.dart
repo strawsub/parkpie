@@ -8,7 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:frontend/features/camera/camera_event.dart';
 import 'package:frontend/features/camera/camera_state.dart';
 import 'package:frontend/features/camera/sign_restriction.dart';
-import 'package:frontend/features/gps_correction/location_cubit.dart';
+import 'package:frontend/services/gps_correction/location_cubit.dart';
 import 'package:frontend/services/api_config.dart';
 import 'package:frontend/services/sign_ingest_service.dart';
 import 'package:frontend/services/sign_zone_storage.dart';

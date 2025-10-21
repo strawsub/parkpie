@@ -10,7 +10,7 @@ import 'features/map/search/search_cubit.dart';
 
 import 'features/camera/camera_screen.dart';
 import 'features/camera/camera_bloc.dart';
-import 'features/gps_correction/location_cubit.dart';
+import 'services/gps_correction/location_cubit.dart';
 
 import 'features/timer/timer_screen.dart';
 import 'features/timer/timer_bloc.dart';

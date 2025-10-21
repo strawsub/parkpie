@@ -6,7 +6,7 @@ import 'timer_event.dart';
 import 'timer_state.dart';
 import 'timer_storage.dart';
 import 'package:frontend/services/timer_service.dart';
-import 'package:frontend/features/gps_correction/location_cubit.dart';
+import 'package:frontend/services/gps_correction/location_cubit.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:frontend/services/notification_service.dart';
 
