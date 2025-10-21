@@ -224,8 +224,14 @@ class _MapScreenViewState extends State<_MapScreenView> {
                   decoration: const InputDecoration(
                     hintText: 'Search location...',
                     border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    errorBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
                     isDense: true,
                     contentPadding: EdgeInsets.symmetric(vertical: 14),
+                    filled: false, // No background fill
+                    fillColor: Colors.transparent, // Transparent background
                   ),
                   onSubmitted: (query) {
                     if (query.isNotEmpty) {

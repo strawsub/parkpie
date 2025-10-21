@@ -298,7 +298,11 @@ class _ParkingDetectedBottomSheetState extends State<ParkingDetectedBottomSheet>
     final containerPadding = 48.0; // 24px padding on each side
     final maxSlideDistance = screenWidth - containerPadding - buttonSize - 10; // 10px extra margin
 
-    return GestureDetector(
+    return Semantics(
+      label: 'Slide to confirm parking',
+      hint: 'Swipe right to start parking timer',
+      button: true,
+      child: GestureDetector(
       onHorizontalDragUpdate: (details) {
         setState(() {
           _slidePosition += details.delta.dx;
@@ -357,6 +361,7 @@ class _ParkingDetectedBottomSheetState extends State<ParkingDetectedBottomSheet>
             ),
           ],
         ),
+      ),
       ),
     );
   }

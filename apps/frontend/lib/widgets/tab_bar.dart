@@ -32,43 +32,55 @@ class BottomTabBar extends StatelessWidget {
       ),
       items: [
         BottomNavigationBarItem(
-          icon: SvgPicture.asset(
-            'assets/parking_nav.svg',
-            width: 24,
-            height: 24,
-            colorFilter: ColorFilter.mode(
-              currentIndex == 0
-                  ? colorScheme.primary
-                  : theme.textTheme.bodySmall!.color!,
-              BlendMode.srcIn,
+          icon: Semantics(
+            label: 'Parking map tab',
+            selected: currentIndex == 0,
+            child: SvgPicture.asset(
+              'assets/parking_nav.svg',
+              width: 24,
+              height: 24,
+              colorFilter: ColorFilter.mode(
+                currentIndex == 0
+                    ? colorScheme.primary
+                    : theme.textTheme.bodySmall!.color!,
+                BlendMode.srcIn,
+              ),
             ),
           ),
           label: context.l10n.getString('nav.parking'),
         ),
         BottomNavigationBarItem(
-          icon: SvgPicture.asset(
-            'assets/contribute_nav.svg',
-            width: 24,
-            height: 24,
-            colorFilter: ColorFilter.mode(
-              currentIndex == 1
-                  ? colorScheme.primary
-                  : theme.textTheme.bodySmall!.color!,
-              BlendMode.srcIn,
+          icon: Semantics(
+            label: 'Scan parking sign tab',
+            selected: currentIndex == 1,
+            child: SvgPicture.asset(
+              'assets/contribute_nav.svg',
+              width: 24,
+              height: 24,
+              colorFilter: ColorFilter.mode(
+                currentIndex == 1
+                    ? colorScheme.primary
+                    : theme.textTheme.bodySmall!.color!,
+                BlendMode.srcIn,
+              ),
             ),
           ),
           label: context.l10n.getString('nav.scan'),
         ),
         BottomNavigationBarItem(
-          icon: SvgPicture.asset(
-            'assets/timer_nav.svg',
-            width: 24,
-            height: 24,
-            colorFilter: ColorFilter.mode(
-              currentIndex == 2
-                  ? colorScheme.primary
-                  : theme.textTheme.bodySmall!.color!,
-              BlendMode.srcIn,
+          icon: Semantics(
+            label: 'Parking timer tab',
+            selected: currentIndex == 2,
+            child: SvgPicture.asset(
+              'assets/timer_nav.svg',
+              width: 24,
+              height: 24,
+              colorFilter: ColorFilter.mode(
+                currentIndex == 2
+                    ? colorScheme.primary
+                    : theme.textTheme.bodySmall!.color!,
+                BlendMode.srcIn,
+              ),
             ),
           ),
           label: context.l10n.getString('nav.timer'),

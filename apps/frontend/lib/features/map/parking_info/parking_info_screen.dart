@@ -629,31 +629,37 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
                             final isSelected = dayIndex == selectedDay;
                             final isCurrentDay = dayIndex == currentDay;
 
-                            return GestureDetector(
-                              onTap: () => _selectDay(dayIndex),
-                              child: Column(
-                                children: [
-                                  Text(
-                                    dayAbbreviations[index],
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: isSelected
-                                          ? AppColors.primary
-                                          : AppColors.textSecondary,
-                                    ),
-                                  ),
-                                  if (isCurrentDay)
-                                    Container(
-                                      margin: const EdgeInsets.only(top: 4),
-                                      height: 3,
-                                      width: 20,
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary,
-                                        borderRadius: BorderRadius.circular(1.5),
+                            return Semantics(
+                              label: '${['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][index]}${isCurrentDay ? ', today' : ''}',
+                              selected: isSelected,
+                              button: true,
+                              onTapHint: 'Double tap to view restrictions',
+                              child: GestureDetector(
+                                onTap: () => _selectDay(dayIndex),
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      dayAbbreviations[index],
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: isSelected
+                                            ? AppColors.primary
+                                            : AppColors.textSecondary,
                                       ),
                                     ),
-                                ],
+                                    if (isCurrentDay)
+                                      Container(
+                                        margin: const EdgeInsets.only(top: 4),
+                                        height: 3,
+                                        width: 20,
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary,
+                                          borderRadius: BorderRadius.circular(1.5),
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
                             );
                           }),

@@ -381,8 +381,8 @@ class _TimerScreenState extends State<TimerScreen> {
                 onPressed: () {
                   _showEditRestrictionDialog(context, restrictionMinutes);
                 },
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
+                padding: EdgeInsets.all(12),
+                constraints: BoxConstraints(minWidth: 48, minHeight: 48),
               ),
             ],
           ),

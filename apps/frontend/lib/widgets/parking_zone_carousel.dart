@@ -115,7 +115,11 @@ class _ParkingZoneCarouselState extends State<ParkingZoneCarousel> {
   }
 
   Widget _buildZoneCard(ParkingZone zone, bool isClosest, bool isCurrent) {
-    return Container(
+    return Semantics(
+      label: 'Parking zone ${zone.zoneName ?? "Unknown"}, ${zone.formattedDistance} away, ${zone.formattedTimeLimit} time limit${isClosest ? ", closest zone" : ""}',
+      selected: isCurrent,
+      onTapHint: 'Double tap to select this zone',
+      child: Container(
       margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -260,6 +264,7 @@ class _ParkingZoneCarouselState extends State<ParkingZoneCarousel> {
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -289,6 +294,18 @@ class _ParkingZoneCarouselState extends State<ParkingZoneCarousel> {
             style: TextStyle(
               fontSize: 14,
               color: AppColors.textSecondary,
+            ),
+          ),
+          SizedBox(height: Spacing.lg),
+          OutlinedButton.icon(
+            onPressed: () {
+              // TODO: Implement wider search or manual zone entry
+            },
+            icon: Icon(Icons.refresh),
+            label: Text('Search Wider Area'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              side: BorderSide(color: AppColors.primary),
             ),
           ),
         ],
