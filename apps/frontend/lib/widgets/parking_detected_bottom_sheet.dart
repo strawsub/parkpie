@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:frontend/widgets/parking_zone_carousel.dart';
 import 'package:frontend/services/timer_service.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:frontend/theme/app_colors.dart';
+import 'package:frontend/theme/spacing.dart';
 
 class ParkingDetectedBottomSheet extends StatefulWidget {
   final Function(int? selectedMinutes, ParkingZone? selectedZone) onConfirm;
@@ -23,7 +25,6 @@ class _ParkingDetectedBottomSheetState extends State<ParkingDetectedBottomSheet>
   int? _selectedDuration; // null = count up, value = count down
   double _slidePosition = 0.0;
   static const double _slideThreshold = 0.75;
-  static const Color _primaryGreen = Color(0xFF7FAC58);
 
   List<ParkingZone>? _nearbyZones;
   ParkingZone? _selectedZone;
@@ -122,11 +123,16 @@ class _ParkingDetectedBottomSheetState extends State<ParkingDetectedBottomSheet>
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.modal)),
       ),
-      padding: EdgeInsets.fromLTRB(24, 16, 24, MediaQuery.of(context).padding.bottom + 24),
+      padding: EdgeInsets.fromLTRB(
+        Spacing.screenPadding,
+        Spacing.md,
+        Spacing.screenPadding,
+        MediaQuery.of(context).padding.bottom + Spacing.screenPadding,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -135,7 +141,7 @@ class _ParkingDetectedBottomSheetState extends State<ParkingDetectedBottomSheet>
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.grey.shade300,
+              color: AppColors.border,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -164,7 +170,7 @@ class _ParkingDetectedBottomSheetState extends State<ParkingDetectedBottomSheet>
                     : 'Select a parking zone or manually override the time limit',
             style: TextStyle(
               fontSize: 11,
-              color: _selectedDuration != null ? _primaryGreen : Colors.grey.shade600,
+              color: _selectedDuration != null ? AppColors.primary : AppColors.textSecondary,
               fontWeight: _selectedDuration != null ? FontWeight.w600 : FontWeight.normal,
             ),
             textAlign: TextAlign.center,
@@ -177,7 +183,7 @@ class _ParkingDetectedBottomSheetState extends State<ParkingDetectedBottomSheet>
               height: 200,
               child: Center(
                 child: CircularProgressIndicator(
-                  color: _primaryGreen,
+                  color: AppColors.primary,
                 ),
               ),
             )
@@ -196,20 +202,20 @@ class _ParkingDetectedBottomSheetState extends State<ParkingDetectedBottomSheet>
           else
             Container(
               height: 150,
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(Spacing.screenPadding),
               child: Column(
                 children: [
                   Icon(
                     Icons.location_off,
                     size: 32,
-                    color: Colors.grey.shade400,
+                    color: AppColors.textTertiary,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: Spacing.xs),
                   Text(
                     'No parking zones found nearby',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.grey.shade600,
+                      color: AppColors.textSecondary,
                     ),
                   ),
                 ],
@@ -226,33 +232,33 @@ class _ParkingDetectedBottomSheetState extends State<ParkingDetectedBottomSheet>
                   'Or manually set time limit',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey.shade600,
+                    color: AppColors.textSecondary,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: Spacing.xs),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     _buildDurationBadge('30 min', 30),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: Spacing.sm),
                     _buildDurationBadge('60 min', 60),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: Spacing.sm),
                     _buildDurationBadge('120 min', 120),
                   ],
                 ),
                 if (_selectedDuration != null)
                   Padding(
-                    padding: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.only(top: Spacing.xs),
                     child: Text(
                       'Zone selection disabled',
                       style: TextStyle(
                         fontSize: 10,
-                        color: Colors.grey.shade500,
+                        color: AppColors.textTertiary,
                         fontStyle: FontStyle.italic,
                       ),
                     ),
                   ),
-                const SizedBox(height: 16),
+                const SizedBox(height: Spacing.md),
               ],
             ),
 
@@ -269,17 +275,17 @@ class _ParkingDetectedBottomSheetState extends State<ParkingDetectedBottomSheet>
     return GestureDetector(
       onTap: () => _selectDuration(minutes),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: Spacing.lg, vertical: Spacing.sm),
         decoration: BoxDecoration(
-          color: isSelected ? _primaryGreen : Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(20),
+          color: isSelected ? AppColors.primary : AppColors.borderLight,
+          borderRadius: BorderRadius.circular(Radii.xl),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: isSelected ? Colors.white : Colors.black87,
+            color: isSelected ? Colors.white : AppColors.textPrimary,
           ),
         ),
       ),
@@ -292,7 +298,11 @@ class _ParkingDetectedBottomSheetState extends State<ParkingDetectedBottomSheet>
     final containerPadding = 48.0; // 24px padding on each side
     final maxSlideDistance = screenWidth - containerPadding - buttonSize - 10; // 10px extra margin
 
-    return GestureDetector(
+    return Semantics(
+      label: 'Slide to confirm parking',
+      hint: 'Swipe right to start parking timer',
+      button: true,
+      child: GestureDetector(
       onHorizontalDragUpdate: (details) {
         setState(() {
           _slidePosition += details.delta.dx;
@@ -315,7 +325,7 @@ class _ParkingDetectedBottomSheetState extends State<ParkingDetectedBottomSheet>
       child: Container(
         height: 60,
         decoration: BoxDecoration(
-          color: _primaryGreen,
+          color: AppColors.primary,
           borderRadius: BorderRadius.circular(30),
         ),
         child: Stack(
@@ -338,19 +348,20 @@ class _ParkingDetectedBottomSheetState extends State<ParkingDetectedBottomSheet>
               child: Container(
                 height: buttonSize,
                 width: buttonSize,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.keyboard_double_arrow_right,
                   size: 28,
-                  color: _primaryGreen,
+                  color: AppColors.primary,
                 ),
               ),
             ),
           ],
         ),
+      ),
       ),
     );
   }

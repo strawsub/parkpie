@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
+import 'package:frontend/theme/app_colors.dart';
+import 'package:frontend/theme/spacing.dart';
 import '../pin/pin_model.dart';
 import '../../../services/mock_parking_service.dart';
 
@@ -16,10 +18,6 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
   late ParkingLocation parkingLocation;
   int selectedDay = DateTime.now().weekday; // 1=Monday, 7=Sunday
   int currentRestrictionIndex = 0;
-
-  // Define the green color based on app theme
-  static const Color primaryGreen = Color(0xFF7FAC58);
-  static const Color lightGreen = Color.fromRGBO(127, 172, 88, 0.4);
 
   @override
   void initState() {
@@ -214,10 +212,10 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
       expand: false,
       builder: (context, scrollController) {
         return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            boxShadow: [BoxShadow(blurRadius: 10, color: Colors.black26)],
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.xl)),
+            boxShadow: [BoxShadow(blurRadius: 10, color: AppColors.shadow)],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min, // Important: minimize column size
@@ -226,9 +224,9 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
               Container(
                 width: 40,
                 height: 4,
-                margin: const EdgeInsets.symmetric(vertical: 12),
+                margin: EdgeInsets.symmetric(vertical: Spacing.sm),
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: AppColors.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -284,13 +282,13 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
                                     vertical: 2,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: primaryGreen,
+                                    color: AppColors.primary,
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Center(
                                     child: Text(
                                       '${currentRestrictionIndex + 1}/${restrictions.length}',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         color: Colors.white,
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,
@@ -318,12 +316,12 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: const BoxDecoration(
-                              color: primaryGreen,
+                            padding: EdgeInsets.all(Spacing.xs),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
                               shape: BoxShape.circle,
                             ),
-                            child: const Text(
+                            child: Text(
                               'P',
                               style: TextStyle(
                                 color: Colors.white,
@@ -356,22 +354,22 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
                               Expanded(
                                 flex: 3,
                                 child: Container(
-                                  padding: const EdgeInsets.all(18),
+                                  padding: EdgeInsets.all(18),
                                   decoration: BoxDecoration(
-                                    color: lightGreen,
-                                    borderRadius: BorderRadius.circular(12),
+                                    color: AppColors.primaryLight,
+                                    borderRadius: BorderRadius.circular(Radii.card),
                                   ),
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     crossAxisAlignment:
                                         CrossAxisAlignment.center,
                                     children: [
-                                      const Text(
+                                      Text(
                                         'Hour',
                                         style: TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w600,
-                                          color: Colors.black54,
+                                          color: AppColors.textSecondary,
                                         ),
                                       ),
                                       const SizedBox(height: 8),
@@ -394,14 +392,12 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
                                       Container(
                                         height: 2,
                                         width: 25,
-                                        margin: const EdgeInsets.symmetric(
-                                          vertical: 8,
+                                        margin: EdgeInsets.symmetric(
+                                          vertical: Spacing.xs,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: Colors.black54,
-                                          borderRadius: BorderRadius.circular(
-                                            1,
-                                          ),
+                                          color: AppColors.textSecondary,
+                                          borderRadius: BorderRadius.circular(1),
                                         ),
                                       ),
                                       Text(
@@ -426,14 +422,14 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
                                     if (restrictions.isNotEmpty)
                                       Container(
                                         width: double.infinity,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 8,
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: Spacing.sm,
+                                          vertical: Spacing.xs,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: primaryGreen,
+                                          color: AppColors.primary,
                                           borderRadius: BorderRadius.circular(
-                                            12,
+                                            Radii.card,
                                           ),
                                         ),
                                         child: Row(
@@ -441,7 +437,7 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
                                           mainAxisAlignment:
                                               MainAxisAlignment.center,
                                           children: [
-                                            const Icon(
+                                            Icon(
                                               Icons.calendar_today,
                                               size: 14,
                                               color: Colors.white,
@@ -464,14 +460,14 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
                                     Expanded(
                                       child: Container(
                                         width: double.infinity,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 8,
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: Spacing.sm,
+                                          vertical: Spacing.xs,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: lightGreen,
+                                          color: AppColors.primaryLight,
                                           borderRadius: BorderRadius.circular(
-                                            12,
+                                            Radii.card,
                                           ),
                                         ),
                                         child: Column(
@@ -480,12 +476,12 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
                                           crossAxisAlignment:
                                               CrossAxisAlignment.center,
                                           children: [
-                                            const Text(
+                                            Text(
                                               'Max stay',
                                               style: TextStyle(
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.w600,
-                                                color: Colors.black54,
+                                                color: AppColors.textSecondary,
                                               ),
                                               maxLines: 1,
                                             ),
@@ -500,11 +496,11 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
                                                 ),
                                               ),
                                             ),
-                                            const Text(
+                                            Text(
                                               'Mins',
                                               style: TextStyle(
                                                 fontSize: 10,
-                                                color: Colors.black54,
+                                                color: AppColors.textSecondary,
                                               ),
                                               maxLines: 1,
                                             ),
@@ -518,14 +514,14 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
                                     Expanded(
                                       child: Container(
                                         width: double.infinity,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 8,
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: Spacing.sm,
+                                          vertical: Spacing.xs,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: lightGreen,
+                                          color: AppColors.primaryLight,
                                           borderRadius: BorderRadius.circular(
-                                            12,
+                                            Radii.card,
                                           ),
                                         ),
                                         child: Column(
@@ -534,12 +530,12 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
                                           crossAxisAlignment:
                                               CrossAxisAlignment.center,
                                           children: [
-                                            const Text(
-                                              'Occupacy',
+                                            Text(
+                                              'Occupancy',
                                               style: TextStyle(
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.w600,
-                                                color: Colors.black54,
+                                                color: AppColors.textSecondary,
                                               ),
                                               maxLines: 1,
                                             ),
@@ -557,11 +553,11 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
                                                 ),
                                               ),
                                             ),
-                                            const Text(
+                                            Text(
                                               '%',
                                               style: TextStyle(
                                                 fontSize: 10,
-                                                color: Colors.black54,
+                                                color: AppColors.textSecondary,
                                               ),
                                               maxLines: 1,
                                             ),
@@ -594,7 +590,7 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
                                       Icon(
                                         Icons.info_outline,
                                         size: 20,
-                                        color: Colors.grey.shade600,
+                                        color: AppColors.textSecondary,
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
@@ -614,7 +610,7 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: Colors.grey.shade600,
+                                      color: AppColors.textSecondary,
                                     ),
                                   ),
                                 ],
@@ -633,45 +629,49 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
                             final isSelected = dayIndex == selectedDay;
                             final isCurrentDay = dayIndex == currentDay;
 
-                            return GestureDetector(
-                              onTap: () => _selectDay(dayIndex),
-                              child: Column(
-                                children: [
-                                  Text(
-                                    dayAbbreviations[index],
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: isSelected
-                                          ? primaryGreen
-                                          : Colors.black54,
-                                    ),
-                                  ),
-                                  if (isCurrentDay)
-                                    Container(
-                                      margin: const EdgeInsets.only(top: 4),
-                                      height: 3,
-                                      width: 20,
-                                      decoration: BoxDecoration(
-                                        color: primaryGreen,
-                                        borderRadius: BorderRadius.circular(
-                                          1.5,
-                                        ),
+                            return Semantics(
+                              label: '${['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][index]}${isCurrentDay ? ', today' : ''}',
+                              selected: isSelected,
+                              button: true,
+                              onTapHint: 'Double tap to view restrictions',
+                              child: GestureDetector(
+                                onTap: () => _selectDay(dayIndex),
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      dayAbbreviations[index],
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: isSelected
+                                            ? AppColors.primary
+                                            : AppColors.textSecondary,
                                       ),
                                     ),
-                                ],
+                                    if (isCurrentDay)
+                                      Container(
+                                        margin: const EdgeInsets.only(top: 4),
+                                        height: 3,
+                                        width: 20,
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary,
+                                          borderRadius: BorderRadius.circular(1.5),
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
                             );
                           }),
                         ),
 
                       const SizedBox(height: 8),
-                      const Center(
+                      Center(
                         child: Text(
                           'select to see other day restrictions',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.black54,
+                            color: AppColors.textSecondary,
                           ),
                         ),
                       ),

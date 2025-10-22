@@ -72,7 +72,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
                     _buildGoogleMap(context, mapState),
                     _buildSearchBar(context, mapState),
                     _buildTimerBadge(context),
-                    if (_showDebugSettings) _buildDebugButton(context),
+                    _buildSettingsButton(context),
                   ],
                 );
               },
@@ -224,8 +224,14 @@ class _MapScreenViewState extends State<_MapScreenView> {
                   decoration: const InputDecoration(
                     hintText: 'Search location...',
                     border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    errorBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
                     isDense: true,
                     contentPadding: EdgeInsets.symmetric(vertical: 14),
+                    filled: false, // No background fill
+                    fillColor: Colors.transparent, // Transparent background
                   ),
                   onSubmitted: (query) {
                     if (query.isNotEmpty) {
@@ -237,7 +243,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
               IconButton(
                 icon: Icon(
                   Icons.filter_list,
-                  color: mapState.filterActive ? Color(0xFF7FAC58) : null,
+                  color: mapState.filterActive ? AppColors.primary : null,
                 ),
                 tooltip: 'Filter parking spots',
                 onPressed: () => _openFilterSheet(context),
@@ -268,7 +274,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
     );
   }
 
-  Future<void> _showDebugMenu(BuildContext context) async {
+  Future<void> _showSettingsMenu(BuildContext context) async {
     // Capture BLoC references before showing bottom sheet
     final mapCubit = context.read<MapScreenCubit>();
     final searchCubit = context.read<SearchCubit>();
@@ -278,6 +284,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
     await showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (sheetContext) => Container(
         decoration: const BoxDecoration(
           color: Colors.white,
@@ -297,99 +304,171 @@ class _MapScreenViewState extends State<_MapScreenView> {
               ),
             ),
             // Title
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Text(
-                'Debug Settings',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                sheetContext.l10n.getString('settings.title'),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
             ),
             const Divider(height: 1),
-            // Debug options
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF7FAC58).withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.refresh, color: Color(0xFF7FAC58)),
+
+            // Scrollable content (with max height constraint for when debug settings are shown)
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.7,
               ),
-              title: const Text('Reload Pins'),
-              subtitle: const Text('Refresh all parking data'),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                mapCubit.clearFilter();
-                searchCubit.clearSearch();
-                pinCubit.loadPins(forceRefresh: true);
-              },
-            ),
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade100,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.local_parking, color: Colors.orange.shade700),
-              ),
-              title: const Text('Test Parking Detection'),
-              subtitle: const Text('Trigger parking detection popup'),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                parkingBloc.add(const TriggerTestParkingDetection());
-              },
-            ),
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.purple.shade100,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.bug_report, color: Colors.purple.shade700),
-              ),
-              title: const Text('Debug Screen'),
-              subtitle: const Text('Open debug information screen'),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => MultiBlocProvider(
-                      providers: [
-                        BlocProvider.value(value: pinCubit),
-                        BlocProvider.value(value: parkingBloc),
-                      ],
-                      child: const DebugScreen(),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Production Settings (always visible)
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.language, color: AppColors.primary),
+                      ),
+                      title: Text(sheetContext.l10n.getString('language.settingsTitle')),
+                      subtitle: Text(sheetContext.l10n.getString('language.settingsSubtitle')),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () {
+                        Navigator.pop(sheetContext);
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const LanguageSelectionPage(),
+                          ),
+                        );
+                      },
                     ),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade100,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.remove_red_eye, color: Colors.blue.shade700),
-              ),
-              title: const Text('Toggle Areas Debug'),
-              subtitle: const Text('Show/hide area polygons on map'),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                mapCubit.toggleAreasDebug();
-              },
-            ),
-            SizedBox(height: MediaQuery.of(sheetContext).padding.bottom + 16),
-          ],
-        ),
-      ),
-    );
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.privacy_tip_outlined, color: AppColors.primary),
+                      ),
+                      title: Text(sheetContext.l10n.getString('privacy.settingsTitle')),
+                      subtitle: Text(sheetContext.l10n.getString('privacy.settingsSubtitle')),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () {
+                        Navigator.pop(sheetContext);
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const PrivacyDisclosurePage(),
+                          ),
+                        );
+                      },
+                    ),
+
+                    // Debug options (only shown if _showDebugSettings is true)
+                    if (_showDebugSettings) ...[
+                      const Divider(height: 1),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Text(
+                          'Debug Settings',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey),
+                        ),
+                      ),
+                      ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.refresh, color: AppColors.primary),
+                        ),
+                        title: const Text('Reload Pins'),
+                        subtitle: const Text('Refresh all parking data'),
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          mapCubit.clearFilter();
+                          searchCubit.clearSearch();
+                          pinCubit.loadPins(forceRefresh: true);
+                        },
+                      ),
+                      ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade100,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.local_parking, color: Colors.orange.shade700),
+                        ),
+                        title: const Text('Test Parking Detection'),
+                        subtitle: const Text('Trigger parking detection popup'),
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          parkingBloc.add(const TriggerTestParkingDetection());
+                        },
+                      ),
+                      ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.purple.shade100,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.bug_report, color: Colors.purple.shade700),
+                        ),
+                        title: const Text('Debug Screen'),
+                        subtitle: const Text('Open debug information screen'),
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => MultiBlocProvider(
+                                providers: [
+                                  BlocProvider.value(value: pinCubit),
+                                  BlocProvider.value(value: parkingBloc),
+                                ],
+                                child: const DebugScreen(),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade100,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.remove_red_eye, color: Colors.blue.shade700),
+                        ),
+                        title: const Text('Toggle Areas Debug'),
+                        subtitle: const Text('Show/hide area polygons on map'),
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          mapCubit.toggleAreasDebug();
+                        },
+                      ),
+                      SizedBox(height: MediaQuery.of(sheetContext).padding.bottom + 16),
+                    ],  // End of debug settings if block
+
+                    // Minimal bottom padding when debug settings are hidden
+                    if (!_showDebugSettings)
+                      SizedBox(height: MediaQuery.of(sheetContext).padding.bottom + 8),
+                  ],  // End of inner Column children
+                ),  // End of inner Column
+              ),  // End of SingleChildScrollView
+            ),  // End of ConstrainedBox
+          ],  // End of outer Column children
+        ),  // End of outer Column
+      ),  // End of Container
+    );  // End of showModalBottomSheet
   }
 
-  Widget _buildDebugButton(BuildContext context) {
+  Widget _buildSettingsButton(BuildContext context) {
     return Positioned(
       top: 120, // Below search bar and timer badge
       right: 16,
@@ -397,7 +476,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
         elevation: 4,
         borderRadius: BorderRadius.circular(20),
         child: InkWell(
-          onTap: () => _showDebugMenu(context),
+          onTap: () => _showSettingsMenu(context),
           borderRadius: BorderRadius.circular(20),
           child: Container(
             width: 40,
@@ -406,9 +485,9 @@ class _MapScreenViewState extends State<_MapScreenView> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.settings,
-              color: Color(0xFF7FAC58),
+              color: AppColors.primary,
               size: 24,
             ),
           ),
@@ -563,7 +642,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
                         fontWeight: FontWeight.bold,
                         color: isOvertime
                             ? Colors.red
-                            : const Color(0xFF7FAC58),
+                            : AppColors.primary,
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),

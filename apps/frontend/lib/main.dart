@@ -32,6 +32,7 @@ import 'widgets/tab_bar.dart';
 import 'widgets/parking_detected_bottom_sheet.dart';
 import 'services/timer_service.dart';
 import 'services/api_config.dart';
+import 'theme/app_theme.dart';
 
 void main() {
   runApp(const ParkPieApp());
@@ -82,6 +83,7 @@ class ParkPieApp extends StatelessWidget {
         builder: (context, locale) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
             locale: locale,
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,

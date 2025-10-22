@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/theme/app_colors.dart';
+import 'package:frontend/theme/spacing.dart';
 import 'filter_config.dart';
 
 const String kFilterRequestPickOnMap = '__FILTER_PICK_ON_MAP__';
@@ -120,9 +122,9 @@ class _FilterSheetState extends State<_FilterSheet> {
               Container(
                 width: 40,
                 height: 4,
-                margin: const EdgeInsets.only(bottom: 12),
+                margin: EdgeInsets.only(bottom: Spacing.sm),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade400,
+                  color: AppColors.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -154,7 +156,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                       max: 2000,
                       divisions: 19,
                       label: '${_radius.toStringAsFixed(0)}m',
-                      activeColor: const Color(0xFF7FAC58),
+                      activeColor: AppColors.primary,
                       onChanged: (v) => setState(() => _radius = v),
                     ),
                   ),
@@ -224,8 +226,12 @@ class _FilterSheetState extends State<_FilterSheet> {
                               children: [
                                 const Icon(Icons.access_time, size: 20),
                                 const SizedBox(width: 8),
-                                Text(_time.format(context)),
-                                const Spacer(),
+                                Expanded(
+                                  child: Text(
+                                    _time.format(context),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
                                 const Icon(Icons.arrow_drop_down, size: 20),
                               ],
                             ),
@@ -256,12 +262,14 @@ class _FilterSheetState extends State<_FilterSheet> {
                               children: [
                                 const Icon(Icons.calendar_today, size: 20),
                                 const SizedBox(width: 8),
-                                Text(
-                                  _selectedDate != null
-                                      ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
-                                      : 'Select date',
+                                Expanded(
+                                  child: Text(
+                                    _selectedDate != null
+                                        ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
+                                        : 'Select date',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                                const Spacer(),
                                 const Icon(Icons.arrow_drop_down, size: 20),
                               ],
                             ),
@@ -281,7 +289,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                   TextButton(
                     onPressed: _reset,
                     style: TextButton.styleFrom(
-                      foregroundColor: const Color(0xFF7FAC58),
+                      foregroundColor: AppColors.primary,
                     ),
                     child: const Text('Reset'),
                   ),
@@ -291,7 +299,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                     icon: const Icon(Icons.check),
                     label: const Text('Apply Filter'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF7FAC58),
+                      backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                     ),
                   ),

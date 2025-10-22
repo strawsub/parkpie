@@ -18,6 +18,7 @@ class AppLocalizationsEn extends AppLocalizations {
     'nav.parking': 'Parking',
     'nav.scan': 'Scan',
     'nav.timer': 'Timer',
+    'settings.title': 'Settings',
     'camera.takePhotoHeader': 'TAKE PHOTO OF PARKING SIGN',
     'camera.instructions':
         'Point your camera at the parking sign and capture the full view',

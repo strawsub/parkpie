@@ -22,9 +22,13 @@ import 'package:frontend/features/map/search/filter_trigger_cubit.dart';
 import 'package:frontend/widgets/navigation_cubit.dart';
 import 'package:frontend/features/parking_status_detection/parking_status_bloc.dart';
 import 'package:frontend/features/parking_status_detection/parking_status_event.dart';
+import 'package:frontend/features/settings/language/language_selection_page.dart';
+import 'package:frontend/features/settings/privacy_disclosure_page.dart';
 import 'package:frontend/features/timer/timer_bloc.dart';
 import 'package:frontend/features/timer/timer_state.dart' as timer;
+import 'package:frontend/l10n/app_localizations_ext.dart';
 import 'package:frontend/services/segment_service.dart';
+import 'package:frontend/theme/app_colors.dart';
 import 'package:lottie/lottie.dart' as lottie;
 
 part 'map_screen/map_screen_state_fields.dart';
