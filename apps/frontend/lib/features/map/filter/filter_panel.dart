@@ -226,8 +226,12 @@ class _FilterSheetState extends State<_FilterSheet> {
                               children: [
                                 const Icon(Icons.access_time, size: 20),
                                 const SizedBox(width: 8),
-                                Text(_time.format(context)),
-                                const Spacer(),
+                                Expanded(
+                                  child: Text(
+                                    _time.format(context),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
                                 const Icon(Icons.arrow_drop_down, size: 20),
                               ],
                             ),
@@ -258,12 +262,14 @@ class _FilterSheetState extends State<_FilterSheet> {
                               children: [
                                 const Icon(Icons.calendar_today, size: 20),
                                 const SizedBox(width: 8),
-                                Text(
-                                  _selectedDate != null
-                                      ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
-                                      : 'Select date',
+                                Expanded(
+                                  child: Text(
+                                    _selectedDate != null
+                                        ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
+                                        : 'Select date',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                                const Spacer(),
                                 const Icon(Icons.arrow_drop_down, size: 20),
                               ],
                             ),

@@ -286,9 +286,6 @@ class _MapScreenViewState extends State<_MapScreenView> {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (sheetContext) => Container(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.85,
-        ),
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -316,8 +313,11 @@ class _MapScreenViewState extends State<_MapScreenView> {
             ),
             const Divider(height: 1),
 
-            // Scrollable content
-            Flexible(
+            // Scrollable content (with max height constraint for when debug settings are shown)
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.7,
+              ),
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -452,12 +452,16 @@ class _MapScreenViewState extends State<_MapScreenView> {
                           mapCubit.toggleAreasDebug();
                         },
                       ),
+                      SizedBox(height: MediaQuery.of(sheetContext).padding.bottom + 16),
                     ],  // End of debug settings if block
-                    SizedBox(height: MediaQuery.of(sheetContext).padding.bottom + 16),
+
+                    // Minimal bottom padding when debug settings are hidden
+                    if (!_showDebugSettings)
+                      SizedBox(height: MediaQuery.of(sheetContext).padding.bottom + 8),
                   ],  // End of inner Column children
                 ),  // End of inner Column
               ),  // End of SingleChildScrollView
-            ),  // End of Flexible
+            ),  // End of ConstrainedBox
           ],  // End of outer Column children
         ),  // End of outer Column
       ),  // End of Container
