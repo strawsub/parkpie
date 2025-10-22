@@ -333,7 +333,6 @@ class _CameraViewState extends State<CameraView> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 48), // Balance the back button
                 ],
               ),
             ),

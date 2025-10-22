@@ -1,43 +1,23 @@
 \section{Innovation}
 
-\subsection{Novelty}
-Describe what makes your application unique or different from existing solutions:
-\begin{itemize}
-    \item Unique features or functionality
-    \item Novel approaches to problem-solving
-    \item Creative use of technology
-\end{itemize}
+\subsection{Surprise}
 
-\subsection{Surprise Factor}
-Highlight unexpected or delightful features that exceed basic requirements:
-\begin{itemize}
-    \item Easter eggs or hidden features
-    \item Unique interactions
-    \item Creative implementations
-\end{itemize}
+The automatic parking detection workflow is the feature that surprises most testers. By listening to accelerometer, gyroscope, GPS, and Bluetooth signals, the app infers when a car has actually stopped (`ParkingBloc`, `TimerBloc`) and launches a confirmation dialog without the driver touching the screen. Once confirmed, a live Lottie-powered countdown hovers above the map and synchronises with local notifications scheduled by `NotificationService`. Users react positively to this “it just knows I’ve parked” moment, because the app removes the chore of starting timers manually while still giving them full control to confirm or dismiss detections.
+
 
 \subsection{Technical Knowledge}
-Demonstrate advanced technical understanding:
-\begin{itemize}
-    \item Use of cutting-edge technologies
-    \item Implementation of complex algorithms
-    \item Deep framework knowledge
-    \item Performance optimization techniques
-\end{itemize}
 
-\subsection{Cross-Disciplinary Integration}
-Explain how your project integrates knowledge from multiple domains:
-\begin{itemize}
-    \item Integration of different technology areas
-    \item Application of principles from other fields (psychology, design, business, etc.)
-    \item Collaborative aspects
-\end{itemize}
+The implementation showcases deep knowledge of information systems across mobile, backend, and geospatial domains. On the backend, Hibernate Spatial queries (e.g. \texttt{ST\_DWithin} in \texttt{ParkingSignRepository}) and database migrations in \texttt{DbPolishRunner} demonstrate practical mastery of spatial databases. On the client, BLoC-driven state management coordinates camera, map, and timer flows, while dependency-injected services (\texttt{SignIngestService}, \texttt{SegmentService}, \texttt{TimerService}) keep networking concerns separate from presentation. The Gemini integration applies prompt-engineering best practices—system instructions, retry loops, schema validation—to turn an LLM into a deterministic extractor.
+
+
+\subsection{Cross-Discplinary}
+
+Cross-disciplinary thinking is visible in both UX and urban-planning considerations. The map experience prioritises human factors: filters are modelled on driver mental models (“I need 2 hours between 9 AM and noon”), Gemini explanations convert shorthand restrictions into plain English, tailored to the commuter's circumstance, and the timer badge uses colour and motion cues to communicate urgency. The parking detection pipeline reflects transport planning insights—combining GPS drift tolerance, Bluetooth beacon proximity, and accelerometer stillness mirrors academic literature on mobility sensing. By aligning technical features with driver cognition and city parking policy, the app integrates design, behavioural, and civic knowledge to deliver a helpful experience.
+
 
 \subsection{Impact}
-Discuss the potential real-world impact of your application:
-\begin{itemize}
-    \item Practical benefits to users
-    \item Social or environmental impact
-    \item Scalability and future potential
-    \item Market viability
-\end{itemize}
+
+The combined system meaningfully reduces the stress and cost of on-street parking. Drivers receive a curated map of legal spots, real-time occupancy estimates (via \texttt{SegmentService} aggregating city feeds and crowd observations), AI translations of cryptic signage, and proactive expiry alerts. Early testers report spending less time circling blocks and feeling more confident they understand restrictions; on the backend we log successful \texttt{ParkingSignService.ingestUserSign} operations to quantify community contributions and track coverage growth. 
+
+Operations teams also gain leverage from the Spring Boot admin dashboard (\texttt{AdminUploadController}, \texttt{AdminSchedulerController}, \texttt{AdminPageController}), which surfaces CSV imports, scheduler toggles, and live health metrics so the dataset can be curated and trusted in real time. These tangible benefits—saved time, fewer fines, shared knowledge, and operational transparency—highlight a strong potential impact on everyday parking tasks across dense urban corridors.
+

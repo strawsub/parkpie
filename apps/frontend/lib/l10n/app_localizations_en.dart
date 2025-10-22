@@ -27,8 +27,8 @@ class AppLocalizationsEn extends AppLocalizations {
         'Extracting text, summarising the rules and syncing with ParkPie.',
     'camera.analysisTitle': 'Sign Summary',
     'camera.zoneAdded': 'Zone Added',
-    'camera.restrictionsSynced': '{count} restriction(s) synced',
-    'camera.restrictionsReplaced': '{count} old restriction(s) replaced',
+    'camera.restrictionsSynced': 'Restriction(s) synced',
+    'camera.restrictionsReplaced': 'Old restriction(s) replaced',
     'camera.aiExplanation': 'AI explanation',
     'camera.aiExplanationFallback':
         'AI could not summarise this sign. Please review the restrictions below.',
