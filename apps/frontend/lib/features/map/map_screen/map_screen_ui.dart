@@ -13,7 +13,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
   GoogleMapController? _googleMapController;
 
   // Debug settings visibility toggle - set to false in production !!!
-  static const bool _showDebugSettings = false;
+  static const bool _showDebugSettings = true;
 
   @override
   void initState() {
