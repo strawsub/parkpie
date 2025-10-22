@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter_audio_output/flutter_audio_output.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
 
 class AudioBluetoothService {
   static final AudioBluetoothService _instance = AudioBluetoothService._internal();
@@ -42,7 +41,7 @@ class AudioBluetoothService {
 
     // CarPlay typically shows up as bluetooth port with "CarPlay" in the name
     // or as a different port type. Check the name for CarPlay indication.
-    final name = route.name.toLowerCase() ?? '';
+    final name = route.name.toLowerCase();
     if (name.contains('carplay') || name.contains('car play')) return true;
 
     return false;
@@ -91,14 +90,6 @@ class AudioBluetoothService {
   Future<void> _checkAudioRoute() async {
     try {
       final current = await FlutterAudioOutput.getCurrentOutput();
-
-      // DEBUG: Log audio route changes to identify CarPlay port type
-      debugPrint('=== Audio Route Check ===');
-      debugPrint('Current route port: ${current.port}');
-      debugPrint('Current route name: ${current.name}');
-      debugPrint('Previous route port: ${_currentRoute?.port}');
-      debugPrint('Previous route name: ${_currentRoute?.name}');
-      debugPrint('========================');
 
       if (_hasRouteChanged(_currentRoute, current)) {
         _currentRoute = current;

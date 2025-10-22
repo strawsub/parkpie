@@ -160,7 +160,6 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
     final isLowSpeed = gpsVote == SensorVote.parked;
     final isNotDriving = gpsVote != SensorVote.driving;  // unknown or parked = not actively driving
     final isStill = accVote == SensorVote.parked;
-    final isStopped = isLowSpeed && isStill;  // For strict checks (like timeout condition)
     final isStoppedOrSlowing = isNotDriving && isStill;  // For Driving→StoppedCandidate transition
 
     // Helper: Check for leave-vehicle evidence

@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:frontend/features/map/map_screen.dart';
 import 'package:frontend/features/map/pin/pin_model.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';

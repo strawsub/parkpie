@@ -8,7 +8,6 @@ import 'package:frontend/features/timer/timer_storage.dart';
 import 'package:frontend/services/notification_service.dart';
 import 'package:frontend/services/gps_correction/location_cubit.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 
 // Mock classes
 class MockTimerStorage extends Mock implements TimerStorage {}
