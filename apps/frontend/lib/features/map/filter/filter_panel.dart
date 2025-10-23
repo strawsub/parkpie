@@ -103,17 +103,19 @@ class _FilterSheetState extends State<_FilterSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final card = Material(
-      color: Theme.of(context).cardColor,
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 12,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+    return DraggableScrollableSheet(
+      initialChildSize: 0.65,
+      minChildSize: 0.4,
+      maxChildSize: 0.9,
+      snap: true,
+      snapSizes: const [0.65],
+      expand: false,
+      builder: (_, controller) {
+        return Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.xl)),
+            boxShadow: [BoxShadow(blurRadius: 10, color: AppColors.shadow)],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -122,209 +124,375 @@ class _FilterSheetState extends State<_FilterSheet> {
               Container(
                 width: 40,
                 height: 4,
-                margin: EdgeInsets.only(bottom: Spacing.sm),
+                margin: EdgeInsets.symmetric(vertical: Spacing.sm),
                 decoration: BoxDecoration(
                   color: AppColors.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
 
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Filter Parking Spots',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              // Radius slider
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Search Radius',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Expanded(
-                    child: Slider(
-                      value: _radius,
-                      min: 100,
-                      max: 2000,
-                      divisions: 19,
-                      label: '${_radius.toStringAsFixed(0)}m',
-                      activeColor: AppColors.primary,
-                      onChanged: (v) => setState(() => _radius = v),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 80,
-                    child: Text(
-                      '${(_radius / 1000).toStringAsFixed(1)} km',
-                      textAlign: TextAlign.end,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              // Row: Duration
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Duration (min)',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 6),
-                        TextField(
-                          controller: _durationCtrl,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            isDense: true,
-                            border: OutlineInputBorder(),
-                            hintText: 'e.g. 120',
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: controller,
+                  physics: const ClampingScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 24.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header
+                      Center(
+                        child: Text(
+                          'Filter Parking Restrictions',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                      ),
+                      const SizedBox(height: 24),
 
-              const SizedBox(height: 12),
-
-              // Row: Start Time and Date
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Start Time',
-                          style: Theme.of(context).textTheme.titleMedium,
+                      // Search Radius Section
+                      Container(
+                        padding: EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryLight,
+                          borderRadius: BorderRadius.circular(Radii.card),
                         ),
-                        const SizedBox(height: 6),
-                        InkWell(
-                          onTap: _pickTime,
-                          borderRadius: BorderRadius.circular(8),
-                          child: InputDecorator(
-                            decoration: const InputDecoration(
-                              isDense: true,
-                              border: OutlineInputBorder(),
-                            ),
-                            child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
                               children: [
-                                const Icon(Icons.access_time, size: 20),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    _time.format(context),
-                                    overflow: TextOverflow.ellipsis,
+                                Container(
+                                  padding: EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.location_searching,
+                                    color: Colors.white,
+                                    size: 18,
                                   ),
                                 ),
-                                const Icon(Icons.arrow_drop_down, size: 20),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Date',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 6),
-                        InkWell(
-                          onTap: _pickDate,
-                          borderRadius: BorderRadius.circular(8),
-                          child: InputDecorator(
-                            decoration: const InputDecoration(
-                              isDense: true,
-                              border: OutlineInputBorder(),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.calendar_today, size: 20),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    _selectedDate != null
-                                        ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
-                                        : 'Select date',
-                                    overflow: TextOverflow.ellipsis,
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Search Radius',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                                const Icon(Icons.arrow_drop_down, size: 20),
                               ],
                             ),
-                          ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: SliderTheme(
+                                    data: SliderThemeData(
+                                      activeTrackColor: AppColors.primary,
+                                      inactiveTrackColor: AppColors.border,
+                                      thumbColor: AppColors.primary,
+                                      overlayColor: AppColors.primary.withOpacity(0.2),
+                                      trackHeight: 4,
+                                      thumbShape: RoundSliderThumbShape(enabledThumbRadius: 8),
+                                    ),
+                                    child: Slider(
+                                      value: _radius,
+                                      min: 100,
+                                      max: 2000,
+                                      divisions: 19,
+                                      onChanged: (v) => setState(() => _radius = v),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    '${(_radius / 1000).toStringAsFixed(1)} km',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                      ),
 
-              const SizedBox(height: 20),
+                      const SizedBox(height: 16),
 
-              // Action buttons
-              Row(
-                children: [
-                  TextButton(
-                    onPressed: _reset,
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                    ),
-                    child: const Text('Reset'),
+                      // Duration Section
+                      Container(
+                        padding: EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryLight,
+                          borderRadius: BorderRadius.circular(Radii.card),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.timer_outlined,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Duration',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: _durationCtrl,
+                              keyboardType: TextInputType.number,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: Colors.white,
+                                suffixText: 'minutes',
+                                suffixStyle: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 14,
+                                ),
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide.none,
+                                ),
+                                hintText: 'e.g. 120',
+                                hintStyle: TextStyle(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Time & Date Section
+                      Container(
+                        padding: EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryLight,
+                          borderRadius: BorderRadius.circular(Radii.card),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.event_outlined,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Start Time & Date',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                // Start Time
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: _pickTime,
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Container(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 14,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.access_time,
+                                            size: 20,
+                                            color: AppColors.primary,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              _time.format(context),
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                          Icon(
+                                            Icons.arrow_drop_down,
+                                            size: 20,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                // Date
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: _pickDate,
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Container(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 14,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.calendar_today,
+                                            size: 18,
+                                            color: AppColors.primary,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              _selectedDate != null
+                                                  ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
+                                                  : 'Select',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          Icon(
+                                            Icons.arrow_drop_down,
+                                            size: 20,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Action buttons
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: _reset,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.primary,
+                                side: BorderSide(color: AppColors.primary, width: 1.5),
+                                padding: EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: Text(
+                                'Reset',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            flex: 2,
+                            child: ElevatedButton.icon(
+                              onPressed: _submit,
+                              icon: const Icon(Icons.check, size: 20),
+                              label: Text(
+                                'Apply Filter',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(vertical: 14),
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  const Spacer(),
-                  ElevatedButton.icon(
-                    onPressed: _submit,
-                    icon: const Icon(Icons.check),
-                    label: const Text('Apply Filter'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ],
           ),
-        ),
-      ),
-    );
-
-    return DraggableScrollableSheet(
-      initialChildSize: 0.55,
-      minChildSize: 0.4,
-      maxChildSize: 0.65,
-      snap: true,
-      snapSizes: const [0.55],
-      expand: false,
-      builder: (_, controller) => ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        child: Material(
-          color: Theme.of(context).cardColor,
-          child: SingleChildScrollView(controller: controller, child: card),
-        ),
-      ),
+        );
+      },
     );
   }
 }

@@ -43,10 +43,12 @@ DTOs such as \texttt{UserSignIngestDto} and \texttt{ParkingSignDto} encapsulate 
 
 A comprehensive test suite ensures correctness and consistency:
 \begin{itemize}
-    \item Unit tests: Verify complex calculations, e.g., \texttt{ParkingRestrictionDurationServiceTest} validates time-window algorithms across edge cases.
-    \item Controller tests: Assert HTTP contracts and security filters via \texttt{ParkingSignControllerTest} and \texttt{SecurityIntegrationTest}.
-    \item Integration tests: Test persistence and geospatial queries against a PostGIS instance using Testcontainers, e.g., \texttt{ParkingSignRepositoryIntegrationTest} seeded with \texttt{postgis-init.sql}.
+    \item Unit tests: Verify complex calculations, e.g., parking restriction duration validates time-window algorithms across edge cases
+    \item Controller tests: Assert HTTP contracts and security filters
+    \item Integration tests: Check that data storage and location-based queries work correctly with a PostGIS database using Testcontainers. For example, the ParkingSignRepositoryIntegrationTest runs with data loaded from postgis-init.sql.
 \end{itemize}
+
+Operations also gain leverage from the Spring Boot admin dashboard, which enables CSV imports, scheduler toggles, and live health monitoring. The dashboard offers a convenient interface for the monitoring and update of the database. \footnote{Admin portal: \url{https://parkpie-90018.azurewebsites.net/admin}\\ Username: \texttt{admin}; Password: \texttt{parkpieh1h1\#}}
 
 \subsection{Sensors}
 

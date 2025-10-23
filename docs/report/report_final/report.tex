@@ -75,9 +75,16 @@
 
 % Abstract
 
-\newpage
+\pagenumbering{roman}  
+\setcounter{page}{1}     % start TOC at i
+
 \tableofcontents
 \newpage
+
+% Start main content with Arabic numbers from 1
+\pagenumbering{arabic}
+\setcounter{page}{1}     % summary starts at 1
+
 
 % Main sections
 \input{sections/summary}

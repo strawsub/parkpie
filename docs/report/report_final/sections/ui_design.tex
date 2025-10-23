@@ -1,19 +1,50 @@
 \section{User Interface Design}
 
+The app aims to adhere to the \href{https://developer.apple.com/design/human-interface-guidelines/}{Apple Human Interface Guidelines} where possible. However, to cater for both Android and iOS, the visual components are adopted from Google's Material 3 design system.
+
+
 \subsection{Visual Appeal}
 
+The app uses a centralized color palette with the brand primary color (\#7FAC58, a calming green) as the visual anchor. All colors are sourced from a central \texttt{AppColors} class, achieving 100\% compliance across the codebase. Semantic color variations include:
+
+\begin{itemize}
+    \item Primary green for active states and confirmation
+    \item Error red with 10--30\% opacity variants for warning
+    \item Success, warning, and info colors for status indicators
+    \item Neutral scale (\texttt{textPrimary}, \texttt{textSecondary}, \texttt{textTertiary}) for proper text hierarchy
+\end{itemize}
+
+Typography is handled through the \emph{Plus Jakarta Sans} font family—a modern, highly readable sans-serif typeface with seven weight variations (Regular, Medium, SemiBold, Bold). The type scale follows proper hierarchy:
+
+\begin{itemize}
+    \item Display/Headline size (24--32pt) for major titles
+    \item Body text (14--16pt) with appropriate line height
+    \item Label text (11--12pt) for secondary information and metadata
+\end{itemize}
+
+Spacing consistency is achieved through eight standardized categories ranging from 4 to 40 pt. Semantic spacing constants also differ depending on the UI components (card, screen, section, etc.) ensure visual rhythm throughout the app.
+
+The app also employs more engaging and modern visual components:
+
+\begin{itemize}
+    \item Lottie animations for engaging car animations on the timer screen
+    \item Smooth border radius system to create friendly, approachable interfaces
+    \item Proper elevation and shadows using Material 3 shadow tokens
+    \item Color-coded status indicators: green badges for active parking restrictions, red for overtime states
+    \item Dynamic visual feedback: the timer card transitions from green borders to red background when parking time expires
+\end{itemize}
+
+Overall, the visual design creates a calm, trustworthy parking experience through the green color palette while maintaining clarity via proper contrast ratios and hierarchical typography.
 
 \subsection{Design Guidelines}
 
-
-The app aims to adhere to the \href{https://developer.apple.com/design/human-interface-guidelines/}{Apple Human Interface Guidelines}. 
-Although development is in Flutter for both Android and iOS, we replace iOS-specific Cupertino components with Flutter components that are compatible across platforms while retaining iOS design principles where possible. Key implementations include:
+Key implementations include:
 
 \begin{itemize}
     \item Navigation \& Structure: Tab bars at the bottom for consistent navigation, visible across screens with occasional hiding for quick actions (e.g., filter configuration, camera output). Navigation hierarchy is shallow (at most two layers from tab bar item), with simple and intuitive icons. Navigation bars are omitted.
     \item Visual Design: Sans-serif fonts ensure readability, with sufficient contrast between text and background. iOS-standard spacing and minimum tap targets (44pt) are respected.
     \item Buttons: Major buttons and search bars are prominently sized. Layout respects safe areas (notch, home indicator, dynamic island). 
-    \item Adaptability: Supports seven languages (English (default), Traditional Chinese, Simplified Chinese, Korean, Japanese, Thai, and Vietnamese) for accessibility. This applies to the app interface as well as Gemini's response.
+    \item Accessibility: Supports seven languages (English (default), Traditional Chinese, Simplified Chinese, Korean, Japanese, Thai, and Vietnamese) for accessibility. This applies to the app interface as well as Gemini's response.
     \item Notification: Notifications are used sparingly, primarily for parking time alerts (e.g., 5 minutes remaining).
 \end{itemize}
 
@@ -30,6 +61,9 @@ Across the app, standard Flutter components are consistently applied in place of
 
 \subsection{Language and Communication}
 
+\begin{itemize}
+    \item Button labels are kept betwe
+\end{itemize}
 
 \subsection{Reactive Interface}
 
