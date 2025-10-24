@@ -52,6 +52,91 @@ Operations also gain leverage from the Spring Boot admin dashboard, which enable
 
 \subsection{Sensors}
 
+Sensors are used in two different scenarios:
+
+\begin{enumerate}
+    \item \textbf{Detect that a travelling vehicle has parked}: GPS sensor provides macroscopic motion information through velocity and displacement measurements; the accelerometer captures microscopic vibration patterns that distinguish driving from stationary states; the gyroscope detects rotational signatures indicating user interaction with the device; the Bluetooth subsystem monitors connectivity to vehicle audio systems as a contextual indicator
+    \item \textbf{Parking sign recognition}: camera enables computer vision-based extraction of parking restriction information from signage; the GPS sensor provides the location to which the sign was taken at
+\end{enumerate}
+
+This architecture aligns with established principles in smartphone-based activity recognition, where sensor diversity and information redundancy are key strategies for improving detection accuracy and fault tolerance [Khan, A. M., Tufail, A., Khattak, A. M., \& Laine, T. H. (2014)] [TODO: add to references].
+
+
+\subsubsection{GPS}
+
+\paragraph{GPS correction}
+
+The GPS subsystem is implemented through Flutter's geolocator package, configured to request high-accuracy positioning data with a distance filter set to zero meters. Raw GPS coordinates suffer from several sources of error including atmospheric interference, multipath propagation in urban environments, and satellite geometry limitations. To reduce noise in GPS data, a one-dimensional Kalman filter was implemented, which processes longitude and latitude data separately. Kalman filters are widely used for positioning and navigation, particularly in GPS applications (Merminod, 1989). More details are provided in Section 3.5.
+
+The update process is triggered based on distance difference rather than time difference. This ensures that when the vehicle is stationary (e.g., waiting at a red light or parked), no unnecessary updates occur. The threshold is set to 1 metre, meaning that a new estimation is calculated only when the measured position changes by more than 1 metre.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.3\textwidth]{figures/gps_kalman.jpg}
+    \caption{Comparison of raw (red) and Kalman-filtered (green) GPS positions}
+    \label{fig:gps-kalman}
+\end{figure}
+
+\paragraph{GPS motion}
+
+For the parking detection subsystem, GPS data undergoes sophisticated analysis to extract motion characteristics. The \texttt{GpsSpeedBloc} receives filtered coordinates from the \texttt{LocationCubit} and computes instantaneous velocity by measuring displacement between consecutive coordinate pairs using the Haversine formula (more details are provided in Section~3.5), then dividing by the elapsed time. This velocity calculation operates directly on the Kalman-filtered coordinates, eliminating the need for additional velocity filtering and avoiding the pitfall of cascaded filtering, which can introduce phase delays and distort signal characteristics.
+
+A critical innovation in the GPS processing pipeline is the implementation of accuracy-adaptive thresholds:
+
+\begin{itemize}
+    \item \textbf{Accuracy Scenarios:} GPS readings are classified into three accuracy scenarios based on horizontal accuracy: Good ($\leq 10$m), Medium ($10$--$20m$), Poor ($> 20$m)
+
+    \item \textbf{Speed Calculation:} Instantaneous speed is derived from displacement over time between consecutive filtered coordinates.
+
+    \item \textbf{Outlier Rejection:} Speed values exceeding $50\,\mathrm{m/s}$ ($\approx 180\,\mathrm{km/h}$) or with poor accuracy ($>50\,\mathrm{m}$) are discarded as outliers.
+
+    \item \textbf{Zero-Speed Detection:} When speed falls below $0.5\,\mathrm{m/s}$ and GPS accuracy is poor ($>20\,\mathrm{m}$), the speed is forced to zero to suppress GPS drift artifacts.
+\end{itemize}
+
+Additionally, GPS coordinates from confirmed parking events feed a segment-based heatmap that visualizes real-time parking density across Melbourne. When users confirm parking, their location is recorded and aggregated with city sensor data to generate segment-based occupancy counts.
+
+\subsubsection{Accelerometer}
+
+\subsection{Accelerometer-Based Motion Detection}
+
+The accelerometer provides high-frequency measurements of linear acceleration along the device's three orthogonal axes ($x$, $y$, $z$), capturing the subtle vibration signature of vehicle motion. Unlike GPS, which operates at approximately one sample per second, smartphone accelerometers typically provide data at 50--100\,Hz, enabling detection of fine-grained motion patterns that would be invisible to GPS. The \texttt{AccBloc} processes this high-rate data stream through a multi-stage pipeline designed to distinguish between the characteristic vibrations of a moving vehicle and the stillness of a parked state.
+
+After user accelerometer data (linear acceleration excluding gravity) is streamed, a 3D Kalman filter processes the raw $x$, $y$, and $z$ accelerations to reduce sensor noise. The accelerometer bloc then employs a sliding window approach with Root Mean Square (RMS) analysis:
+
+\begin{itemize}
+    \item \textbf{Windowed RMS:} A 5-second rolling window maintains acceleration samples and calculates RMS, a standard metric for quantifying vibration intensity in smartphone accelerometers~\cite{shoaib2014smartphone}. RMS provides robustness against directional biases and noise to characterize motion intensity.
+    
+    \item \textbf{Quiet Ratio:} The fraction of samples below a ``quiet epsilon'' threshold ($0.50\,\mathrm{m/s^2}$) quantifies stillness.
+    
+    \item \textbf{Stop Candidate Detection:} When $\mathrm{RMS} < 0.40\,\mathrm{m/s^2}$ and the quiet ratio $\geq 70\%$ persist for 3 seconds, a \emph{stop candidate} flag is set.
+    
+    \item \textbf{Hysteresis:} Higher exit thresholds ($\mathrm{RMS} > 0.45\,\mathrm{m/s^2}$, quiet ratio $< 58\%$) prevent oscillation between motion states.
+\end{itemize}
+
+More details are provided in Section~3.5.
+
+\subsubsection{Gyroscope}
+
+Gyroscopes enable precise rotation detection for vehicle motion analysis~\cite{vaiana2017vehicle}, serving as a high-confidence indicator that the user is exiting the vehicle. While the accelerometer is sensitive to linear motion and vibration, the gyroscope exclusively detects rotation, making it ideal for recognizing when a driver picks up their phone to leave the car, as characteristic rotation patterns emerge.
+
+The \texttt{GyroBloc} implements a relatively simple processing pipeline compared to the other sensors, reflecting the specificity of the signal it seeks to detect. Raw gyroscope data undergoes 3D Kalman filtering, followed by computation of the magnitude of angular velocity. A 3-second sliding window tracks the maximum rotation magnitude observed within the window. If this maximum exceeds $0.8\,\mathrm{rad/s}$ (approximately $46^{\circ}/\mathrm{s}$), the gyroscope votes ``parked,'' interpreting the rotation spike as evidence of phone pickup.
+
+However, the gyroscope signal is ambiguous in isolation. Phones can rotate during driving due to bumps, sharp turns, or the driver adjusting the device in its mount. To address this ambiguity, the system implements conditional voting logic at the state machine level. Critically, gyroscope votes are only considered when the system is in the \texttt{StoppedCandidate} state. In all other states (\texttt{Unknown}, \texttt{Driving}, \texttt{ParkingDetected}, \texttt{Parked}), gyroscope votes are forced to ``unknown'' (see Section~3.2 for details), effectively gating the gyroscope signal based on contextual information from other sensors. 
+
+This conditional integration exemplifies the principle of sensor fusion: each sensor's contribution is weighted according to its relevance in the current context~\cite{vaiana2017vehicle}.
+
+\subsubsection{Bluetooth}
+
+
+Bluetooth connectivity to vehicle audio systems (via Bluetooth or CarPlay) provides contextual evidence for motion inference: connection suggests driving, while disconnection suggests parking or vehicle exit. The implementation utilizes a custom \texttt{AudioBluetoothService} that polls the device's current audio output route every second.
+
+The service detects when the device connects to or disconnects from vehicle Bluetooth or CarPlay systems. This dual detection strategy addresses a platform limitation: the \texttt{flutter\_audio\_output} package does not expose a dedicated \texttt{AudioPort.carAudio} constant, necessitating string-based detection for CarPlay connections. This heuristic approach is robust in practice, as CarPlay connections consistently include the keyword ``CarPlay'' in their route names across iOS versions.
+
+To handle edge cases, the system includes explicit reset behavior. When the parking detection subsystem is reset, the \texttt{BluetoothBloc} forces an immediate refresh of the audio route state. This prevents stale connection states from affecting subsequent detection cycles and ensures that if the user returns to a vehicle with an active CarPlay connection, the system correctly recognizes the connected state.
+
+\subsubsection{Camera}
+
+Camera serves as the primary data acquisition mechanism for the sign recognition feature. The camera implementation leverages Flutter's camera plugin to access the device's rear-facing camera with high resolution settings, then employs Google's Gemini 2.5 Flash Lite model to extract structured parking restriction data from captured images. 
 
 
 \subsection{Connectivity}
