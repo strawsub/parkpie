@@ -355,7 +355,7 @@ class _DebugScreenState extends State<DebugScreen> {
                     title: Text('🛰️ GPS Speed Sensor $voteIcon'),
                     subtitle: Text(
                         'Vote: $vote | Scenario: $scenario $scenarioIcon\n'
-                            'Speed: ${filteredSpeedKmh.toStringAsFixed(1)} km/h (from filtered coordinates)\n'
+                            'Speed: ${filteredSpeedKmh.toStringAsFixed(1)} km/h filtered | ${rawSpeedKmh.toStringAsFixed(1)} km/h raw\n'
                             'Speed Threshold: ${vThreshold}m/s (10.0 km/h) - UNIFIED for all speeds\n'
                             'Displacement: ${displacement.toStringAsFixed(1)} m [dWindow=${dWindow}m]\n'
                             'Linear Distance Required: 10.0 m for driving confirmation\n'

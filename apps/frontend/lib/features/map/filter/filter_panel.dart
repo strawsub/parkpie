@@ -195,7 +195,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                                       activeTrackColor: AppColors.primary,
                                       inactiveTrackColor: AppColors.border,
                                       thumbColor: AppColors.primary,
-                                      overlayColor: AppColors.primary.withOpacity(0.2),
+                                      overlayColor: AppColors.primary.withValues(alpha: 0.2),
                                       trackHeight: 4,
                                       thumbShape: RoundSliderThumbShape(enabledThumbRadius: 8),
                                     ),
