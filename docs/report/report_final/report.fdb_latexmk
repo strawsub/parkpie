@@ -1,5 +1,5 @@
 # Fdb version 4
-["pdflatex"] 1761272541.37852 "/Users/khue/Project/parkpie/docs/report/report_final/report.tex" "report.pdf" "report" 1761272543.39037 0
+["pdflatex"] 1761279738.96289 "/Users/khue/Project/parkpie/docs/report/report_final/report.tex" "report.pdf" "report" 1761279741.82286 0
   "/Users/khue/Project/parkpie/docs/report/report_final/report.tex" 1761272538.95786 2134 9f3e1bef65739382987a82d13623f156 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc" 1136849721 2900 1537cc8184ad1792082cd229ecc269f4 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
@@ -194,14 +194,15 @@
   "figures/gps_kalman.jpg" 1761270618.6348 296064 8ef1c1e2c27f5c598c2ccd5da099b969 ""
   "figures/icon.png" 1761269904.41215 42492 bd38de51071a26f0d6104d7610c8c610 ""
   "figures/map_screen.png" 1761269904.41404 323619 b41a70118abe2eabd83e531481d5954e ""
+  "figures/sensor_fusion.png" 1761279692.46133 330574 b1b78c3d80506e282868f8dcaff3eee3 ""
   "figures/unimelb_logo.png" 1761269904.41571 103814 afbdf867598ed4ad1ff3dd2657b56c02 ""
-  "report.aux" 1761272543.25296 6919 eef2b6dba4d4bb1999757c953537692d "pdflatex"
-  "report.out" 1761272543.2545 5285 ce224deba1400bbf6d80750525ed7efd "pdflatex"
+  "report.aux" 1761279741.68614 8113 f1af23d9530c9313b6a547c0dddc0ecf "pdflatex"
+  "report.out" 1761279741.68793 5673 2a4ecc70eac877b5bbf0bd72bfe54a13 "pdflatex"
   "report.tex" 1761272538.95786 2134 9f3e1bef65739382987a82d13623f156 ""
-  "report.toc" 1761272543.25488 3622 ded1285b10709819d5794791b4387df2 "pdflatex"
+  "report.toc" 1761279741.68829 4222 00e22c3025ad36eea9bb9a025130b180 "pdflatex"
   "sections/appendices.tex" 1760060915.34055 1993 520db2019efd11104e3f9cbc3cf43a8a ""
   "sections/conclusion.tex" 1760060884.2193 203 abf7371e8b1ec2f82866f92311401d77 ""
-  "sections/implementation.tex" 1761272506.52692 13420 b7c0b8c3997889b448f622d56b10b1a4 ""
+  "sections/implementation.tex" 1761279736.26758 22058 c64fa3f49f31fe817a6b428d5a028881 ""
   "sections/innovation.tex" 1761269904.43344 3379 0fb108de1b15abf2e06569c3cda915dc ""
   "sections/overview.tex" 1761269904.43396 5992 dd8d3bff28395ddf74f2e2a8d2f06cd9 ""
   "sections/summary.tex" 1761269904.43447 1422 4c6a3f5ba99a0ade4d47b49950c6d621 ""

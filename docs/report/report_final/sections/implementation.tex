@@ -97,7 +97,6 @@ Additionally, GPS coordinates from confirmed parking events feed a segment-based
 
 \subsubsection{Accelerometer}
 
-\subsection{Accelerometer-Based Motion Detection}
 
 The accelerometer provides high-frequency measurements of linear acceleration along the device's three orthogonal axes ($x$, $y$, $z$), capturing the subtle vibration signature of vehicle motion. Unlike GPS, which operates at approximately one sample per second, smartphone accelerometers typically provide data at 50--100\,Hz, enabling detection of fine-grained motion patterns that would be invisible to GPS. The \texttt{AccBloc} processes this high-rate data stream through a multi-stage pipeline designed to distinguish between the characteristic vibrations of a moving vehicle and the stillness of a parked state.
 
@@ -136,29 +135,89 @@ To handle edge cases, the system includes explicit reset behavior. When the park
 
 \subsubsection{Camera}
 
-Camera serves as the primary data acquisition mechanism for the sign recognition feature. The camera implementation leverages Flutter's camera plugin to access the device's rear-facing camera with high resolution settings, then employs Google's Gemini 2.5 Flash Lite model to extract structured parking restriction data from captured images. 
-
+The camera-based parking sign recognition feature relies fundamentally on GPS to provide spatial context for captured signage. When a user photographs a parking sign, the CameraBloc queries the LocationCubit for the current Kalman-filtered coordinates. These coordinates generate unique SHA-1 fingerprints (combining truncated lat/lng with restriction details) that prevent duplicate entries when multiple users photograph the same sign. Moreover, coordinates enable zone-based aggregation: the backend groups nearby signs into zones, which the system queries when parking is detected to present applicable time limits.
 
 \subsection{Connectivity}
 
+\subsubsection{Cloud Infrastructure - Azure}
 
+The ParkPie backend is deployed on Microsoft Azure Cloud in the Australia East region, utilizing two core services: Azure App Service and Azure Database for PostgreSQL 17.
+
+\paragraph{Application tier}
+The Spring Boot 3.5.4 backend runs on Azure App Service, a fully managed platform providing automatic OS patching, built-in load balancing, and integrated monitoring. Deployment uses the Azure CLI to upload JAR artifacts built with Gradle, typically completing within 2--3 minutes. The service runs on the Java 21 runtime and handles all REST API requests from mobile clients.
+
+\paragraph{Database tier} The Azure Database for PostgreSQL stores parking signs, real-time sensor data, user sessions, and road segments. The managed service provides automated daily backups with a 7-day retention period, point-in-time restore, and SSL/TSS encrypted communication. The PostGIS extension enables efficient spatial queries, including point-in-polygon operations for density calculation and radius-based proximity searches using \texttt{ST\_DWithin}.
+
+\paragraph{Data integration}
+The backend acts as an integration hub, periodically fetching real-time parking sensor data from Melbourne City's open data API and upserting it into PostgreSQL. This centralizes data ingestion, reduces the app package size, and enables instant updates without app redeployment.
+
+\paragraph{Security}
+Database credentials are stored securely in the App Service Configuration (not hardcoded). PostgreSQL rejects non-SSL connections and restricts access to App Service IP addresses only. An admin dashboard at \texttt{/admin/login} uses \textbf{basic authentication} for operational tasks.
+
+\subsubsection{API}
+
+The application connects to cloud services hosted on Microsoft Azure, where both the database and API are deployed. Through secure HTTP requests, the frontend retrieves live data such as parking signs, active sessions, and street-segment densities. This removes the need for static or hard-coded data, letting the app reflect updates instantly when changes occur in the backend.
+
+The system integrates multiple open datasets from the City of Melbourne (\cite{}), including real-time parking sensor data, all parking bay locations, road segment maps, and parking restriction and meter details. These datasets form the foundation for live availability, density visualization, and compliance logic within the app. By combining them through API calls, the app delivers accurate, location-aware information to users and supports advanced spatial analysis on the server side.
+
+By relying on cloud APIs, the app stays synchronized with city sensors data and user activity, giving users real-time parking visibility. Centralized processing in the cloud also offloads heavy spatial and aggregation tasks from mobile devices, improving speed, lowering bandwidth use, and extending battery life.
+
+To maintain reliability, the Azure setup supports Business Continuity and Disaster Recovery (BCP/DRP) strategies. Backup hosts and replicated databases can quickly take over if the main system fails, ensuring uninterrupted access. Together, these cloud and connectivity features make the app responsive, scalable, and resilient under real-world conditions.
 
 
 \subsection{Responsiveness}
 
+\subsubsection{Caching}
+
+The \texttt{loadPins()} function is designed to improve app responsiveness by using a time-to-live (TTL) caching strategy. When the function is called, it first emits a loading state and checks whether cached data exists and is still valid within the given TTL (default five minutes). If the cache is fresh, it loads data directly from local storage, avoiding unnecessary network requests. This greatly reduces waiting time and ensures the interface responds quickly to user actions.
+
+If the cache is expired or the user requests a refresh, the function fetches data from the API, saves a new copy in cache, and then emits a loaded state with the updated pins. Even if the network request fails, the app still attempts to serve data from the previous cache, maintaining usability without sudden blank screens.
+
+The TTL value provides flexibility by allowing developers to balance between real-time accuracy and network efficiency. A shorter TTL increases freshness and responsiveness to new data but generates more network traffic, while a longer TTL reduces server requests and improves stability at the cost of slightly delayed updates. Delays are further mitigated by minimizing I/O operations and prioritizing cached responses, reducing unnecessary communication between the server and client to ensure smoother user experience.
+
+
+\subsubsection{Cluster pin}
+
+Pins clustering is done on the client but driven by server-defined “areas.” On launch, the area rectangles are fetched from the API. Each area is defined by South West/North East corners latitude and longitude; This keeps the geometry dynamic and can change boundaries in the database without shipping a new build.
+
+Rendering is zoom-aware. When zoomed in, we place individual pins. When zoomed out, we group pins by a pin that lies inside an area’s bounding box, then render a single “cluster” marker per area with pin count. 
+
+
+\subsubsection{Segment}
+
+Segment API computes per-segment parking density on the server instead of the client. It merges two live sources, user parking sessions and city sensor “Present” statuses. Then loads the road-segment GeoJSON and derives outer rings for each Polygon/MultiPolygon. Using a point-in-polygon test, it assigns each observed vehicle location to exactly one segment and returns a compact list of \texttt{{segid, count}}.
+
+The design moves aggregation to where the data already is. Previously, the raw location points were pushed to the frontend and counted; it took around 10 seconds due to heavy iteration, JSON transfer size, and main-thread work. Server-side mapping cuts payload size and CPU in the client, so the UI can render instantly. It also gives consistent results across devices and reduces network traffic.
+
+There are reasonable trade-offs. While the server takes on extra computation per request, the returned density represents a real-time snapshot based on vehicles marked “Present” at that moment. Still, the approach is reliable, fast in practice, and easily cached. In the future, a caching mechanism can be added to further reduce server load and smooth out CPU peaks as user volume increases.
 
 
 \subsection{Technical Depth}
 
 \subsubsection{AI Pipeline - Gemini}
 
+The Gemini workflow employs a multi-stage process to convert generative AI outputs into reliable parking data. The mobile application first performs OCR to capture text from parking signs, then processes it through structured prompts enforcing strict JSON formatting with validations for retries, sanitisation, and correct latitude, longitude, and timestamp formats. Only validated data is transmitted to the backend, where duplicate detection and sequence allocation ensure consistency across parking zones. A secondary AI step generates concise, human-readable explanations of parking rules.
 
 \subsubsection{Security}
+
+Security mechanism strengthens security around parking session creation by removing predictable numeric identifiers. Instead of using sequential or database-generated IDs that can be easily guessed, each session now receives a randomized identifier generated with a secure pseudo-random number and a short timestamp component. The combination of a random three-digit number, partial timestamp, and hashed app key produces a unique yet compact ID that cannot be easily inferred. This design prevents attackers from exploiting Insecure Direct Object Reference (IDOR) vulnerabilities, where predictable IDs might allow unauthorized access to other users’ sessions.
+
+When a session is created, the system first identifies the nearest parking sign and generates the new secure session ID before inserting it into the database. The API then returns only essential information, avoiding exposure of internal IDs or unnecessary metadata.
+
+To further enhance API security, additional measures such as authentication tokens, IP-based rate limiting, and request throttling can be implemented. These would help prevent brute-force attacks or mass automated requests against the endpoint.
+
 
 
 \subsubsection{Sensors}
 
-\paragraph{Sensor fusion architecture}
+\paragraph{Sensor fusion mechanism}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.6\textwidth]{figures/sensor_fusion.png}
+    \caption{Flow chart of sensor fusion mechanism}
+    \label{fig:sensor-fusion}
+\end{figure}
 
 \paragraph{Kalman filter}
 

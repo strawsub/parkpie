@@ -12,34 +12,42 @@
 \contentsline {paragraph}{GPS correction}{5}{subsubsection.3.2.1}%
 \contentsline {paragraph}{GPS motion}{5}{figure.caption.3}%
 \contentsline {subsubsection}{\numberline {3.2.2}Accelerometer}{6}{subsubsection.3.2.2}%
-\contentsline {subsection}{\numberline {3.3}Accelerometer-Based Motion Detection}{6}{subsection.3.3}%
-\contentsline {subsubsection}{\numberline {3.3.1}Gyroscope}{6}{subsubsection.3.3.1}%
-\contentsline {subsubsection}{\numberline {3.3.2}Bluetooth}{7}{subsubsection.3.3.2}%
-\contentsline {subsubsection}{\numberline {3.3.3}Camera}{7}{subsubsection.3.3.3}%
-\contentsline {subsection}{\numberline {3.4}Connectivity}{7}{subsection.3.4}%
-\contentsline {subsection}{\numberline {3.5}Responsiveness}{7}{subsection.3.5}%
-\contentsline {subsection}{\numberline {3.6}Technical Depth}{7}{subsection.3.6}%
-\contentsline {subsubsection}{\numberline {3.6.1}AI Pipeline - Gemini}{7}{subsubsection.3.6.1}%
-\contentsline {subsubsection}{\numberline {3.6.2}Security}{7}{subsubsection.3.6.2}%
-\contentsline {subsubsection}{\numberline {3.6.3}Sensors}{7}{subsubsection.3.6.3}%
-\contentsline {paragraph}{Sensor fusion architecture}{7}{subsubsection.3.6.3}%
-\contentsline {paragraph}{Kalman filter}{7}{subsubsection.3.6.3}%
-\contentsline {paragraph}{Haversine distance calculation}{7}{subsubsection.3.6.3}%
-\contentsline {paragraph}{Root-mean square}{7}{subsubsection.3.6.3}%
-\contentsline {section}{\numberline {4}User Interface Design}{8}{section.4}%
-\contentsline {subsection}{\numberline {4.1}Visual Appeal}{8}{subsection.4.1}%
-\contentsline {subsection}{\numberline {4.2}Design Guidelines}{9}{subsection.4.2}%
-\contentsline {subsection}{\numberline {4.3}User Flow}{9}{subsection.4.3}%
-\contentsline {subsection}{\numberline {4.4}Language and Communication}{9}{subsection.4.4}%
-\contentsline {subsection}{\numberline {4.5}Reactive Interface}{9}{subsection.4.5}%
-\contentsline {section}{\numberline {5}Innovation}{9}{section.5}%
-\contentsline {subsection}{\numberline {5.1}Surprise}{9}{subsection.5.1}%
-\contentsline {subsection}{\numberline {5.2}Technical Knowledge}{10}{subsection.5.2}%
-\contentsline {subsection}{\numberline {5.3}Cross-Discplinary}{10}{subsection.5.3}%
-\contentsline {subsection}{\numberline {5.4}Impact}{10}{subsection.5.4}%
-\contentsline {section}{\numberline {6}Conclusion}{10}{section.6}%
-\contentsline {section}{\numberline {7}Appendix}{11}{section.7}%
-\contentsline {subsection}{\numberline {7.1}Appendix B: Commit Log Summary}{11}{subsection.7.1}%
-\contentsline {subsection}{\numberline {7.2}Appendix C: Itemised Contributions}{11}{subsection.7.2}%
-\contentsline {subsection}{\numberline {7.3}Appendix D: Code Samples}{11}{subsection.7.3}%
-\contentsline {subsection}{\numberline {7.4}Appendix E: Video Demonstration}{11}{subsection.7.4}%
+\contentsline {subsubsection}{\numberline {3.2.3}Gyroscope}{6}{subsubsection.3.2.3}%
+\contentsline {subsubsection}{\numberline {3.2.4}Bluetooth}{7}{subsubsection.3.2.4}%
+\contentsline {subsubsection}{\numberline {3.2.5}Camera}{7}{subsubsection.3.2.5}%
+\contentsline {subsection}{\numberline {3.3}Connectivity}{7}{subsection.3.3}%
+\contentsline {subsubsection}{\numberline {3.3.1}Cloud Infrastructure - Azure}{7}{subsubsection.3.3.1}%
+\contentsline {paragraph}{Application tier}{7}{subsubsection.3.3.1}%
+\contentsline {paragraph}{Database tier}{7}{subsubsection.3.3.1}%
+\contentsline {paragraph}{Data integration}{8}{subsubsection.3.3.1}%
+\contentsline {paragraph}{Security}{8}{subsubsection.3.3.1}%
+\contentsline {subsubsection}{\numberline {3.3.2}API}{8}{subsubsection.3.3.2}%
+\contentsline {subsection}{\numberline {3.4}Responsiveness}{8}{subsection.3.4}%
+\contentsline {subsubsection}{\numberline {3.4.1}Caching}{8}{subsubsection.3.4.1}%
+\contentsline {subsubsection}{\numberline {3.4.2}Cluster pin}{9}{subsubsection.3.4.2}%
+\contentsline {subsubsection}{\numberline {3.4.3}Segment}{9}{subsubsection.3.4.3}%
+\contentsline {subsection}{\numberline {3.5}Technical Depth}{9}{subsection.3.5}%
+\contentsline {subsubsection}{\numberline {3.5.1}AI Pipeline - Gemini}{9}{subsubsection.3.5.1}%
+\contentsline {subsubsection}{\numberline {3.5.2}Security}{9}{subsubsection.3.5.2}%
+\contentsline {subsubsection}{\numberline {3.5.3}Sensors}{10}{subsubsection.3.5.3}%
+\contentsline {paragraph}{Sensor fusion mechanism}{10}{subsubsection.3.5.3}%
+\contentsline {paragraph}{Kalman filter}{10}{figure.caption.4}%
+\contentsline {paragraph}{Haversine distance calculation}{10}{figure.caption.4}%
+\contentsline {paragraph}{Root-mean square}{10}{figure.caption.4}%
+\contentsline {section}{\numberline {4}User Interface Design}{10}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Visual Appeal}{10}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Design Guidelines}{11}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}User Flow}{12}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}Language and Communication}{12}{subsection.4.4}%
+\contentsline {subsection}{\numberline {4.5}Reactive Interface}{12}{subsection.4.5}%
+\contentsline {section}{\numberline {5}Innovation}{12}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Surprise}{12}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Technical Knowledge}{12}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}Cross-Discplinary}{12}{subsection.5.3}%
+\contentsline {subsection}{\numberline {5.4}Impact}{13}{subsection.5.4}%
+\contentsline {section}{\numberline {6}Conclusion}{13}{section.6}%
+\contentsline {section}{\numberline {7}Appendix}{14}{section.7}%
+\contentsline {subsection}{\numberline {7.1}Appendix B: Commit Log Summary}{14}{subsection.7.1}%
+\contentsline {subsection}{\numberline {7.2}Appendix C: Itemised Contributions}{14}{subsection.7.2}%
+\contentsline {subsection}{\numberline {7.3}Appendix D: Code Samples}{14}{subsection.7.3}%
+\contentsline {subsection}{\numberline {7.4}Appendix E: Video Demonstration}{14}{subsection.7.4}%

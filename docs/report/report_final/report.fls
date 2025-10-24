@@ -364,6 +364,11 @@ INPUT ./figures/gps_kalman.jpg
 INPUT ./figures/gps_kalman.jpg
 INPUT ./figures/gps_kalman.jpg
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/tfm/public/cm/cmti10.tfm
+INPUT ./figures/sensor_fusion.png
+INPUT ./figures/sensor_fusion.png
+INPUT ./figures/sensor_fusion.png
+INPUT ./figures/sensor_fusion.png
+INPUT ./figures/sensor_fusion.png
 INPUT ./sections/ui_design.tex
 INPUT ./sections/ui_design.tex
 INPUT ./sections/ui_design.tex
