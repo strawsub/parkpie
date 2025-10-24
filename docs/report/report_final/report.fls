@@ -374,11 +374,6 @@ INPUT ./sections/innovation.tex
 INPUT ./sections/innovation.tex
 INPUT ./sections/innovation.tex
 INPUT sections/innovation.tex
-INPUT ./sections/future_work.tex
-INPUT ./sections/future_work.tex
-INPUT ./sections/future_work.tex
-INPUT ./sections/future_work.tex
-INPUT sections/future_work.tex
 INPUT ./sections/conclusion.tex
 INPUT ./sections/conclusion.tex
 INPUT ./sections/conclusion.tex
