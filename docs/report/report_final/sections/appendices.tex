@@ -32,8 +32,8 @@ The app compiles successfully on Flutter 3.35.5:
   \item Git (to clone repository).
   \item Flutter SDK (recommended: Flutter 3.x or newer). Ensure \texttt{flutter} is on PATH.
   \item Android SDK / Xcode (for mobile targets) if you plan to run on device or simulator/emulator.
-  \item Java 11+ (LTS) or as required by the backend (check \texttt{build.gradle} / \texttt{pom.xml}).
-  \item Maven or Gradle wrapper (the project may include \texttt{mvnw} or \texttt{gradlew}).
+  \item Java 21
+  \item Gradle 8.14.3 (included via wrapper)
   \item An RDBMS if the backend requires one (PostgreSQL, MySQL, etc.) — check backend configuration.
   \item Optional: Docker / docker-compose if you prefer containerized runtimes.
 \end{itemize}
@@ -59,56 +59,36 @@ Typical results:
 Replace the folder names in the commands below with the actual paths you found (examples: \texttt{frontend/}, \texttt{app/}, \texttt{backend/}, \texttt{server/}).
 
 \subsubsection{Backend (Spring Boot) — build \& run}
-\paragraph{Common checks}
+
+\paragraph{Compilation}
+Navigate to the backend directory and build the project:
 \begin{verbatim}
-# change to backend directory
-cd backend   # or replace with actual backend dir
+cd apps/backend
+./gradlew build
 \end{verbatim}
 
-Open \texttt{src/main/resources/application.properties} or \texttt{application.yml} to identify:
-\begin{itemize}
-  \item server.port (default 8080)
-  \item datasource URL, username, password
-  \item profile settings (e.g. spring.profiles.active)
-\end{itemize}
-
-\paragraph{Run with wrapper (preferred if present)}
+On Windows:
 \begin{verbatim}
-# If using Maven wrapper
-./mvnw spring-boot:run
+cd apps\backend
+gradlew.bat build
+\end{verbatim}
 
-# OR if using Gradle wrapper
+\paragraph{Running the Application}
+Start the backend server:
+\begin{verbatim}
 ./gradlew bootRun
 \end{verbatim}
 
-\paragraph{Build a jar and run}
+On Windows:
 \begin{verbatim}
-# Build
-./mvnw clean package    # Maven
-# OR
-./gradlew clean bootJar # Gradle
-
-# Run the produced jar (example)
-java -jar build/libs/your-backend.jar
+gradlew.bat bootRun
 \end{verbatim}
 
-\paragraph{Environment variables / profiles}
-If the backend expects environment variables, export them before starting:
-\begin{verbatim}
-export SPRING_DATASOURCE_URL="jdbc:postgresql://localhost:5432/parkpie"
-export SPRING_DATASOURCE_USERNAME="parkpie"
-export SPRING_DATASOURCE_PASSWORD="password"
-export SPRING_PROFILES_ACTIVE=dev
-\end{verbatim}
-Adjust names according to the configuration keys in \texttt{application.properties}.
+The server will start on \texttt{http://localhost:8080}. Database connection is pre-configured to Azure PostgreSQL.
 
-\paragraph{Database initialization}
-If the project uses an RDBMS:
-\begin{itemize}
-  \item Check for \texttt{schema.sql} or DB migration tooling (Flyway, Liquibase) in the backend.
-  \item If migrations exist (e.g., Flyway), they typically run automatically on startup.
-  \item Alternatively, run provided SQL scripts to create schema and seed data.
-\end{itemize}
+\paragraph{Deployment}
+The backend is deployed to Azure App Service at \texttt{https://parkpie-90018.azurewebsites.net}. The frontend application uses this Azure deployment by default, so no local backend setup is required for running the Flutter app.
+
 
 \subsubsection{Frontend (Flutter) — build \& run}
 \paragraph{Setup and dependencies}
@@ -151,9 +131,9 @@ flutter build web
 The Flutter app will call the backend API. Locate where the base API URL is configured (common places: \texttt{lib/constants.dart}, environment files, or flavors). Example replacements:
 \begin{verbatim}
 # in development, point to local backend
-API_BASE_URL = "http://10.0.2.2:8080"   # Android emulator uses 10.0.2.2 to reach host
+API_BASE_URL = "http://10.0.2.2:8081"   # Android emulator uses 10.0.2.2 to reach host
 # or from host to iOS simulator
-API_BASE_URL = "http://localhost:8080"
+API_BASE_URL = "http://localhost:8081"
 \end{verbatim}
 
 \subsubsection{Running both locally}
@@ -231,11 +211,10 @@ Itemised contributions to the app are collected from Jira Agile management tool.
 \toprule
 
 \textbf{Cynwell} &
-\tagbox{blue}{MAP} -- Design database to store parking location \& restriction \\
+\tagbox{blue}{MAP} -- Design database to store parking location, restriction \& availability\\
 & \tagbox{gray}{MISC} -- Implement CI pipeline for GitHub \\
 & \tagbox{gray}{MISC} -- Set up admin dashboard for back-end monitoring and database updating \\
 & \tagbox{blue}{MAP} -- Prompt engineer for parking sign \\
-& \tagbox{green}{AVAIL} -- Design database for availability information \\
 & \tagbox{orange}{CAMERA} -- Override duplicate pins \\
 & \tagbox{magenta}{TIMER} -- Generate API for restriction duration \\
 \addlinespace[4pt]
@@ -268,14 +247,14 @@ Itemised contributions to the app are collected from Jira Agile management tool.
 
 \textbf{Gin} &
 \tagbox{orange}{CAMERA} -- Upload photo to cloud \\
-& \tagbox{green}{AVAIL} -- Enhance accuracy of GPS sensor for parking status detection \& parking sign recognition \\
-& \tagbox{blue}{MAP} -- Create segment map for traffic availability \\
+& \tagbox{green}{AVAIL} -- Enhance accuracy of GPS sensor for parking status detection \\
+& \tagbox{green}{AVAIL} -- Enhance accuracy of GPS sensor for parking sign recognition \\
+& \tagbox{blue}{MAP} -- Create segment map for parking availability \\
 \addlinespace[4pt]
 
 \textbf{Khue} &
 \tagbox{blue}{MAP} -- Integrate map plug-in for display \\
 & \tagbox{orange}{CAMERA} -- Connect Gemini for parking sign interpretation \\
-& \tagbox{green}{TIMER} -- Create interface to record `parked' \\
 & \tagbox{green}{AVAIL} -- Implement gyroscope sensor for parking status detection \\
 & \tagbox{blue}{MAP} -- Design user interface flow for search and filter function \\
 & \tagbox{green}{AVAIL} -- Integrate session from API to timer interface \\
