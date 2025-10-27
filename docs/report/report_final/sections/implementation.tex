@@ -34,7 +34,7 @@ Service and repository classes use intent-revealing method names, for example:
     \item \texttt{ParkingRestrictionDurationService.calculateDuration}
 \end{itemize}
 
-DTOs such as \texttt{UserSignIngestDto} and \texttt{ParkingSignDto} encapsulate request and response payloads and use Jakarta validation annotations to prevent malformed data from entering the database. Non-obvious logic is documented with JavaDoc, for example:
+DTOs such as \texttt{UserSignIngestDto} and \texttt{ParkingSignDto} encapsulate request and response payloads and use Jakarta validation annotations to prevent malformed data from entering the database. The entire backend is documented with JavaDoc, and every API endpoint has OpenAPI (Swagger) documentation, for example:
 \begin{itemize}
     \item Duplicate-detection heuristics in \texttt{ParkingSignService}
     \item Database bootstrapping and manual zone reconciliation in \texttt{DbPolishRunner} 

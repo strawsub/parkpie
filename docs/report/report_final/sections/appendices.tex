@@ -17,53 +17,275 @@
 
 % Add more screenshots as needed
 
-\subsection{Appendix B: Commit Log Summary}
-Include a summary table or excerpt of your Git commit history showing regular contributions from all team members.
+\subsection{App Instructions}
+
+The app compiles successfully on Flutter 3.35.5:
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.7\textwidth]{figures/terminal_msg.png}
+    \label{fig:temrinal_msg}
+\end{figure}
+
+\subsubsection{Prerequisites}
+\begin{itemize}[noitemsep]
+  \item Git (to clone repository).
+  \item Flutter SDK (recommended: Flutter 3.x or newer). Ensure \texttt{flutter} is on PATH.
+  \item Android SDK / Xcode (for mobile targets) if you plan to run on device or simulator/emulator.
+  \item Java 11+ (LTS) or as required by the backend (check \texttt{build.gradle} / \texttt{pom.xml}).
+  \item Maven or Gradle wrapper (the project may include \texttt{mvnw} or \texttt{gradlew}).
+  \item An RDBMS if the backend requires one (PostgreSQL, MySQL, etc.) — check backend configuration.
+  \item Optional: Docker / docker-compose if you prefer containerized runtimes.
+\end{itemize}
+
+\paragraph{Identify project layout}
+Open a terminal in the repository root and locate Flutter and Spring Boot modules:
 
 \begin{verbatim}
-commit abc123 - 2024-10-01 - John: Implemented sensor integration
-commit def456 - 2024-10-02 - Jane: Added network connectivity
-commit ghi789 - 2024-10-03 - Bob: Designed user interface
-...
+# from repo root
+# find Flutter project (look for pubspec.yaml)
+find . -maxdepth 3 -name "pubspec.yaml"
+
+# find backend (look for build.gradle, settings.gradle, or pom.xml)
+find . -maxdepth 3 -name "build.gradle" -o -name "pom.xml" -o -name "settings.gradle"
 \end{verbatim}
 
-\subsection{Appendix C: Itemised Contributions}
-\textbf{Team Member 1 - [Name]}
+Typical results:
 \begin{itemize}
-    \item Sensor integration (accelerometer, GPS)
-    \item Backend API development
-    \item Testing and debugging
-    \item Contribution: 33\%
+  \item Flutter app folder contains \texttt{pubspec.yaml}.
+  \item Backend folder contains \texttt{build.gradle} or \texttt{pom.xml} and \texttt{src/main/java}.
 \end{itemize}
 
-\textbf{Team Member 2 - [Name]}
+Replace the folder names in the commands below with the actual paths you found (examples: \texttt{frontend/}, \texttt{app/}, \texttt{backend/}, \texttt{server/}).
+
+\subsubsection{Backend (Spring Boot) — build \& run}
+\paragraph{Common checks}
+\begin{verbatim}
+# change to backend directory
+cd backend   # or replace with actual backend dir
+\end{verbatim}
+
+Open \texttt{src/main/resources/application.properties} or \texttt{application.yml} to identify:
 \begin{itemize}
-    \item User interface design and implementation
-    \item Database schema and data management
-    \item Documentation
-    \item Contribution: 33\%
+  \item server.port (default 8080)
+  \item datasource URL, username, password
+  \item profile settings (e.g. spring.profiles.active)
 \end{itemize}
 
-\textbf{Team Member 3 - [Name]}
+\paragraph{Run with wrapper (preferred if present)}
+\begin{verbatim}
+# If using Maven wrapper
+./mvnw spring-boot:run
+
+# OR if using Gradle wrapper
+./gradlew bootRun
+\end{verbatim}
+
+\paragraph{Build a jar and run}
+\begin{verbatim}
+# Build
+./mvnw clean package    # Maven
+# OR
+./gradlew clean bootJar # Gradle
+
+# Run the produced jar (example)
+java -jar build/libs/your-backend.jar
+\end{verbatim}
+
+\paragraph{Environment variables / profiles}
+If the backend expects environment variables, export them before starting:
+\begin{verbatim}
+export SPRING_DATASOURCE_URL="jdbc:postgresql://localhost:5432/parkpie"
+export SPRING_DATASOURCE_USERNAME="parkpie"
+export SPRING_DATASOURCE_PASSWORD="password"
+export SPRING_PROFILES_ACTIVE=dev
+\end{verbatim}
+Adjust names according to the configuration keys in \texttt{application.properties}.
+
+\paragraph{Database initialization}
+If the project uses an RDBMS:
 \begin{itemize}
-    \item Network connectivity implementation
-    \item Real-time features
-    \item App optimization
-    \item Contribution: 34\%
+  \item Check for \texttt{schema.sql} or DB migration tooling (Flyway, Liquibase) in the backend.
+  \item If migrations exist (e.g., Flyway), they typically run automatically on startup.
+  \item Alternatively, run provided SQL scripts to create schema and seed data.
 \end{itemize}
 
-\subsection{Appendix D: Code Samples}
-Include key code snippets that demonstrate technical depth (optional):
+\subsubsection{Frontend (Flutter) — build \& run}
+\paragraph{Setup and dependencies}
+\begin{verbatim}
+# change to the Flutter project folder
+cd frontend   # or replace with actual flutter app dir
 
-\begin{lstlisting}[language=Java, caption=Example: Sensor Implementation]
-// Example code snippet
-public class SensorHandler implements SensorEventListener {
-    @Override
-    public void onSensorChanged(SensorEvent event) {
-        // Process sensor data
-    }
-}
-\end{lstlisting}
+# fetch packages
+flutter pub get
+\end{verbatim}
 
-\subsection{Appendix E: Video Demonstration}
+\paragraph{Run on device / emulator}
+\begin{verbatim}
+# list devices
+flutter devices
+
+# run on the default connected device
+flutter run
+
+# run on a specific device id
+flutter run -d <device-id>
+\end{verbatim}
+
+\paragraph{Build release artifacts}
+\begin{verbatim}
+# Android APK
+flutter build apk --release
+
+# Android App Bundle
+flutter build appbundle
+
+# iOS (macOS host with Xcode)
+flutter build ios --release
+
+# Web
+flutter build web
+\end{verbatim}
+
+\paragraph{Backend API endpoint configuration}
+The Flutter app will call the backend API. Locate where the base API URL is configured (common places: \texttt{lib/constants.dart}, environment files, or flavors). Example replacements:
+\begin{verbatim}
+# in development, point to local backend
+API_BASE_URL = "http://10.0.2.2:8080"   # Android emulator uses 10.0.2.2 to reach host
+# or from host to iOS simulator
+API_BASE_URL = "http://localhost:8080"
+\end{verbatim}
+
+\subsubsection{Running both locally}
+Open two terminals:
+
+\begin{enumerate}
+  \item Terminal A: start the backend (see Section 3).
+  \item Terminal B: start the Flutter app (see Section 4).
+\end{enumerate}
+
+For the Flutter app, it's usually easiest to run locally (not containerized), but you can serve the web build via an nginx container if desired.
+
+\subsubsection{Tests}
+\begin{itemize}
+  \item Backend: run \texttt{./mvnw test} or \texttt{./gradlew test}.
+  \item Flutter: run \texttt{flutter test}.
+\end{itemize}
+
+\subsubsection{Helpful commands summary}
+\begin{verbatim}
+# repo root
+git clone https://github.com/Cynwell-Liao/parkpie.git
+cd parkpie
+
+# find modules
+find . -maxdepth 3 -name "pubspec.yaml" -o -name "build.gradle" -o -name "pom.xml"
+
+# backend
+cd <backend-dir>
+./mvnw spring-boot:run   # OR ./gradlew bootRun
+# OR
+./mvnw clean package
+java -jar target/*.jar
+
+# frontend
+cd <flutter-dir>
+flutter pub get
+flutter run
+flutter build apk
+\end{verbatim}
+
+
+\subsection{Itemised Contributions}
+
+Deliverables for the subject, beside the app
+
+\begin{itemize}
+    \item Mid-semester report: Khue
+    \item Video: Tan \& Cynwell (post-production), everyone (recording)
+    \item Final report: Khue, Zhuofei, Gin (refine), everyone (writing for their part)
+\end{itemize}
+
+Itemised contributions to the app are collected from Jira Agile management tool.
+
+\newcommand{\tagbox}[2]{\colorbox{#1!20}{\strut\small\textsf{#2}}\hspace{6pt}}
+
+\nopagebreak
+\begin{tcolorbox}[
+  colback=white,
+  colframe=black!20,
+  boxrule=0.8pt,
+  arc=2mm,
+  boxsep=4pt,
+  left=3pt,
+  right=3pt,
+  before skip=10pt,
+  title=Itemised contributions (from Jira backlog),
+  breakable  % Allows the box to break across pages
+]
+
+\renewcommand{\arraystretch}{1.15}
+\small  % Slightly smaller font for better fitting
+
+\begin{tabularx}{\linewidth}{@{}l >{\raggedright\arraybackslash}X@{}}
+\toprule
+
+\textbf{Cynwell} &
+\tagbox{blue}{MAP} -- Design database to store parking location \& restriction \\
+& \tagbox{gray}{MISC} -- Implement CI pipeline for GitHub \\
+& \tagbox{gray}{MISC} -- Set up admin dashboard for back-end monitoring and database updating \\
+& \tagbox{blue}{MAP} -- Prompt engineer for parking sign \\
+& \tagbox{green}{AVAIL} -- Design database for availability information \\
+& \tagbox{orange}{CAMERA} -- Override duplicate pins \\
+& \tagbox{magenta}{TIMER} -- Generate API for restriction duration \\
+\addlinespace[4pt]
+
+\textbf{Kwan} &
+\tagbox{blue}{MAP} -- Locate parking on map \\
+& \tagbox{green}{AVAIL} -- Query City of Melbourne parking sensor data in real-time \\
+& \tagbox{blue}{MAP} -- Display parking restriction as pin on map \\
+& \tagbox{blue}{MAP} -- Implement caching of map information \\
+& \tagbox{blue}{MAP} -- Implement filter function \\
+& \tagbox{blue}{MAP} -- Generate API links for segment, filter, session \\
+& \tagbox{green}{AVAIL} -- Precompute coordinates for segment on back-end \\
+\addlinespace[4pt]
+
+\textbf{Tan} &
+\tagbox{orange}{CAMERA} -- Implement camera screen \\
+& \tagbox{green}{AVAIL} -- Detect car Bluetooth connection for parking status detection \\
+& \tagbox{magenta}{TIMER} -- Design UI flow for timer function \\
+& \tagbox{orange}{CAMERA} -- Design UI flow for camera function \\
+& \tagbox{blue}{MAP} -- Design UI flow for parking restrictio \\
+\addlinespace[4pt]
+
+\textbf{Zhuofei} &
+\tagbox{blue}{MAP} -- Set-up cloud for database \\
+& \tagbox{green}{AVAIL} -- Enhance accuracy of accelerometer sensor for parking status detection \\
+& \tagbox{green}{AVAIL} -- Enhance accuracy of Bluetooth sensor for parking status detection \\
+& \tagbox{green}{AVAIL} -- Use GPS sensor to calculate velocity for parking status detection \\
+& \tagbox{green}{AVAIL} -- Implement the sensor fusion mechanism \\
+\addlinespace[4pt]
+
+\textbf{Gin} &
+\tagbox{orange}{CAMERA} -- Upload photo to cloud \\
+& \tagbox{green}{AVAIL} -- Enhance accuracy of GPS sensor for parking status detection \& parking sign recognition \\
+& \tagbox{blue}{MAP} -- Create segment map for traffic availability \\
+\addlinespace[4pt]
+
+\textbf{Khue} &
+\tagbox{blue}{MAP} -- Integrate map plug-in for display \\
+& \tagbox{orange}{CAMERA} -- Connect Gemini for parking sign interpretation \\
+& \tagbox{green}{TIMER} -- Create interface to record `parked' \\
+& \tagbox{green}{AVAIL} -- Implement gyroscope sensor for parking status detection \\
+& \tagbox{blue}{MAP} -- Design user interface flow for search and filter function \\
+& \tagbox{green}{AVAIL} -- Integrate session from API to timer interface \\
+
+\bottomrule
+\end{tabularx}
+
+\end{tcolorbox}
+
+
+
+\subsection{Video Demonstration}
 Video demonstration link: \url{https://youtu.be/your-video-link}
