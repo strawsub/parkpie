@@ -9,10 +9,10 @@ String resolveApiBaseUrl() {
     return fromEnv;
   }
   if (kIsWeb) {
-    return 'http://localhost:8081';
+    return 'http://localhost:8080';
   }
   if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-    return 'http://10.0.2.2:8081';
+    return 'http://10.0.2.2:8080';
   }
   return 'https://parkpie-90018.azurewebsites.net';
 }
