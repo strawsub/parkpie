@@ -156,7 +156,10 @@ class _FilterSheetState extends State<_FilterSheet> {
                       Container(
                         padding: EdgeInsets.all(18),
                         decoration: BoxDecoration(
-                          color: AppColors.primaryLight,
+                          border: Border.all(
+                            color: AppColors.border,
+                            width: 1,
+                          ),
                           borderRadius: BorderRadius.circular(Radii.card),
                         ),
                         child: Column(
@@ -239,7 +242,10 @@ class _FilterSheetState extends State<_FilterSheet> {
                       Container(
                         padding: EdgeInsets.all(18),
                         decoration: BoxDecoration(
-                          color: AppColors.primaryLight,
+                          border: Border.all(
+                            color: AppColors.border,
+                            width: 1,
+                          ),
                           borderRadius: BorderRadius.circular(Radii.card),
                         ),
                         child: Column(
@@ -309,7 +315,10 @@ class _FilterSheetState extends State<_FilterSheet> {
                       Container(
                         padding: EdgeInsets.all(18),
                         decoration: BoxDecoration(
-                          color: AppColors.primaryLight,
+                          border: Border.all(
+                            color: AppColors.border,
+                            width: 1,
+                          ),
                           borderRadius: BorderRadius.circular(Radii.card),
                         ),
                         child: Column(
@@ -344,6 +353,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                               children: [
                                 // Start Time
                                 Expanded(
+                                  flex: 2, // Added flex: 2 for smaller width
                                   child: InkWell(
                                     onTap: _pickTime,
                                     borderRadius: BorderRadius.circular(8),
@@ -386,6 +396,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                                 const SizedBox(width: 12),
                                 // Date
                                 Expanded(
+                                  flex: 3, 
                                   child: InkWell(
                                     onTap: _pickDate,
                                     borderRadius: BorderRadius.circular(8),
