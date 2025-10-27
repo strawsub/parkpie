@@ -5,45 +5,45 @@ The style file: ieeetr.bst
 Database file #1: references.bib
 Warning--I didn't find a database entry for "vaiana2017"
 Warning--I didn't find a database entry for "IEEE_KalmanGPS"
-You've used 7 entries,
+You've used 8 entries,
             1876 wiz_defined-function locations,
-            505 strings with 4259 characters,
-and the built_in function-call counts, 1055 in all, are:
-= -- 94
-> -- 38
+            512 strings with 4406 characters,
+and the built_in function-call counts, 1326 in all, are:
+= -- 125
+> -- 42
 < -- 0
-+ -- 17
-- -- 10
-* -- 48
-:= -- 160
-add.period$ -- 7
-call.type$ -- 7
-change.case$ -- 8
++ -- 19
+- -- 11
+* -- 65
+:= -- 196
+add.period$ -- 8
+call.type$ -- 8
+change.case$ -- 9
 chr.to.int$ -- 0
-cite$ -- 7
-duplicate$ -- 46
-empty$ -- 125
-format.name$ -- 10
-if$ -- 261
+cite$ -- 8
+duplicate$ -- 61
+empty$ -- 152
+format.name$ -- 11
+if$ -- 329
 int.to.chr$ -- 0
-int.to.str$ -- 7
-missing$ -- 1
-newline$ -- 24
-num.names$ -- 7
-pop$ -- 39
+int.to.str$ -- 8
+missing$ -- 2
+newline$ -- 27
+num.names$ -- 8
+pop$ -- 41
 preamble$ -- 1
 purify$ -- 0
 quote$ -- 0
-skip$ -- 41
+skip$ -- 52
 stack$ -- 0
-substring$ -- 12
-swap$ -- 13
+substring$ -- 36
+swap$ -- 20
 text.length$ -- 0
 text.prefix$ -- 0
 top$ -- 0
 type$ -- 0
 warning$ -- 0
-while$ -- 8
-width$ -- 8
-write$ -- 56
+while$ -- 12
+width$ -- 9
+write$ -- 66
 (There were 2 warnings)

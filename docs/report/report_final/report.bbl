@@ -21,4 +21,7 @@ B.~Merminod, ``The use of {{Kalman}} filters in {{GPS}} navigation ({{UNISURV S3
 \bibitem{road_segment_vic}
 {Victorian Government}, ``Road segment - victorian government data directory,'' 2025.
 
+\bibitem{kalman1960}
+R.~E. Kalman, ``A new approach to linear filtering and prediction problems,'' {\em Transactions of the ASME--Journal of Basic Engineering}, vol.~82, pp.~35--45, 1960.
+
 \end{thebibliography}

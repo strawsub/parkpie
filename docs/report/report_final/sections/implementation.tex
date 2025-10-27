@@ -231,7 +231,7 @@ The following design decisions have been made:
 
 \paragraph{Kalman filter}
 
-Kalman filtering is applied to both GPS and inertial measurement unit (IMU) data to reduce noise and produce smoother state estimates. The filter recursively combines prior estimates with new sensor readings using a \textit{predict-update} cycle based on the classical discrete-time Kalman formulation.
+Kalman filtering \cite{kalman1960} is applied to both GPS and inertial measurement unit (IMU) data to reduce noise and produce smoother state estimates. The filter recursively combines prior estimates with new sensor readings using a \textit{predict-update} cycle based on the classical discrete-time Kalman formulation.
 
 For each coordinate $(x, y)$ representing longitude and latitude, the estimated state is updated as:
 \[
