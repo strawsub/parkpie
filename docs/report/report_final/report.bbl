@@ -1,3 +1,24 @@
-\begin{thebibliography}{}
+\begin{thebibliography}{1}
+
+\bibitem{khan2014}
+A.~M. Khan, A.~Tufail, A.~M. Khattak, and T.~H. Laine, ``Activity {{Recognition}} on {{Smartphones}} via {{Sensor-Fusion}} and {{KDA-Based SVMs}},'' {\em International Journal of Distributed Sensor Networks}, vol.~10, p.~503291, May 2014.
+
+\bibitem{merminod1989}
+B.~Merminod, ``The use of {{Kalman}} filters in {{GPS}} navigation ({{UNISURV S35}}),'' tech. rep., School of Surveying, University of New South Wales, 1989.
+
+\bibitem{onstreet_parking_bays}
+{City of Melbourne}, ``On-street parking bays (segments + bays),'' 2025.
+
+\bibitem{paystay_restrictions}
+{City of Melbourne}, ``{{PayStay}} parking restrictions,'' 2025.
+
+\bibitem{paystay_zones_segments}
+{City of Melbourne}, ``{{PayStay}} zones linked to street segments,'' 2025.
+
+\bibitem{realtime_availability}
+{City of Melbourne}, ``Realtime availability (on-street parking bay sensors),'' 2025.
+
+\bibitem{road_segment_vic}
+{Victorian Government}, ``Road segment - victorian government data directory,'' 2025.
 
 \end{thebibliography}

@@ -17,7 +17,7 @@ The solution employs a collaborative approach where users both contribute to and
     
     \item \textbf{Automated Parking Timer} (Figure~\ref{fig:map_screen}): Manual parking timers require users to remember to set them and estimate their allowed duration. Our solution automates this process by detecting when a user has parked (using GPS, gyroscope, accelerometer and bluetooth sensors) and prompting for confirmation. Upon confirmation, the app automatically retrieves the applicable parking restrictions for that specific location, day, and time, then initiates a countdown timer. Push notifications alert users when their parking time is approaching expiration, with customizable warning intervals. This feature significantly reduces the risk of parking fines due to exceeded time limits.
     
-    \item \textbf{Real-Time Availability Information} (Figure~\ref{fig:map_screen}): Understanding parking availability before arrival saves time and reduces congestion from circling vehicles. For the City of Melbourne areas where official parking spot data is available through APIs, the app displays availability as a percentage (e.g.,``65\% occupied''). For other suburban and regional areas, the app uses anonymized location data from app users to provide a relative count of detected parked vehicles in specific segments, compared to the global busiest segment. This crowdsourced availability data helps users identify which areas are currently experiencing high parking demand, enabling them to make informed decisions about where to search for parking.
+    \item \textbf{Real-Time Availability Information} (Figure~\ref{fig:map_screen}): Understanding parking availability before arrival saves time and reduces congestion from circling vehicles. For the City of Melbourne areas where official parking spot data is available through APIs, the app displays an indication of the availability using color segments (spectrum from orange to red, red means busy). For other suburban and regional areas, the app uses anonymized location data from app users to provide a relative count of detected parked vehicles in specific segments, compared to the global busiest segment. This crowdsourced availability data helps users identify which areas are currently experiencing high parking demand, enabling them to make informed decisions about where to search for parking.
     
 \end{enumerate}
 
@@ -40,11 +40,3 @@ The solution employs a collaborative approach where users both contribute to and
     \caption{Screenshots of ParkPie main screens}
 
 \end{figure}
-
-\subsection{Target Audience}
-
-The primary target audience comprises urban commuters who regularly navigate parking challenges in metropolitan and developing suburban areas. While the City of Melbourne represents an initial focus area with its complex CBD parking ecosystem, the application's value proposition extends significantly beyond the traditional city center.
-
-As government urban planning initiatives develop suburban activity centers in locations such as Clayton, Box Hill, Glen Waverley, and Footscray, these areas are experiencing increased commercial activity accompanied by parking constraints similar to those traditionally found only in CBDs. The application supports this urban evolution by providing parking intelligence for these emerging hotspots.
-
-Beyond commercial centers, the app serves users at high-demand parking locations including train stations (where commuter parking is highly competitive during peak hours), shopping strips and retail precincts (especially during weekends and meal times), and sports and leisure centers (which experience concentrated demand during events and peak activity times). The flexible, crowdsourced nature of the database means the application remains valuable across diverse suburban and urban contexts, adapting to local parking patterns through community contribution.

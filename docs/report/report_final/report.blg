@@ -1,48 +1,49 @@
 This is BibTeX, Version 0.99d (TeX Live 2025)
 Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
 The top-level auxiliary file: report.aux
-The style file: plain.bst
-I found no \citation commands---while reading file report.aux
+The style file: ieeetr.bst
 Database file #1: references.bib
-You've used 0 entries,
-            2118 wiz_defined-function locations,
-            497 strings with 3995 characters,
-and the built_in function-call counts, 18 in all, are:
-= -- 0
-> -- 0
+Warning--I didn't find a database entry for "vaiana2017"
+Warning--I didn't find a database entry for "IEEE_KalmanGPS"
+You've used 7 entries,
+            1876 wiz_defined-function locations,
+            505 strings with 4259 characters,
+and the built_in function-call counts, 1055 in all, are:
+= -- 94
+> -- 38
 < -- 0
-+ -- 0
-- -- 0
-* -- 2
-:= -- 7
-add.period$ -- 0
-call.type$ -- 0
-change.case$ -- 0
++ -- 17
+- -- 10
+* -- 48
+:= -- 160
+add.period$ -- 7
+call.type$ -- 7
+change.case$ -- 8
 chr.to.int$ -- 0
-cite$ -- 0
-duplicate$ -- 0
-empty$ -- 1
-format.name$ -- 0
-if$ -- 1
+cite$ -- 7
+duplicate$ -- 46
+empty$ -- 125
+format.name$ -- 10
+if$ -- 261
 int.to.chr$ -- 0
-int.to.str$ -- 0
-missing$ -- 0
-newline$ -- 3
-num.names$ -- 0
-pop$ -- 0
+int.to.str$ -- 7
+missing$ -- 1
+newline$ -- 24
+num.names$ -- 7
+pop$ -- 39
 preamble$ -- 1
 purify$ -- 0
 quote$ -- 0
-skip$ -- 1
+skip$ -- 41
 stack$ -- 0
-substring$ -- 0
-swap$ -- 0
+substring$ -- 12
+swap$ -- 13
 text.length$ -- 0
 text.prefix$ -- 0
 top$ -- 0
 type$ -- 0
 warning$ -- 0
-while$ -- 0
-width$ -- 0
-write$ -- 2
-(There was 1 error message)
+while$ -- 8
+width$ -- 8
+write$ -- 56
+(There were 2 warnings)
