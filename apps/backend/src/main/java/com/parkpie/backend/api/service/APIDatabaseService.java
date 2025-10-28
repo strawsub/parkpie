@@ -501,12 +501,32 @@ public class APIDatabaseService {
 
         String sql = """
             SELECT
-                *
+                id,
+                label,
+                ST_Y(location_sw)  AS sw_lat,
+                ST_X(location_sw)  AS sw_lng,
+                ST_Y(location_ne)  AS ne_lat,
+                ST_X(location_ne)  AS ne_lng,
+                ST_Y(location_center) AS center_lat,
+                ST_X(location_center) AS center_lng,
+                created_at
             FROM public.parking_segments
+            ORDER BY id
             """;
 
-        List<Map<String, Object>> rows = jdbc.queryForList(sql);
-        return rows;
+        return jdbc.query(sql, (rs, i) -> {
+            Map<String,Object> m = new LinkedHashMap<>();
+            m.put("id", rs.getInt("id"));
+            m.put("label", rs.getString("label"));
+            m.put("sw_lat", rs.getDouble("sw_lat"));
+            m.put("sw_lng", rs.getDouble("sw_lng"));
+            m.put("ne_lat", rs.getDouble("ne_lat"));
+            m.put("ne_lng", rs.getDouble("ne_lng"));
+            m.put("center_lat", rs.getDouble("center_lat"));
+            m.put("center_lng", rs.getDouble("center_lng"));
+            m.put("created_at", rs.getTimestamp("created_at"));
+            return m;
+        });
     }
 
     // DEBUG: Get all parking signs to investigate database structure

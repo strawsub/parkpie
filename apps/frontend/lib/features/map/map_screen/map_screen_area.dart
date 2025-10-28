@@ -81,10 +81,17 @@ extension MapScreenAreaLogic on MapScreenCubit {
         final id = m['id'].toString();
         final label = m['label']?.toString() ?? 'Segment $id';
 
-        final sw = _ewkbPointToLatLng(m['location_sw']['value'] as String);
-        final ne = _ewkbPointToLatLng(m['location_ne']['value'] as String);
-        final center = _ewkbPointToLatLng(
-          m['location_center']['value'] as String,
+        final sw = LatLng(
+          (m['sw_lat'] as num).toDouble(),
+          (m['sw_lng'] as num).toDouble(),
+        );
+        final ne = LatLng(
+          (m['ne_lat'] as num).toDouble(),
+          (m['ne_lng'] as num).toDouble(),
+        );
+        final center = LatLng(
+          (m['center_lat'] as num).toDouble(),
+          (m['center_lng'] as num).toDouble(),
         );
 
         loaded.add(
