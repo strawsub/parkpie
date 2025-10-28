@@ -72,6 +72,9 @@ class LocationCubit extends Cubit<LocationState> {
           filteredHistory: newFilteredHistory,
         ),
       );
+    },
+    onError: (e) {
+      
     });
   }
 
