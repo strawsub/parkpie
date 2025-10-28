@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:math' as math;
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter/foundation.dart';
 import '../../../services/gps_correction/location_cubit.dart';
 import '../utils.dart';
 import 'gps_speed_event.dart';

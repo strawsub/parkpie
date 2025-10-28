@@ -87,7 +87,7 @@ class PinCubit extends Cubit<PinState> {
       if (forceRefresh) {
         await _deleteCache();
       }
-      final file = await _cacheFile();
+      // final file = await _cacheFile();
       // if (kDebugMode) print('[PinCubit] Cache file: ${file?.path}');
       final lastMod = forceRefresh ? null : await _cacheLastModified();
       // if (kDebugMode) print('[PinCubit] Cache lastModified: $lastMod');

@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:math' show cos, sqrt, asin;
 import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart';
 
 class TimerService {
   final String backendBaseUrl;

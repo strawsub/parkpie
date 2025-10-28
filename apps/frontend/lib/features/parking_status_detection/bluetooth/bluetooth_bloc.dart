@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter/foundation.dart';
 import 'bluetooth_event.dart';
 import 'bluetooth_state.dart';
 import '../utils.dart';

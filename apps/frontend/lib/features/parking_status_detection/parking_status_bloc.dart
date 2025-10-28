@@ -15,7 +15,6 @@ import 'package:frontend/features/parking_status_detection/gps/gps_speed_event.d
 import 'package:frontend/features/parking_status_detection/parking_status_event.dart';
 import 'package:frontend/features/parking_status_detection/parking_status_state.dart';
 import 'package:frontend/features/parking_status_detection/utils.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
 
 class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
   // Sensor blocs

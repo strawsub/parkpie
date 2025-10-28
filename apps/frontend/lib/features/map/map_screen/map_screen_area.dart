@@ -116,7 +116,7 @@ extension MapScreenAreaLogic on MapScreenCubit {
         ),
       );
       _rebuildMarkers();
-    } catch (error, stackTrace) {
+    } catch (error) {
       // debugPrint('Failed to load segments: ${error.runtimeType}: $error');
       // debugPrintStack(stackTrace: stackTrace);
       _emitState(state.copyWith(isLoadingAreas: false));
