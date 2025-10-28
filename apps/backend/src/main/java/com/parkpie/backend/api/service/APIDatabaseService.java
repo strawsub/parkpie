@@ -778,5 +778,64 @@ public class APIDatabaseService {
     }
 
 
+    public boolean isUnderSegment(double lat, double lng) {
+        String sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM public.parking_segments s
+                WHERE ST_Contains(
+                    ST_MakeEnvelope(
+                        ST_X(s.location_sw), ST_Y(s.location_sw),
+                        ST_X(s.location_ne), ST_Y(s.location_ne),
+                        4326
+                    ),
+                    ST_SetSRID(ST_MakePoint(?, ?), 4326)
+                )
+            )
+            """;
+
+        Boolean exists = jdbc.queryForObject(sql, Boolean.class, lng, lat);
+        return Boolean.TRUE.equals(exists);
+    }
+
     
+    public Map<String, Object> generateSegment(double lat, double lng) {
+        double distanceMeters = 1000.0; 
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        if (isUnderSegment(lat, lng)) {
+            result.put("created", false);
+            result.put("reason", "point already covered by existing segment");
+            return result;
+        }
+
+        String sql = """
+            WITH center AS (
+                SELECT ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography AS g
+            ),
+            sw AS (
+                SELECT ST_Project(g, ?, radians(225))::geometry(Point,4326) AS geom FROM center
+            ),
+            ne AS (
+                SELECT ST_Project(g, ?, radians(45))::geometry(Point,4326) AS geom FROM center
+            )
+            INSERT INTO public.parking_segments (label, location_sw, location_ne, location_center)
+            SELECT
+                'SEG_' || to_char(NOW(), 'YYYYMMDD_HH24MISS'),
+                sw.geom,
+                ne.geom,
+                (SELECT g::geometry(Point,4326) FROM center)
+            FROM sw, ne
+            RETURNING id, label,
+                ST_Y(location_sw) AS sw_lat, ST_X(location_sw) AS sw_lng,
+                ST_Y(location_ne) AS ne_lat, ST_X(location_ne) AS ne_lng,
+                ST_Y(location_center) AS c_lat, ST_X(location_center) AS c_lng
+            """;
+
+        Map<String, Object> row = jdbc.queryForMap(sql, lng, lat, distanceMeters, distanceMeters);
+        result.putAll(row);
+        result.put("created", true);
+        return result;
+    }
+
 }

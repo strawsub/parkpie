@@ -276,4 +276,21 @@ public class APIServices {
             }
         }
     }
+
+
+     /**
+     * Creates a segment automatically.
+     *
+     * @param lat latitude in WGS84 decimal degrees
+     * @param lng longitude in WGS84 decimal degrees
+     * @return session payload
+     */
+    @ResponseBody
+    @GetMapping("/api/map/checkandcreatesegment")
+    public Map<String, Object> checkAndCreateSegment(
+            @RequestParam double lat,
+            @RequestParam double lng
+    ) {
+        return dbService.generateSegment(lat, lng);
+    }
 }
