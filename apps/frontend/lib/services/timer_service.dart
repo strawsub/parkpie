@@ -72,7 +72,7 @@ class TimerService {
       }
       return null;
     } catch (e) {
-      debugPrint('Error creating session: $e');
+      // debugPrint('Error creating session: $e');
       return null;
     }
   }
@@ -92,7 +92,7 @@ class TimerService {
       }
       return false;
     } catch (e) {
-      debugPrint('Error deleting session: $e');
+      // debugPrint('Error deleting session: $e');
       return false;
     }
   }
@@ -157,7 +157,7 @@ extension NearbyZones on TimerService {
                 try {
                   return ParkingZone.fromJson(zoneData, lat, lng);
                 } catch (e) {
-                  debugPrint('Error parsing zone: $e');
+                  // debugPrint('Error parsing zone: $e');
                   return null;
                 }
               })
@@ -178,7 +178,7 @@ extension NearbyZones on TimerService {
       }
       return [];
     } catch (e) {
-      debugPrint('Error fetching nearby parking zones: $e');
+      // debugPrint('Error fetching nearby parking zones: $e');
       return [];
     }
   }

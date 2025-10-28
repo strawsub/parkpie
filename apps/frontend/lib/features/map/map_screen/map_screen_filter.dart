@@ -76,7 +76,7 @@ extension MapScreenFilterLogic on MapScreenCubit {
         ],
       );
     } catch (error) {
-      debugPrint('[Filter] Filter error: $error');
+      // debugPrint('[Filter] Filter error: $error');
       _emitState(
         state.copyWith(isApplyingFilter: false),
         commands: [

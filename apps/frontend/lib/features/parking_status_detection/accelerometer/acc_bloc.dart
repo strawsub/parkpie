@@ -47,7 +47,7 @@ class AccBloc extends Bloc<AccEvent, AccState> {
         ));
       },
       onError: (error) {
-        debugPrint('Acc sensor error: $error');
+        // debugPrint('Acc sensor error: $error');
       },
     );
   }

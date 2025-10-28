@@ -429,12 +429,12 @@ if (hasGyroSpike) {
 // Accept bluetooth disconnect even if not fully stopped yet (transitioning)
 
 // DEBUG LOGGING
-debugPrint('=== BLUETOOTH DISCONNECT CHECK ===');
+<!-- debugPrint('=== BLUETOOTH DISCONNECT CHECK ===');
 debugPrint('Current state: StoppedCandidate');
 debugPrint('btVote: ${sensorVotes['bluetooth']}');
 debugPrint('hasBtDisconnect: $hasBtDisconnect');
 debugPrint('All sensor votes: $sensorVotes');
-debugPrint('===================================');
+debugPrint('==================================='); -->
 
 if (hasBtDisconnect) {
   debugPrint('>>> BLUETOOTH DISCONNECT DETECTED - Transitioning to ParkingDetected');

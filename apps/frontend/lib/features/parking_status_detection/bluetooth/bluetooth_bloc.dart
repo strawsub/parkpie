@@ -33,7 +33,7 @@ class BluetoothBloc extends Bloc<BluetoothEvent, BluetoothState> {
         ));
       });
     } catch (e) {
-      debugPrint('Failed to initialize Bluetooth monitoring: $e');
+      // debugPrint('Failed to initialize Bluetooth monitoring: $e');
       // Continue with unknown state
     }
   }
@@ -44,27 +44,27 @@ class BluetoothBloc extends Bloc<BluetoothEvent, BluetoothState> {
   ) {
     SensorVote vote;
 
-    debugPrint('=== BluetoothBloc._onStatusChanged ===');
-    debugPrint('event.isConnected: ${event.isConnected}');
-    debugPrint('_wasConnected: $_wasConnected');
+    // debugPrint('=== BluetoothBloc._onStatusChanged ===');
+    // debugPrint('event.isConnected: ${event.isConnected}');
+    // debugPrint('_wasConnected: $_wasConnected');
 
     if (event.isConnected) {
       // Car connection detected (Bluetooth or CarPlay) - likely driving
       vote = SensorVote.driving;
       _wasConnected = true;
-      debugPrint('CONNECTED → vote: driving, _wasConnected set to true');
+      // debugPrint('CONNECTED → vote: driving, _wasConnected set to true');
     } else if (_wasConnected) {
       // Car connection disconnected after being connected - likely parked
       vote = SensorVote.parked;
-      debugPrint('DISCONNECTED (was connected) → vote: PARKED');
+      // debugPrint('DISCONNECTED (was connected) → vote: PARKED');
     } else {
       // No connection history
       vote = SensorVote.unknown;
-      debugPrint('DISCONNECTED (no history) → vote: unknown');
+      // debugPrint('DISCONNECTED (no history) → vote: unknown');
     }
 
-    debugPrint('Emitting BluetoothConnectionStatus with vote: $vote');
-    debugPrint('=======================================');
+    // debugPrint('Emitting BluetoothConnectionStatus with vote: $vote');
+    // debugPrint('=======================================');
 
     emit(BluetoothConnectionStatus(
       vote: vote,

@@ -63,7 +63,7 @@ extension MapScreenAreaLogic on MapScreenCubit {
     try {
       final resp = await http.get(Uri.parse(endpoint));
       if (resp.statusCode != 200) {
-        debugPrint('Failed to load segments: status ${resp.statusCode}');
+        // debugPrint('Failed to load segments: status ${resp.statusCode}');
         _emitState(state.copyWith(isLoadingAreas: false));
         return;
       }
@@ -110,8 +110,8 @@ extension MapScreenAreaLogic on MapScreenCubit {
       );
       _rebuildMarkers();
     } catch (error, stackTrace) {
-      debugPrint('Failed to load segments: ${error.runtimeType}: $error');
-      debugPrintStack(stackTrace: stackTrace);
+      // debugPrint('Failed to load segments: ${error.runtimeType}: $error');
+      // debugPrintStack(stackTrace: stackTrace);
       _emitState(state.copyWith(isLoadingAreas: false));
     }
   }

@@ -248,15 +248,15 @@ class ParkingBloc extends Bloc<ParkingEvent, ParkingState>{
       // Accept bluetooth disconnect even if not fully stopped yet (transitioning)
 
       // DEBUG LOGGING
-      debugPrint('=== BLUETOOTH DISCONNECT CHECK ===');
-      debugPrint('Current state: StoppedCandidate');
-      debugPrint('btVote: ${sensorVotes['bluetooth']}');
-      debugPrint('hasBtDisconnect: $hasBtDisconnect');
-      debugPrint('All sensor votes: $sensorVotes');
-      debugPrint('===================================');
+      // debugPrint('=== BLUETOOTH DISCONNECT CHECK ===');
+      // debugPrint('Current state: StoppedCandidate');
+      // debugPrint('btVote: ${sensorVotes['bluetooth']}');
+      // debugPrint('hasBtDisconnect: $hasBtDisconnect');
+      // debugPrint('All sensor votes: $sensorVotes');
+      // debugPrint('===================================');
 
       if (hasBtDisconnect) {
-        debugPrint('>>> BLUETOOTH DISCONNECT DETECTED - Transitioning to ParkingDetected');
+        // debugPrint('>>> BLUETOOTH DISCONNECT DETECTED - Transitioning to ParkingDetected');
         _cancelCandidateProgressTimer();
         // No auto-confirm timer - stay in ParkingDetected until user confirms
         return ParkingDetected(

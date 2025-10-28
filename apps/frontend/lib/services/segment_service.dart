@@ -53,7 +53,7 @@ class SegmentService {
       }
       segmentCounts = counts;
     } else {
-      debugPrint('Failed to load counts from API');
+      // debugPrint('Failed to load counts from API');
     }
   }
 

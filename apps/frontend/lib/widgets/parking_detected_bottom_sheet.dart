@@ -61,7 +61,7 @@ class _ParkingDetectedBottomSheetState extends State<ParkingDetectedBottomSheet>
         });
       }
     } catch (e) {
-      debugPrint('Error fetching nearby zones: $e');
+      // debugPrint('Error fetching nearby zones: $e');
       if (mounted) {
         setState(() {
           _nearbyZones = [];

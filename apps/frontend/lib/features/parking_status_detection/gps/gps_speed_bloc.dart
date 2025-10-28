@@ -93,7 +93,7 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
         _isInitializing = false;
         // Note: Cannot dynamically change location settings in Geolocator stream
         // This flag is used for logic adjustments only
-        debugPrint('GPS initialization complete, switching to normal mode');
+        // debugPrint('GPS initialization complete, switching to normal mode');
       }
     }
 
@@ -113,7 +113,7 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
     final isReliable = (acc == null) || (acc <= _config.maxAccuracyThreshold);
 
     if (!isReliable) {
-      debugPrint('GPS sample rejected: accuracy ${acc.toStringAsFixed(1)}m > ${_config.maxAccuracyThreshold}m');
+      // debugPrint('GPS sample rejected: accuracy ${acc.toStringAsFixed(1)}m > ${_config.maxAccuracyThreshold}m');
       return;
     }
 
@@ -162,7 +162,7 @@ class GpsSpeedBloc extends Bloc<GpsSpeedEvent, GpsSpeedState> {
         : _maxReasonableSpeed;  // Good GPS: max 50 m/s (~180 km/h)
 
     if (speed < _minReasonableSpeed || speed > maxSpeedForAccuracy) {
-      debugPrint('GPS speed outlier discarded: ${speed.toStringAsFixed(2)} m/s (accuracy: ${event.horizAcc?.toStringAsFixed(1) ?? "null"}m)');
+      // debugPrint('GPS speed outlier discarded: ${speed.toStringAsFixed(2)} m/s (accuracy: ${event.horizAcc?.toStringAsFixed(1) ?? "null"}m)');
       _window.removeLast(); // Remove the outlier sample
       return;
     }

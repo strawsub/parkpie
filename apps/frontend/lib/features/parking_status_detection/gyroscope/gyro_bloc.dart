@@ -42,7 +42,7 @@ class GyroBloc extends Bloc<GyroEvent, GyroState> {
         ));
       },
       onError: (error) {
-        debugPrint('Gyroscope sensor error: $error');
+        // debugPrint('Gyroscope sensor error: $error');
       },
     );
   }

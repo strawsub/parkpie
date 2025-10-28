@@ -277,9 +277,9 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     if (sessionId != null) {
       final deleted = await _timerService.deleteSession(sessionId: sessionId);
       if (deleted) {
-        debugPrint('Session deleted: ID $sessionId');
+        // debugPrint('Session deleted: ID $sessionId');
       } else {
-        debugPrint('Failed to delete session: ID $sessionId');
+        // debugPrint('Failed to delete session: ID $sessionId');
       }
     }
 
@@ -419,9 +419,9 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     if (sessionId != null) {
       final deleted = await _timerService.deleteSession(sessionId: sessionId);
       if (deleted) {
-        debugPrint('Expired session deleted: ID $sessionId');
+        // debugPrint('Expired session deleted: ID $sessionId');
       } else {
-        debugPrint('Failed to delete expired session: ID $sessionId');
+        // debugPrint('Failed to delete expired session: ID $sessionId');
       }
     }
   }
