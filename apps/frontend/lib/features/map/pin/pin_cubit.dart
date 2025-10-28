@@ -149,4 +149,15 @@ class PinCubit extends Cubit<PinState> {
       }
     }
   }
+
+  Future<void> groupPin(double lat, double lng) async {
+    final apiUrl =
+        '${_apiBase()}/api/map/checkandcreatesegment?lat=$lat&lng=$lng';
+    emit(PinLoading());
+    try {
+      await http.get(Uri.parse(apiUrl));
+    } catch (e) {
+      emit(PinError('Error grouping pin'));
+    }
+  }
 }

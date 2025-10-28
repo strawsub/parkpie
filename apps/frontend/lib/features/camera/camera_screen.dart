@@ -519,6 +519,7 @@ class _CameraViewState extends State<CameraView> {
             context.read<TimerBloc>().add(
               SetKnownZone(zoneNumber: state.zoneNumber),
             );
+            context.read<PinCubit>().groupPin(state.latitude, state.longitude);
             context.read<PinCubit>().loadPins(forceRefresh: true);
           } else if (state is CameraCanceled) {
             _hasTriggeredCamera = false;

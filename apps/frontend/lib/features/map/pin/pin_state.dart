@@ -12,6 +12,12 @@ class PinLoaded extends PinState {
   PinLoaded(this.pins);
 }
 
+class PinGrouped extends PinState {
+  final Map<String, dynamic> data;
+
+  PinGrouped(this.data);
+}
+
 class PinError extends PinState {
   final String message;
   PinError(this.message);
