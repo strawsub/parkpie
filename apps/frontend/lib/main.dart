@@ -30,11 +30,16 @@ import 'l10n/app_localizations.dart';
 import 'features/settings/language/language_cubit.dart';
 import 'widgets/tab_bar.dart';
 import 'widgets/parking_detected_bottom_sheet.dart';
+import 'widgets/offline_banner.dart';
 import 'services/timer_service.dart';
 import 'services/api_config.dart';
+import 'services/network_service.dart';
 import 'theme/app_theme.dart';
+import 'dart:async';
 
 void main() {
+  // Initialize network monitoring
+  NetworkService().startMonitoring();
   runApp(const ParkPieApp());
 }
 
@@ -105,6 +110,29 @@ class HomeContainer extends StatefulWidget {
 class _HomeContainerState extends State<HomeContainer> {
   bool _isParkingDialogShowing = false;
   bool _confirmedParking = false;  // Track if user confirmed (vs dismissed/cancelled)
+  bool _isOnline = true;
+  StreamSubscription<bool>? _networkSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    // Listen to network connectivity changes
+    _networkSubscription = NetworkService().connectivityStream.listen((isOnline) {
+      if (mounted) {
+        setState(() {
+          _isOnline = isOnline;
+        });
+      }
+    });
+    // Get initial connectivity state
+    _isOnline = NetworkService().isOnline;
+  }
+
+  @override
+  void dispose() {
+    _networkSubscription?.cancel();
+    super.dispose();
+  }
 
   void _handleNavTap(BuildContext context, int index, int currentIndex) {
     // Regular navigation for all tabs
@@ -140,7 +168,18 @@ class _HomeContainerState extends State<HomeContainer> {
       child: BlocBuilder<NavigationCubit, int>(
         builder: (context, selectedIndex) {
           return Scaffold(
-            body: _getSelectedView(selectedIndex),
+            body: Stack(
+              children: [
+                _getSelectedView(selectedIndex),
+                if (!_isOnline)
+                  const Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: OfflineBanner(),
+                  ),
+              ],
+            ),
             bottomNavigationBar: BottomTabBar(
               currentIndex: selectedIndex,
               onTap: (index) => _handleNavTap(context, index, selectedIndex),
