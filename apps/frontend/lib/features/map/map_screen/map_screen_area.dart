@@ -203,7 +203,7 @@ extension MapScreenAreaLogic on MapScreenCubit {
         point.longitude <= ne.longitude;
   }
 
-  Set<Marker> _prepareMarkers(List<Pin> pins) {
+  Future<Set<Marker>> _prepareMarkers(List<Pin> pins) async {
     if (state.filterActive) {
       return state.filteredRawMarkers;
     }
@@ -221,16 +221,15 @@ extension MapScreenAreaLogic on MapScreenCubit {
     // Show cluster markers when zoomed out
     if (state.areas.isNotEmpty) {
       final grouped = _groupPinsByArea(pins);
-      final markers = <Marker>{};
+      final futures = <Future<Marker>>[];
       for (final entry in grouped.entries) {
         final area = entry.key;
         final relatedPins = entry.value;
         if (relatedPins.isEmpty) continue;
-        markers.add(_buildAreaMarker(area, relatedPins.length));
+        futures.add(_buildAreaMarker(area, relatedPins.length));
       }
-      if (markers.isNotEmpty) {
-        return markers;
-      }
+      final markers = await Future.wait(futures);
+      return markers.toSet();
     }
 
     // Fallback: show average marker
@@ -255,16 +254,15 @@ extension MapScreenAreaLogic on MapScreenCubit {
     }).toSet();
   }
 
-  Marker _buildAreaMarker(AreaRect area, int count) {
-    final icon = _getClusterIcon(count);
-
+  Future<Marker> _buildAreaMarker(AreaRect area, int count) async {
+    final icon = await _createClusterIcon(count);
     return Marker(
       markerId: MarkerId('area_${area.id}'),
       position: area.center,
       icon: icon,
       infoWindow: InfoWindow(
-        title: '${area.label} - $count',
-        snippet: 'Tap to zoom in',
+        title: '$count spots',
+        snippet: "Tap to zoom in",
         onTap: () {
           if (state.isAnimating) return;
           _animateCamera(area.center, zoom: state.pinZoomThreshold + 1);

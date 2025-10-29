@@ -23,8 +23,8 @@ class MapScreenCubit extends Cubit<MapScreenState> {
     _rebuildMarkers();
   }
 
-  void _rebuildMarkers() {
-    final base = _prepareMarkers(_latestPins);
+Future<void> _rebuildMarkers() async {
+    final base = await _prepareMarkers(_latestPins);
     final merged = _mergeWithSearch(base);
 
     emit(state.copyWith(
