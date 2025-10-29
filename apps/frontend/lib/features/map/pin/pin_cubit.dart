@@ -144,8 +144,9 @@ class PinCubit extends Cubit<PinState> {
         }
         emit(PinLoaded(_pinsFromJsonList(cached)));
       } else {
-        // if (kDebugMode) print('[PinCubit] No cache available -> error');
-        emit(PinError(e.toString()));
+        // if (kDebugMode) print('[PinCubit] No cache available -> showing empty');
+        // Show empty list instead of error to gracefully handle offline state
+        emit(PinLoaded(const []));
       }
     }
   }
@@ -153,11 +154,12 @@ class PinCubit extends Cubit<PinState> {
   Future<void> groupPin(double lat, double lng) async {
     final apiUrl =
         '${_apiBase()}/api/map/checkandcreatesegment?lat=$lat&lng=$lng';
-    emit(PinLoading());
     try {
       await http.get(Uri.parse(apiUrl));
+      // Silently succeed - no need to emit state change
     } catch (e) {
-      emit(PinError('Error grouping pin'));
+      // Silently fail - network errors are handled by offline banner
+      // if (kDebugMode) print('[PinCubit] groupPin failed: $e');
     }
   }
 }

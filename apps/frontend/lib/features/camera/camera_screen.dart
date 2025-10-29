@@ -249,6 +249,9 @@ class _CameraViewState extends State<CameraView> {
   Widget _buildErrorView(String message) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
+    final messageLower = message.toLowerCase();
+    final isCameraPermissionError = messageLower.contains('camera permission');
+    final isLocationPermissionError = messageLower.contains('location permission');
 
     return Container(
       color: AppColors.cameraOverlay,
@@ -263,7 +266,11 @@ class _CameraViewState extends State<CameraView> {
                 Icon(Icons.error_outline, color: AppColors.surface, size: 72),
                 SizedBox(height: Spacing.md),
                 Text(
-                  l10n.getString('camera.errorTitle'),
+                  isCameraPermissionError
+                    ? "We can't access your camera"
+                    : isLocationPermissionError
+                      ? "Please grant the location permission for contributing this sign"
+                      : l10n.getString('camera.errorTitle'),
                   textAlign: TextAlign.center,
                   style: theme.textTheme.headlineMedium?.copyWith(
                     color: AppColors.surface,
@@ -278,17 +285,19 @@ class _CameraViewState extends State<CameraView> {
                   ),
                 ),
                 SizedBox(height: Spacing.xl + Spacing.xs),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      context.read<CameraBloc>().add(PhotoRetaken());
-                    },
-                    icon: const Icon(Icons.camera_alt_outlined),
-                    label: Text(l10n.getString('camera.retake')),
+                if (!isCameraPermissionError && !isLocationPermissionError)
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        context.read<CameraBloc>().add(PhotoRetaken());
+                      },
+                      icon: const Icon(Icons.camera_alt_outlined),
+                      label: Text(l10n.getString('camera.retake')),
+                    ),
                   ),
-                ),
-                SizedBox(height: Spacing.sm),
+                if (!isCameraPermissionError && !isLocationPermissionError)
+                  SizedBox(height: Spacing.sm),
                 TextButton(
                   onPressed: () {
                     context.read<CameraBloc>().add(CameraClosed());
@@ -505,17 +514,7 @@ class _CameraViewState extends State<CameraView> {
       backgroundColor: AppColors.cameraOverlay,
       body: BlocConsumer<CameraBloc, CameraState>(
         listener: (context, state) {
-          final messenger = ScaffoldMessenger.of(context);
-
-          if (state is CameraError) {
-            messenger.showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Unable to access the camera. Please check permissions or try again.',
-                ),
-              ),
-            );
-          } else if (state is SignAnalysisSuccess) {
+          if (state is SignAnalysisSuccess) {
             context.read<TimerBloc>().add(
               SetKnownZone(zoneNumber: state.zoneNumber),
             );

@@ -266,7 +266,29 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
         ),
       );
     } catch (e) {
-      emit(CameraError("Sign analysis failed"));
+      final errorMessage = e.toString().toLowerCase();
+
+      // Check for location permission errors
+      if (errorMessage.contains('location')) {
+        emit(CameraError("Please grant location permission to contribute this sign"));
+        return;
+      }
+
+      // Check for network-related errors and suppress technical details
+      if (errorMessage.contains('socket') ||
+          errorMessage.contains('network') ||
+          errorMessage.contains('connection') ||
+          errorMessage.contains('timeout') ||
+          errorMessage.contains('failed host lookup') ||
+          errorMessage.contains('no internet') ||
+          errorMessage.contains('http')) {
+        // Network errors are handled by the offline banner, don't show technical details
+        emit(CameraError("Unable to process sign. Please check your connection and try again."));
+        return;
+      }
+
+      // For other errors (like AI couldn't read the sign), show generic message
+      emit(CameraError("AI returned no text for this sign"));
     }
   }
 
