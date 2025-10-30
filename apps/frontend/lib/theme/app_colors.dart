@@ -31,7 +31,7 @@ class AppColors {
   static const Color backgroundLight = Color(0xFFF5F5F5); // grey.shade50
   static const Color surfaceVariant = Color(0xFFF5F5F5);
 
-  // Opacity variants (replace inline .withValues(alpha: ...))
+  // Opacity variants
   static final Color shadow = Colors.black.withValues(alpha: 0.3);
   static final Color shadowLight = Colors.black.withValues(alpha: 0.1);
   static final Color overlay = Colors.black.withValues(alpha: 0.5);

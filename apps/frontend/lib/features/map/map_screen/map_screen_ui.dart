@@ -462,10 +462,10 @@ class _MapScreenViewState extends State<_MapScreenView> {
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.2),
+                  color: Colors.blue.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.language, color: AppColors.primary),
+                child: Icon(Icons.language, color: Colors.blue),
               ),
               title: Text(sheetContext.l10n.getString('language.settingsTitle')),
               subtitle: Text(sheetContext.l10n.getString('language.settingsSubtitle')),
@@ -483,10 +483,10 @@ class _MapScreenViewState extends State<_MapScreenView> {
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.2),
+                  color: Colors.blueGrey.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.privacy_tip_outlined, color: AppColors.primary),
+                child: Icon(Icons.privacy_tip_outlined, color: Colors.blueGrey),
               ),
               title: Text(sheetContext.l10n.getString('privacy.settingsTitle')),
               subtitle: Text(sheetContext.l10n.getString('privacy.settingsSubtitle')),
