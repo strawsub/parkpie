@@ -15,6 +15,10 @@ class _MapScreenViewState extends State<_MapScreenView> {
   // Debug settings visibility toggle - set to false in production !!!
   static const bool _showDebugSettings = true;
 
+  // Triple-click detection for debug menu
+  int _iconClickCount = 0;
+  DateTime? _lastIconClickTime;
+
   @override
   void initState() {
     super.initState();
@@ -30,6 +34,26 @@ class _MapScreenViewState extends State<_MapScreenView> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _handleIconClick() {
+    final now = DateTime.now();
+    
+    // Reset counter if more than 1 second has passed since last click
+    if (_lastIconClickTime == null || 
+        now.difference(_lastIconClickTime!) > const Duration(seconds: 1)) {
+      _iconClickCount = 1;
+    } else {
+      _iconClickCount++;
+    }
+    
+    _lastIconClickTime = now;
+    
+    // Show debug menu on triple click
+    if (_iconClickCount == 3 && _showDebugSettings) {
+      _showDebugMenu(context);
+      _iconClickCount = 0; // Reset counter
+    }
   }
 
   @override
@@ -215,7 +239,10 @@ class _MapScreenViewState extends State<_MapScreenView> {
             children: [
               Padding(
                 padding: const EdgeInsets.only(right: 12.0),
-                child: Image.asset('assets/icon.png', width: 28, height: 28),
+                child: GestureDetector(
+                  onTap: _handleIconClick,
+                  child: Image.asset('assets/icon.png', width: 28, height: 28),
+                ),
               ),
               Expanded(
                 child: TextField(
@@ -274,13 +301,130 @@ class _MapScreenViewState extends State<_MapScreenView> {
     );
   }
 
-  Future<void> _showSettingsMenu(BuildContext context) async {
+  Future<void> _showDebugMenu(BuildContext context) async {
     // Capture BLoC references before showing bottom sheet
     final mapCubit = context.read<MapScreenCubit>();
     final searchCubit = context.read<SearchCubit>();
     final pinCubit = context.read<PinCubit>();
     final parkingBloc = context.read<ParkingBloc>();
 
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Drag handle
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // Title
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Text(
+                'Debug Settings',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+            ),
+            const Divider(height: 1),
+
+            // Debug options
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.refresh, color: AppColors.primary),
+              ),
+              title: const Text('Reload Pins'),
+              subtitle: const Text('Refresh all parking data'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                mapCubit.clearFilter();
+                searchCubit.clearSearch();
+                pinCubit.loadPins(forceRefresh: true);
+              },
+            ),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade100,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.local_parking, color: Colors.orange.shade700),
+              ),
+              title: const Text('Test Parking Detection'),
+              subtitle: const Text('Trigger parking detection popup'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                parkingBloc.add(const TriggerTestParkingDetection());
+              },
+            ),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.purple.shade100,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.bug_report, color: Colors.purple.shade700),
+              ),
+              title: const Text('Debug Screen'),
+              subtitle: const Text('Open debug information screen'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => MultiBlocProvider(
+                      providers: [
+                        BlocProvider.value(value: pinCubit),
+                        BlocProvider.value(value: parkingBloc),
+                      ],
+                      child: const DebugScreen(),
+                    ),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade100,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.remove_red_eye, color: Colors.blue.shade700),
+              ),
+              title: const Text('Toggle Areas Debug'),
+              subtitle: const Text('Show/hide area polygons on map'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                mapCubit.toggleAreasDebug();
+              },
+            ),
+            SizedBox(height: MediaQuery.of(sheetContext).padding.bottom + 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showSettingsMenu(BuildContext context) async {
     await showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -313,159 +457,54 @@ class _MapScreenViewState extends State<_MapScreenView> {
             ),
             const Divider(height: 1),
 
-            // Scrollable content (with max height constraint for when debug settings are shown)
-            ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.7,
+            // Production Settings only
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.language, color: AppColors.primary),
               ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Production Settings (always visible)
-                    ListTile(
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(Icons.language, color: AppColors.primary),
-                      ),
-                      title: Text(sheetContext.l10n.getString('language.settingsTitle')),
-                      subtitle: Text(sheetContext.l10n.getString('language.settingsSubtitle')),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () {
-                        Navigator.pop(sheetContext);
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const LanguageSelectionPage(),
-                          ),
-                        );
-                      },
-                    ),
-                    ListTile(
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(Icons.privacy_tip_outlined, color: AppColors.primary),
-                      ),
-                      title: Text(sheetContext.l10n.getString('privacy.settingsTitle')),
-                      subtitle: Text(sheetContext.l10n.getString('privacy.settingsSubtitle')),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () {
-                        Navigator.pop(sheetContext);
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const PrivacyDisclosurePage(),
-                          ),
-                        );
-                      },
-                    ),
-
-                    // Debug options (only shown if _showDebugSettings is true)
-                    if (_showDebugSettings) ...[
-                      const Divider(height: 1),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: Text(
-                          'Debug Settings',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey),
-                        ),
-                      ),
-                      ListTile(
-                        leading: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.2),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(Icons.refresh, color: AppColors.primary),
-                        ),
-                        title: const Text('Reload Pins'),
-                        subtitle: const Text('Refresh all parking data'),
-                        onTap: () {
-                          Navigator.pop(sheetContext);
-                          mapCubit.clearFilter();
-                          searchCubit.clearSearch();
-                          pinCubit.loadPins(forceRefresh: true);
-                        },
-                      ),
-                      ListTile(
-                        leading: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.shade100,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(Icons.local_parking, color: Colors.orange.shade700),
-                        ),
-                        title: const Text('Test Parking Detection'),
-                        subtitle: const Text('Trigger parking detection popup'),
-                        onTap: () {
-                          Navigator.pop(sheetContext);
-                          parkingBloc.add(const TriggerTestParkingDetection());
-                        },
-                      ),
-                      ListTile(
-                        leading: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.purple.shade100,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(Icons.bug_report, color: Colors.purple.shade700),
-                        ),
-                        title: const Text('Debug Screen'),
-                        subtitle: const Text('Open debug information screen'),
-                        onTap: () {
-                          Navigator.pop(sheetContext);
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => MultiBlocProvider(
-                                providers: [
-                                  BlocProvider.value(value: pinCubit),
-                                  BlocProvider.value(value: parkingBloc),
-                                ],
-                                child: const DebugScreen(),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      ListTile(
-                        leading: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade100,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(Icons.remove_red_eye, color: Colors.blue.shade700),
-                        ),
-                        title: const Text('Toggle Areas Debug'),
-                        subtitle: const Text('Show/hide area polygons on map'),
-                        onTap: () {
-                          Navigator.pop(sheetContext);
-                          mapCubit.toggleAreasDebug();
-                        },
-                      ),
-                      SizedBox(height: MediaQuery.of(sheetContext).padding.bottom + 16),
-                    ],  // End of debug settings if block
-
-                    // Minimal bottom padding when debug settings are hidden
-                    if (!_showDebugSettings)
-                      SizedBox(height: MediaQuery.of(sheetContext).padding.bottom + 8),
-                  ],  // End of inner Column children
-                ),  // End of inner Column
-              ),  // End of SingleChildScrollView
-            ),  // End of ConstrainedBox
-          ],  // End of outer Column children
-        ),  // End of outer Column
-      ),  // End of Container
-    );  // End of showModalBottomSheet
+              title: Text(sheetContext.l10n.getString('language.settingsTitle')),
+              subtitle: Text(sheetContext.l10n.getString('language.settingsSubtitle')),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const LanguageSelectionPage(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.privacy_tip_outlined, color: AppColors.primary),
+              ),
+              title: Text(sheetContext.l10n.getString('privacy.settingsTitle')),
+              subtitle: Text(sheetContext.l10n.getString('privacy.settingsSubtitle')),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const PrivacyDisclosurePage(),
+                  ),
+                );
+              },
+            ),
+            SizedBox(height: MediaQuery.of(sheetContext).padding.bottom + 8),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildSettingsButton(BuildContext context) {
