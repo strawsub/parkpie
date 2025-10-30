@@ -43,6 +43,7 @@ class OfflineBanner extends StatelessWidget {
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: AppColors.surface,
                   fontWeight: FontWeight.w500,
+                  height: 2,
                 ),
               ),
             ),

@@ -30,7 +30,7 @@ class SearchCubit extends Cubit<SearchState> {
         emit(SearchError('No results found for: $trimmedQuery'));
       }
     } catch (e) {
-      emit(SearchError('Error searching location: ${e.toString()}'));
+      emit(SearchError('Error searching, check your network connection'));
     }
   }
 
