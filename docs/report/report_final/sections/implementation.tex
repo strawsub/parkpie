@@ -4,13 +4,6 @@
 
 \subsubsection{Frontend}
 
-\begin{figure}[h]
-    \centering
-    \includegraphics[width=0.4\textwidth]{figures/bloc.png}
-    \caption{Parking detection architecture}
-    \label{fig:parking-diagram}
-\end{figure}
-
 We use BLoC (Business Logic Component) state management, which is a widely adopted architecture for production-level Flutter apps. BLoC separates state, events, and business logic, allowing for clear, maintainable, and testable code.
 \begin{itemize}
     \item State represents the current condition of the app.
@@ -18,7 +11,7 @@ We use BLoC (Business Logic Component) state management, which is a widely adopt
     \item Bloc listens to events, applies business logic, and emits new states.
 \end{itemize}
 
-BLoC exposes a stream of states, to which Flutter widgets can subscribe. For instance, in the parking detection feature, each sensor BLoC (accelerometer, gyroscope, Bluetooth, GPS) emits a sensor state. The ParkingBloc listens to these sensor states, processes votes, and emits a new ParkingState. The UI then rebuilds automatically, for example displaying a “Parking detected” popup.
+BLoC exposes a stream of states, to which Flutter widgets can subscribe. For instance, in the parking detection feature, each sensor BLoC (accelerometer, gyroscope, Bluetooth, GPS) emits a sensor state. The ParkingBloc listens to these sensor states, processes votes, and emits a new ParkingState.
 
 This separation of concerns ensures testable components and reactive UI updates. The BLoC pattern is conceptually similar to Swift’s MVVM architecture. In cases where logic is simple, we can use the lighter-weight Cubit, which omits events and allows direct state changes. Front-end directory is organised by key features: \texttt{map}, \texttt{camera}, \texttt{parking status detection}, \texttt{timer}.
 
@@ -65,10 +58,8 @@ This architecture aligns with established principles in smartphone-based activit
 \subsubsection{GPS}
 
 \paragraph{GPS correction}
-
-The GPS subsystem is implemented through Flutter's geolocator package. Raw GPS coordinates suffer from several sources of error including atmospheric interference, multipath propagation in urban environments, and satellite geometry limitations. To reduce noise in GPS data, a one-dimensional Kalman filter was implemented, which processes longitude and latitude data separately (\texttt{LocationCubit}) \cite{merminod1989} -- more details are provided in Section 3.5.
-
-The update process is triggered based on distance difference rather than time difference. This ensures that when the vehicle is stationary (e.g., waiting at a red light or parked), no unnecessary updates occur. The threshold is set to 1 metre, meaning that a new estimation is calculated only when the measured position changes by more than 1 metre.
+The GPS subsystem uses Flutter’s geolocator package. Raw coordinates are affected by errors from atmospheric interference, multipath propagation, and satellite geometry. A one-dimensional Kalman filter processes longitude and latitude separately (\texttt{LocationCubit}) \cite{merminod1989} to reduce noise [Section 3.5].
+Updates are triggered by distance changes (>1m) rather than time, avoiding unnecessary updates when stationary (e.g., waiting at a red light or parked).
 
 \begin{figure}[h]
     \centering
@@ -78,10 +69,7 @@ The update process is triggered based on distance difference rather than time di
 \end{figure}
 
 \paragraph{GPS in parking detection}
-
-For the parking detection subsystem, GPS data undergoes sophisticated analysis to extract motion characteristics. The \texttt{GpsSpeedBloc} receives filtered coordinates from the \texttt{LocationCubit} and computes instantaneous velocity by measuring displacement between consecutive coordinate pairs using the Haversine formula (more details are provided in Section~3.5), then dividing by the elapsed time. This velocity calculation operates directly on the Kalman-filtered coordinates, eliminating the need for additional velocity filtering and avoiding the pitfall of cascaded filtering, which can introduce phase delays and distort signal characteristics.
-
-Additionally, GPS coordinates from confirmed parking events feed a segment-based heatmap that visualizes real-time parking density across Melbourne. When users confirm parking, their location is recorded and aggregated with city sensor data to generate segment-based occupancy counts.
+For parking detection, GPS data is analysed to extract motion characteristics. The \texttt{GpsSpeedBloc} receives Kalman-filtered coordinates from the \texttt{LocationCubit} and computes instantaneous velocity using displacement between consecutive points via the Haversine formula (Section 3.5) divided by elapsed time. This avoids additional velocity filtering and the phase delays caused by cascaded filters. Confirmed parking events contribute GPS coordinates to a segment-based heatmap, combining user and city sensor data to visualise real-time parking density.
 
 \paragraph{GPS in camera}
 
@@ -119,16 +107,14 @@ The camera functions as a visual sensor, capturing images of parking signs that 
 
 ParkPie backend is deployed on Microsoft Azure Cloud in the Australia East region, utilizing two core services: Azure App Service and Azure Database for PostgreSQL 17.
 
-\paragraph{Application tier}
-The Spring Boot 3.5.4 backend runs on Azure App Service, a fully managed platform providing automatic OS patching, built-in load balancing, and integrated monitoring. Deployment uses the Azure CLI to upload JAR artifacts built with Gradle, typically completing within 2--3 minutes. The service runs on the Java 21 runtime and handles all REST API requests from mobile clients.
+\begin{itemize}
+    \item \textbf{Application tier}: The Spring Boot 3.5.4 backend runs on Azure App Service, a fully managed platform providing automatic OS patching, built-in load balancing, and integrated monitoring. Deployment uses the Azure CLI to upload JAR artifacts built with Gradle, typically completing within 2--3 minutes. The service runs on the Java 21 runtime and handles all REST API requests from mobile clients.
 
-\paragraph{Database tier} The Azure Database for PostgreSQL stores parking signs, real-time sensor data, user sessions, and road segments. The managed service provides automated daily backups with a 7-day retention period, point-in-time restore, and SSL/TSS encrypted communication. The PostGIS extension enables efficient spatial queries, including point-in-polygon operations for density calculation and radius-based proximity searches using \texttt{ST\_DWithin}.
-
-\paragraph{Data integration}
+\item \textbf{Database tier}: The Azure Database for PostgreSQL stores parking signs, real-time sensor data, user sessions, and road segments. The managed service provides automated daily backups with a 7-day retention period, point-in-time restore, and SSL/TSS encrypted communication. The PostGIS extension enables efficient spatial queries, including point-in-polygon operations for density calculation and radius-based proximity searches using \texttt{ST\_DWithin}.
+\item \textbf{Data integration}:
 The backend acts as an integration hub, periodically fetching real-time parking sensor data from Melbourne City's open data API and upserting it into PostgreSQL. This centralizes data ingestion, reduces the app package size, and enables instant updates without app redeployment.
-
-\paragraph{Security}
-Database credentials are stored securely in the App Service Configuration (not hardcoded). PostgreSQL rejects non-SSL connections and restricts access to App Service IP addresses only. An admin dashboard at \texttt{/admin/login} uses basic authentication for operational tasks.
+\item \textbf{Security}: Database credentials are stored securely in the App Service Configuration (not hardcoded). PostgreSQL rejects non-SSL connections and restricts access to App Service IP addresses only. An admin dashboard at \texttt{/admin/login} uses basic authentication for operational tasks.
+\end{itemize}
 
 \subsubsection{API}
 
@@ -161,142 +147,72 @@ Rendering is zoom-aware. When zoomed in, we place individual pins. When zoomed o
 
 \subsubsection{Segment}
 
-Segment API computes per-segment parking density on the server instead of the client. It merges two live sources, user parking sessions and city sensor “Present” statuses. Then loads the road-segment GeoJSON and derives outer rings for each Polygon/MultiPolygon. Using a point-in-polygon test, it assigns each observed vehicle location to exactly one segment and returns a compact list of \texttt{{segid, count}}.
+The Segment API computes per-segment parking density on the server by merging live user parking sessions and city sensor “Present” data. It loads the road-segment GeoJSON, extracts polygon rings, and uses point-in-polygon tests to assign each vehicle to a segment, returning a compact list of \texttt{{segid, count}}.
 
-The design moves aggregation to where the data already is. Previously, the raw location points were pushed to the frontend and counted; it took around 10 seconds due to heavy iteration, JSON transfer size, and main-thread work. Server-side mapping cuts payload size and CPU in the client, so the UI can render instantly. It also gives consistent results across devices and reduces network traffic.
+This design shifts aggregation to the server, avoiding heavy frontend iteration and large JSON transfers. Processing time drops from about 10 seconds to near-instant rendering, while ensuring consistent results and reduced client CPU and network load.
 
-There are reasonable trade-offs. While the server takes on extra computation per request, the returned density represents a real-time snapshot based on vehicles marked “Present” at that moment. Still, the approach is reliable, fast in practice, and easily cached. In the future, a caching mechanism can be added to further reduce server load and smooth out CPU peaks as user volume increases.
-
+Though the server now handles more computation per request, it delivers real-time density snapshots efficiently. The approach is reliable, scalable, and can be further optimised with caching to smooth CPU peaks as traffic grows.
 
 \subsection{Technical Depth}
 \label{subsec:techincal-depth}
 
 \subsubsection{AI Pipeline}
 
-The Gemini workflow converts raw parking sign images into structured database entries and concise text descriptions through a multi-stage process. When a user takes a photo, the system sends it with a structured prompt enforcing strict JSON output. It retries up to three times, sanitises formatting, and validates latitude, longitude, and time before uploading. On the backend, duplicate detection (similar signs within 15m) and sequence allocation ensure data integrity. Additionally, to encourage user contributions, a second Gemini call generates a concise, context-aware summary under 120 words tailored to the user’s current situation.
+The Gemini workflow converts parking sign photos into structured database entries and concise summaries. Photos are sent with a JSON prompt, retried up to three times, validated, and uploaded. Backend duplicate detection (within 15m) and sequence allocation ensure data integrity, while a second call generates context-aware summaries to encourage user contributions. 
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.7\textwidth]{figures/gemini_pipeline.png}
+    \includegraphics[width=0.5\textwidth]{figures/gemini_pipeline.png}
     \caption{Flow chart of AI pipeline}
     \label{fig:gemini_pipeline}
 \end{figure}
 
 \subsubsection{Security}
 
-Security mechanism strengthens security around parking session creation, which facilitates the tracking of parking zone availability. Instead of using sequential or database-generated IDs that can be easily guessed, each session now receives a randomized identifier generated with a secure pseudo-random number and a short timestamp component. The combination of a random three-digit number, partial timestamp, and hashed app key produces a unique yet compact ID that cannot be easily inferred. This design prevents attackers from exploiting Insecure Direct Object Reference (IDOR) vulnerabilities, where predictable IDs might allow unauthorized access to other users’ sessions.
-
-When a session is created, the system first identifies the nearest parking sign and generates the new secure session ID before inserting it into the database. The API then returns only essential information, avoiding exposure of internal IDs or unnecessary metadata.
+The security mechanism strengthens parking session creation by assigning each session a randomized ID combining a three-digit random number, partial timestamp, and hashed app key. This prevents attackers from exploiting predictable IDs (IDOR). When a session is created, the system identifies the nearest parking sign, generates the secure ID, inserts it into the database, and returns only essential information to avoid exposing internal IDs or metadata.
 
 \subsubsection{Sensors}
 
 \paragraph{Sensor fusion mechanism}
 
-ParkPie implements a voting-based sensor fusion algorithm where each sensor operates as an independent module that continuously analyzes its data stream and emits a categorical vote from the set {\texttt{driving}, \texttt{parked}, \texttt{unknown}}. The central \texttt{ParkingBloc} aggregates these votes using a finite state machine to determine the overall parking status.
+ParkPie uses a voting-based sensor fusion algorithm where each sensor independently votes \texttt{driving}, \texttt{parked}, or \texttt{unknown}. The central \texttt{ParkingBloc} aggregates votes via a finite state machine to determine overall parking status.
 
-Voting-based fusion provides several advantages:
+Voting-based fusion ensures modularity, transparency, and robustness—other sensors compensate if one fails, and sensors with different types and rates integrate seamlessly. Conditional logic weights or gates votes (e.g., gyroscope used only during \texttt{StoppedCandidate}, GPS weighted by accuracy).
+Key state machine design:
 \begin{itemize}
-    \item Modularity and transparency for ease of development and debugging
-    \item If one sensor fails or provides unreliable data, others compensate
-    \item Sensors with different sampling rates and data types integrate seamlessly
+    \item \texttt{Unknown}: conservative start to avoid false driving detection.
+    \item \texttt{Driving}: confirmed motion; exit requires both GPS and accelerometer evidence.
+    \item \texttt{StoppedCandidate}: handles temporary stops (red lights, queues) with multiple exit paths and a revert to \texttt{Driving} for false positives.
+    \item \texttt{Parked}: terminal state reached upon user confirmation; denial reverts to \texttt{StoppedCandidate} for re-detection.
 \end{itemize}
-
-The conditional voting logic means sensors are used selectively:
-
-\begin{itemize}
-    \item Gyroscope's votes are gated based on the current system state (during \texttt{StoppedCandidate}) as it is unreliable in other states
-    \item GPS' votes are weighted based on real-time accuracy assessments
-\end{itemize}
-
-The following design decisions have been made:
-
-\begin{itemize}
-    \item The \texttt{Unknown} state serves as a conservative initialization point, preventing the system from erroneously entering Driving state due to GPS noise or brief movements when the app is launched
-    \item The \texttt{Driving} state represents confirmed vehicle motion. Transition out of this state to StoppedCandidate requires convergence of GPS and accelerometer evidence: GPS must cease voting "driving" AND accelerometer must vote "parked". This conjunction ensures that brief slowdowns due to traffic or speed bumps do not trigger premature parking detection. 
-    \item The \texttt{StoppedCandidate} state implements a sophisticated waiting logic with multiple exit paths, reflecting the recognition that stopping does not necessarily indicate parking (consider red lights, stop signs, or drive-through queues). Each path corresponding to a different behavioral signal: gyroscope and Bluetooth (Section~\ref{subsec:sensors}), and timeout with continued stillness is for cases where the phone is left in the vehicle. 
-    \item Critically, the state machine also implements a revert path from \texttt{StoppedCandidate} back to Driving, which handles false positives from red lights or traffic congestion, and allows the system to self-correct without user intervention.
-    \item Upon user confirmation, the system transitions to the terminal \texttt{Parked} state; upon user denial, it reverts to \texttt{StoppedCandidate} with reset timers, allowing re-detection if the vehicle remains stopped.
-
-
-
-\end{itemize}
-
-
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.6\textwidth]{figures/sensor_fusion.png}
+    \includegraphics[width=0.4\textwidth]{figures/sensor_fusion.png}
     \caption{Flow chart of sensor fusion mechanism}
     \label{fig:sensor-fusion}
 \end{figure}
 
 \paragraph{Kalman filter}
 
-Kalman filtering \cite{kalman1960} is applied to both GPS and inertial measurement unit (IMU) data to reduce noise and produce smoother state estimates. The filter recursively combines prior estimates with new sensor readings using a \textit{predict-update} cycle based on the classical discrete-time Kalman formulation.
-
-For each coordinate $(x, y)$ representing longitude and latitude, the estimated state is updated as:
+Kalman filtering \cite{kalman1960} is applied to both GPS and inertial measurement unit (IMU) data to reduce noise and produce smoother state estimates. For each coordinate $(x, y)$, the state is updated as:
 \[
 \hat{x} = \hat{x} + k(x - \hat{x}), \quad
 \hat{y} = \hat{y} + k(y - \hat{y})
 \]
-where $x, y$ are the measured values, $\hat{x}, \hat{y}$ are the estimated values, and $k$ is the Kalman gain:
-\[
-k = \frac{p}{p + r}
-\]
-Here, $p$ denotes the estimation error (uncertainty in the estimate), and $r$ is the measurement noise. Before each update, the estimation error is predicted as:
-\[
-p' = p_t + q
-\]
-and then updated:
-\[
-p_{t+1} = (1 - k)p'
-\]
-where $q$ represents the process noise. This filtering process yields smoother and more accurate GPS trajectories by balancing prior estimates with new observations. 
-
-For inertial sensors (IMU), consisting of accelerometer and gyroscope, Kalman filters are applied to each axis ($x$, $y$, $z$), then combined using Euclidean norm $\sqrt{x^2 + y^2 + z^2}$. The filter parameters ($q$ and $r$) are tuned differently as accelerometer has less noise compared to gyroscope. 
-
+where $x$ and $y$ are the measured values, $\hat{x}$ and $\hat{y}$ are the estimated values, and $k$ is the Kalman gain. This \textit{predict–update} cycle smooths the measurements and improves trajectory accuracy. Full details are provided in Appendix~6.1.6.
 
 \paragraph{Haversine distance calculation}
 
-To compute distances between GPS coordinates on the Earth's surface, the Haversine formula is employed. It accounts for the Earth's spherical shape, providing accurate great-circle distances compared to simple Euclidean calculations.
-
-Given two points $(\phi_1, \lambda_1)$ and $(\phi_2, \lambda_2)$ in radians, the Haversine formula computes:
+To compute distances between two GPS coordinates $(\phi_1, \lambda_1)$ and $(\phi_2, \lambda_2)$ (in radians), the Haversine formula is used:
 
 \[
-a = \sin^2\Big(\frac{\phi_2 - \phi_1}{2}\Big) + \cos(\phi_1)\cos(\phi_2)\sin^2\Big(\frac{\lambda_2 - \lambda_1}{2}\Big)
+a = \sin^2\Big(\frac{\phi_2 - \phi_1}{2}\Big) + \cos(\phi_1)\cos(\phi_2)\sin^2\Big(\frac{\lambda_2 - \lambda_1}{2}\Big),\text{distance} = 2R \text{ atan2}(\sqrt{a}, \sqrt{1-a})
 \]
 
-\[
-c = 2 \, \text{atan2}(\sqrt{a}, \sqrt{1-a})
-\]
-
-\[
-\text{distance} = R \, c
-\]
-
-where $R = 6371~\text{km}$ is the mean Earth radius, and $\phi, \lambda$ denote latitude and longitude, respectively. This method ensures accurate geodesic distance measurement between coordinate pairs (cf. straight-line Euclidean distance).
+This accounts for the Earth’s curvature and provides accurate geodesic distances. Full derivation and threshold details are provided in Appendix 6.1.6.
 
 \paragraph{Hysteresis threshold design}
-
-ParkPie employs hysteresis to prevent rapid state switching when sensor readings fluctuate near thresholds.
-
-\begin{itemize}
-    \item Accelerometer hysteresis: dual entry and exit thresholds create a dead zone. This Schmitt trigger logic reduces rapid toggling.
-        \[
-        \text{RMS: } < 0.40~\text{m/s}^2 \text{ to enter ``still'', } > 0.45~\text{m/s}^2 \text{ to exit}
-        \]
-        \[
-        \text{Quiet ratio: } \ge 70\% \text{ to enter, } < 58\% \text{ to exit}
-        \]
-    \item GPS hysteresis: a single speed threshold is combined with temporal requirements. Brief speed fluctuations do not trigger state changes.
-        \[
-        \text{Speed threshold: } 2.78~\text{m/s}, \quad
-        \text{Driving: } \ge 10~\text{s and 20~m}, \quad
-        \text{Parking: } 4-6~\text{s}
-        \]
-    \item State machine hysteresis: The multi-state logic enforces hysteresis: minor stops require sustained conditions (gyro spike, Bluetooth disconnect, or 60~s timeout) to trigger parking detection, and once parked, sensor noise is ignored.
-
-\end{itemize}
-
+ParkPie uses hysteresis to prevent rapid state switching near thresholds. Accelerometer, GPS, and state machine readings all employ entry/exit logic to reduce false triggers.
 \paragraph{Accuracy-adaptive processing}
 
 The GPS pipeline adapts to varying signal quality to maintain reliable detection. Fixed thresholds can fail in urban canyons, tunnels, or cold starts, so accuracy-adaptive processing is used \cite{IEEE_KalmanGPS}.  

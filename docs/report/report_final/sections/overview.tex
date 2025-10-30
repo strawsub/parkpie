@@ -2,35 +2,34 @@
 
 \subsection{Purpose and Scope}
 
-The Smart Parking Assistant is designed to serve urban commuters and drivers who regularly navigate the complexities of on-street parking in metropolitan and suburban areas. The application addresses several critical pain points in the current parking ecosystem: the lack of centralized parking information, difficulty interpreting complex parking signage, the risk of exceeding time limits and incurring fines, and uncertainty about parking availability in unfamiliar areas.
+The Smart Parking Assistant targets urban commuters and drivers navigating the challenges of on-street parking. It addresses key issues such as the lack of centralised parking information, confusing signage, time-limit fines, and uncertainty about space availability.
 
-Traditional parking solutions fall into two categories: government-managed parking meters with limited digital integration and uniformity, and private parking apps that only cover specific commercial lots. This leaves the vast majority of on-street parking restrictions effectively invisible to digital systems. Our application bridges this gap by creating a comprehensive, user-maintained database that has the potential to cover all public parking spaces.
+Existing solutions are limited: government meters offer little digital integration, while private apps cover only select commercial lots. Most on-street parking remains invisible to digital systems. Our app bridges this gap through a comprehensive, user-maintained database covering public parking spaces.
 
-The solution employs a collaborative approach where users both contribute to and benefit from shared parking intelligence. By scanning parking signs, confirming parking locations, and allowing the app to track parking sessions, users help build a detailed map of parking restrictions that serves the entire community. This crowdsourced model ensures the database remains current and expands organically as users explore new areas.
+Using a collaborative model, users scan signs, confirm locations, and track parking sessions, collectively building a live map of parking restrictions. This crowdsourced approach keeps data accurate and expands naturally as users explore new areas.
 
 \subsection{Key Features}
 
 \begin{enumerate}
-    \item \textbf{Interactive Parking Map} (Figure~\ref{fig:map_screen}): The core feature presents a geospatial view of parking locations with pins indicating parking restrictions by day of the week and time of day. Users can filter results based on their parking duration needs and search for suitable spots in advance of their journey. The map displays crucial information including time limits (e.g., 2-hour parking), restricted hours (e.g., no parking 4-6 PM), and day-specific variations. This allows drivers to plan their parking strategy before reaching their destination, reducing time spent circling for suitable spots.
+    \item \textbf{Interactive Parking Map} (Figure~\ref{fig:map_screen}): The core feature presents a geospatial view of parking locations with pins indicating parking restrictions by day of the week and time of day. Users can filter results based on their parking duration needs and search for suitable spots before their journey. The map displays crucial information including time limits (e.g., 2-hour parking), restricted hours (e.g., no parking 4-6 PM), and day-specific variations. This allows drivers to plan their parking strategy before reaching their destination.
     
     \item \textbf{AI-Powered Sign Recognition} (Figure~\ref{fig:camera_screen}): Parking signage can be complex. Our Gemini-powered scanning feature allows users to photograph parking signs and receive instant, plain-language interpretations of the restrictions. The AI extracts key information such as time limits and restricted periods. Critically, this information is then contributed to our crowdsourced database, continuously improving the accuracy and coverage of parking restriction data across the city.
     
-    \item \textbf{Automated Parking Timer} (Figure~\ref{fig:map_screen}): Manual parking timers require users to remember to set them and estimate their allowed duration. Our solution automates this process by detecting when a user has parked (using GPS, gyroscope, accelerometer and bluetooth sensors) and prompting for confirmation. Upon confirmation, the app automatically retrieves the applicable parking restrictions for that specific location, day, and time, then initiates a countdown timer. Push notifications alert users when their parking time is approaching expiration, with customizable warning intervals. This feature significantly reduces the risk of parking fines due to exceeded time limits.
+    \item \textbf{Automated Parking Timer} (Figure~\ref{fig:map_screen}): Traditional parking timers rely on users to manually set and estimate their duration. Our solution automates this process by detecting when a user has parked (using GPS, gyroscope, accelerometer and bluetooth sensors) and prompting for confirmation. Upon confirmation, the app automatically retrieves the applicable parking restrictions for that specific location, day, and time, then initiates a countdown timer. Push notifications warn users before their parking time expires, with customizable warning intervals that help prevent fines.
     
-    \item \textbf{Real-Time Availability Information} (Figure~\ref{fig:map_screen}): Understanding parking availability before arrival saves time and reduces congestion from circling vehicles. For the City of Melbourne areas where official parking spot data is available through APIs, the app displays an indication of the availability using color segments (spectrum from orange to red, red means busy). For other suburban and regional areas, the app uses anonymized location data from app users to provide a relative count of detected parked vehicles in specific segments, compared to the global busiest segment. This crowdsourced availability data helps users identify which areas are currently experiencing high parking demand, enabling them to make informed decisions about where to search for parking.
+    \item \textbf{Real-Time Availability Information} (Figure~\ref{fig:map_screen}): Knowing parking availability in advance saves time and reduces congestion. In the City of Melbourne areas with official API data, the app visualises availability using colour segments (orange to red, with red indicating busier zones). In other regions, it estimates availability from anonymised user location data to show relative parking demand compared to the global busiest segment. This crowdsourced availability data helps users choose less congested areas before arrival.
     
 \end{enumerate}
-
-\begin{figure}[htbp]
+\begin{figure}[h]
     \centering
-    \begin{subfigure}[b]{0.45\textwidth}
+    \begin{subfigure}[h]{0.45\textwidth}
         \centering
         \includegraphics[width=\textwidth]{figures/map_screen.png}
         \caption{Map Screen}
         \label{fig:map_screen}
     \end{subfigure}
     \hfill
-    \begin{subfigure}[b]{0.45\textwidth}
+    \begin{subfigure}[h]{0.45\textwidth}
         \centering
         \includegraphics[width=\textwidth]{figures/camera_screen.png}
         \caption{Camera Screen}
@@ -39,4 +38,10 @@ The solution employs a collaborative approach where users both contribute to and
 
     \caption{Screenshots of ParkPie main screens}
 
+\end{figure}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.4\textwidth]{figures/bloc.png}
+    \caption{Parking detection architecture}
+    \label{fig:parking-diagram}
 \end{figure}
