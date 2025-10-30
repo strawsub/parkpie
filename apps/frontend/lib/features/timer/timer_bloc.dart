@@ -231,7 +231,7 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
       emit(
         TimerFailure(
           message:
-              'No nearby parking sign could be found. Please select a sign on the map or rescan the sign.',
+              'We still cannot find a nearby restriction, please scan the nearest sign.',
           zoneNumber: zoneNumber,
           zoneName: zoneName,
         ),

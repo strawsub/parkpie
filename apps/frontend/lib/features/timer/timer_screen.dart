@@ -29,7 +29,6 @@ class _TimerScreenState extends State<TimerScreen> {
   @override
   void initState() {
     super.initState();
-    // Fetch zones when screen initializes
     _fetchNearbyZones();
   }
 
@@ -122,7 +121,7 @@ class _TimerScreenState extends State<TimerScreen> {
               physics: const AlwaysScrollableScrollPhysics(),
               padding: EdgeInsets.symmetric(
                 horizontal: Spacing.xl,
-                vertical: Spacing.md,
+              vertical: Spacing.md,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -132,38 +131,34 @@ class _TimerScreenState extends State<TimerScreen> {
                   SizedBox(height: Spacing.lg),
                   _buildAnimation(),
                   SizedBox(height: Spacing.md),
-                  // Add parking zone carousel
+                  // Show loading or parking zone status
                   if (_isLoadingZones)
-                    Padding(
-                      padding: EdgeInsets.all(Spacing.md),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: Spacing.xl,
-                            ),
-                            child: Text(
-                              'Fetching parking zones nearby',
-                              textAlign: TextAlign.center,
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
+                    Column(
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: Spacing.xl),
+                          child: Text(
+                            'Fetching nearby parking zone...',
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: AppColors.textSecondary,
                             ),
                           ),
-                          SizedBox(height: Spacing.sm),
-                          Center(
-                            child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                colorScheme.primary,
-                              ),
+                        ),
+                        SizedBox(height: Spacing.xs),
+                        Center(
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              colorScheme.primary,
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     )
                   else if (!_isLoadingZones && state is! TimerRunning) ...[
-                    if (_nearbyZones != null && _nearbyZones!.isNotEmpty) ...[
+                    if (failureState != null)
+                      _buildFailureView(context, failureState, theme, colorScheme)
+                    else if (_nearbyZones != null && _nearbyZones!.isNotEmpty) ...[
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: Spacing.xl),
                         child: Text(
@@ -184,42 +179,21 @@ class _TimerScreenState extends State<TimerScreen> {
                         ),
                         showTitle: false,
                       ),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: Spacing.xl),
-                        child: Text(
-                          'Swipe to select a zone',
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: colorScheme.primary,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ),
                       SizedBox(height: Spacing.md),
-                    ],
-                  ] else if (_nearbyZones != null && _nearbyZones!.isEmpty)
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: Spacing.xl),
-                      child: Text(
-                        'No nearby parking zones found',
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
+                    ] else if (_nearbyZones != null) 
+                      _buildFailureView(
+                        context,
+                        TimerFailure(
+                          message: "No restriction registered nearby yet",
                         ),
+                        theme,
+                        colorScheme,
                       ),
-                    ),
-                  if (_nearbyZones != null &&
-                      _nearbyZones!.isEmpty &&
-                      state is! TimerRunning)
-                    SizedBox(height: Spacing.md),
-                  if (failureState != null)
-                    _buildFailureView(context, failureState, theme, colorScheme)
-                  else ...[
-                    if (state is TimerRunning)
-                      _buildRestrictionCard(context, state, theme, colorScheme),
-                    SizedBox(height: Spacing.md),
-                    _buildButtons(context, state, colorScheme),
                   ],
+                  if (state is TimerRunning)
+                    _buildRestrictionCard(context, state, theme, colorScheme),
+                  SizedBox(height: Spacing.md),
+                  _buildButtons(context, state, colorScheme),
                   // Add extra padding at bottom to ensure buttons are always visible
                   SizedBox(height: Spacing.huge),
                 ],
@@ -232,7 +206,10 @@ class _TimerScreenState extends State<TimerScreen> {
   }
 
   Widget _buildTitle(ThemeData theme) {
-    return Text('Parking Timer', style: theme.textTheme.headlineMedium);
+    return Text(
+      'Parking Timer',
+      style: theme.textTheme.headlineMedium,
+    );
   }
 
   Widget _buildAnimation() {
@@ -269,10 +246,14 @@ class _TimerScreenState extends State<TimerScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 36),
+          Icon(
+            Icons.warning_amber_rounded,
+            color: AppColors.warning,
+            size: 36,
+          ),
           SizedBox(height: Spacing.sm),
           Text(
-            "We couldn't find signage for $zoneLabel",
+            "We can't find the restriction for this location",
             textAlign: TextAlign.center,
             style: theme.textTheme.titleMedium?.copyWith(
               color: AppColors.warningDark,
@@ -291,12 +272,7 @@ class _TimerScreenState extends State<TimerScreen> {
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () {
-                context.read<TimerBloc>().add(
-                  StartTimer(
-                    zoneNumber: state.zoneNumber,
-                    zoneName: state.zoneName,
-                  ),
-                );
+                _fetchNearbyZones();
               },
               icon: const Icon(Icons.refresh, size: 18),
               label: const Text('Retry lookup'),
@@ -350,13 +326,9 @@ class _TimerScreenState extends State<TimerScreen> {
         ? '${remainingHours}h ${remainingMinutes}m ${remainingSeconds}s'
         : '${remainingMinutes}m ${remainingSeconds}s';
 
-    final backgroundColor = isOvertime
-        ? AppColors.errorLight
-        : AppColors.surface;
+    final backgroundColor = isOvertime ? AppColors.errorLight : AppColors.surface;
 
-    final borderColor = isOvertime
-        ? AppColors.errorBorder
-        : colorScheme.primary;
+    final borderColor = isOvertime ? AppColors.errorBorder : colorScheme.primary;
 
     final iconColor = isOvertime ? colorScheme.error : colorScheme.primary;
 
@@ -415,7 +387,10 @@ class _TimerScreenState extends State<TimerScreen> {
                       ),
                     ),
                     SizedBox(height: Spacing.xxs),
-                    Text(restrictionText, style: theme.textTheme.titleLarge),
+                    Text(
+                      restrictionText,
+                      style: theme.textTheme.titleLarge,
+                    ),
                   ],
                 ),
               ),
@@ -435,9 +410,7 @@ class _TimerScreenState extends State<TimerScreen> {
                     Text(
                       isOvertime ? '+$remainingText' : remainingText,
                       style: theme.textTheme.titleLarge?.copyWith(
-                        color: isOvertime
-                            ? colorScheme.error
-                            : colorScheme.primary,
+                        color: isOvertime ? colorScheme.error : colorScheme.primary,
                       ),
                     ),
                   ],
@@ -488,7 +461,10 @@ class _TimerScreenState extends State<TimerScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Set Time Limit', style: theme.textTheme.titleLarge),
+                      Text(
+                        'Set Time Limit',
+                        style: theme.textTheme.titleLarge,
+                      ),
                       SizedBox(height: Spacing.xxs),
                       Text(
                         'Choose how long you can park here',
@@ -543,9 +519,7 @@ class _TimerScreenState extends State<TimerScreen> {
                                     color: isSelected
                                         ? colorScheme.primary
                                         : AppColors.backgroundLight,
-                                    borderRadius: BorderRadius.circular(
-                                      Radii.chip,
-                                    ),
+                                    borderRadius: BorderRadius.circular(Radii.chip),
                                     border: Border.all(
                                       color: isSelected
                                           ? colorScheme.primary
@@ -556,12 +530,11 @@ class _TimerScreenState extends State<TimerScreen> {
                                   child: Center(
                                     child: Text(
                                       preset['label'] as String,
-                                      style: theme.textTheme.labelMedium
-                                          ?.copyWith(
-                                            color: isSelected
-                                                ? AppColors.surface
-                                                : AppColors.textSecondary,
-                                          ),
+                                      style: theme.textTheme.labelMedium?.copyWith(
+                                        color: isSelected
+                                            ? AppColors.surface
+                                            : AppColors.textSecondary,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -608,9 +581,7 @@ class _TimerScreenState extends State<TimerScreen> {
                             ),
                           ),
                           Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: Spacing.xs,
-                            ),
+                            padding: EdgeInsets.symmetric(horizontal: Spacing.xs),
                             child: Text(
                               ':',
                               style: theme.textTheme.headlineMedium?.copyWith(
@@ -777,15 +748,15 @@ class _TimerScreenState extends State<TimerScreen> {
     TimerState state,
     ColorScheme colorScheme,
   ) {
-    if (state is TimerFailure) {
+    if (state is TimerFailure || _isLoadingZones) {
       return const SizedBox.shrink();
     }
-
-    if (_isLoadingZones) {
-      return const SizedBox.shrink();
-    }
-
     final isRunning = state is TimerRunning;
+    final hasNearbyZones = _nearbyZones != null && _nearbyZones!.isNotEmpty;
+
+    if (!hasNearbyZones && !isRunning) {
+      return const SizedBox.shrink();
+    }
 
     return Column(
       children: [
@@ -826,7 +797,10 @@ class _TimerScreenState extends State<TimerScreen> {
           borderRadius: BorderRadius.circular(Radii.modal),
         ),
         backgroundColor: AppColors.surface,
-        title: Text('Stop Timer?', style: theme.textTheme.titleLarge),
+        title: Text(
+          'Stop Timer?',
+          style: theme.textTheme.titleLarge,
+        ),
         content: Text(
           'This will stop the timer and delete your parking session.',
           style: theme.textTheme.bodyMedium,
