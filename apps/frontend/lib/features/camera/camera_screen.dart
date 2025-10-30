@@ -167,7 +167,10 @@ class _CameraViewState extends State<CameraView> {
                         decoration: BoxDecoration(
                           color: colorScheme.primary,
                           shape: BoxShape.circle,
-                          border: Border.all(color: AppColors.surface, width: 4),
+                          border: Border.all(
+                            color: AppColors.surface,
+                            width: 4,
+                          ),
                           boxShadow: [
                             BoxShadow(
                               offset: const Offset(0, 2),
@@ -196,23 +199,9 @@ class _CameraViewState extends State<CameraView> {
     return Stack(
       children: [
         SizedBox.expand(child: Image.file(File(imagePath), fit: BoxFit.cover)),
-        Positioned(
-          top: Spacing.huge,
-          left: Spacing.lg,
-          child: GestureDetector(
-            onTap: () {
-              context.read<CameraBloc>().add(CameraClosed());
-              context.read<NavigationCubit>().setIndex(0);
-            },
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.overlayLight,
-                borderRadius: BorderRadius.circular(20),
-              ),
-            ),
-          ),
+        // Add this overlay
+        Container(
+          color: Colors.black.withValues(alpha: 0.4), // adjustable darkness
         ),
         Center(
           child: Column(
@@ -226,6 +215,7 @@ class _CameraViewState extends State<CameraView> {
                 l10n.getString('camera.analyzing'),
                 style: theme.textTheme.titleMedium?.copyWith(
                   color: AppColors.surface,
+                  fontWeight: FontWeight.bold, // makes it stand out more
                 ),
               ),
               SizedBox(height: Spacing.xs),
@@ -235,7 +225,7 @@ class _CameraViewState extends State<CameraView> {
                   l10n.getString('camera.analyzingDetail'),
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: AppColors.surface.withValues(alpha: 0.85),
+                    color: AppColors.surface.withValues(alpha: 0.9),
                   ),
                 ),
               ),
@@ -251,7 +241,9 @@ class _CameraViewState extends State<CameraView> {
     final theme = Theme.of(context);
     final messageLower = message.toLowerCase();
     final isCameraPermissionError = messageLower.contains('camera permission');
-    final isLocationPermissionError = messageLower.contains('location permission');
+    final isLocationPermissionError = messageLower.contains(
+      'location permission',
+    );
 
     return Container(
       color: AppColors.cameraOverlay,
@@ -267,8 +259,8 @@ class _CameraViewState extends State<CameraView> {
                 SizedBox(height: Spacing.md),
                 Text(
                   isCameraPermissionError
-                    ? "We can't access your camera"
-                    : isLocationPermissionError
+                      ? "We can't access your camera"
+                      : isLocationPermissionError
                       ? "Please grant the location permission for contributing this sign"
                       : l10n.getString('camera.errorTitle'),
                   textAlign: TextAlign.center,
@@ -455,7 +447,9 @@ class _CameraViewState extends State<CameraView> {
                               ? l10n.getString('camera.aiExplanationFallback')
                               : state.explanation.trim(),
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: AppColors.textPrimary.withValues(alpha: 0.87),
+                            color: AppColors.textPrimary.withValues(
+                              alpha: 0.87,
+                            ),
                           ),
                         ),
                       ],
