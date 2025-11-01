@@ -10,6 +10,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:frontend/features/debug/debug_screen.dart';
+import 'package:frontend/features/debug/history_map_screen.dart';
 import 'package:frontend/features/map/filter/filter_config.dart';
 import 'package:frontend/features/map/filter/filter_panel.dart';
 import 'package:frontend/features/map/parking_info/parking_info_screen.dart';
