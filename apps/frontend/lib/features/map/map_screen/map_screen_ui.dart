@@ -384,8 +384,8 @@ class _MapScreenViewState extends State<_MapScreenView> {
                 ),
                 child: Icon(Icons.bug_report, color: Colors.purple.shade700),
               ),
-              title: const Text('Debug Screen'),
-              subtitle: const Text('Open debug information screen'),
+              title: const Text('Sensors Debug Screen'),
+              subtitle: const Text('View sensor data'),
               onTap: () {
                 Navigator.pop(sheetContext);
                 Navigator.of(context).push(
