@@ -77,7 +77,6 @@ Video production: 2 weeks, advertisement, entertaining
 
 /*Is it clear and easy to access/find/activate the features of the app?*/
 
-
 ### User Interface Language (4 points)
 
 /*Are the labels and messages meaningful and appropriate?*/

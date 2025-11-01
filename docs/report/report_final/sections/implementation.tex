@@ -1,4 +1,4 @@
-\section{Implementation Details}
+\section{Implementation}
 
 \subsection{Quality}
 
@@ -21,7 +21,7 @@ To maintain consistent logic throughout development, we implemented unit tests f
 
 The backend is organized into clear, responsibility-focused packages: \texttt{admin}, \texttt{parking}, \texttt{core}, and \texttt{api}, keeping Spring components small, readable, and easy to navigate.
 
-DTOs such as \texttt{UserSignIngestDto} and \texttt{ParkingSignDto} encapsulate request and response payloads and use Jakarta validation annotations to prevent malformed data from entering the database. The entire backend is documented with JavaDoc, and every API endpoint has OpenAPI (Swagger) documentation.
+Data Transfer Objects (DTOs) such as \texttt{UserSignIngestDto} and \texttt{ParkingSignDto} encapsulate request and response payloads and use Jakarta validation annotations to prevent malformed data from entering the database. The entire backend is documented with JavaDoc, and every API endpoint has OpenAPI (Swagger) documentation.
 
 A comprehensive test suite ensures correctness and consistency:
 \begin{itemize}
@@ -48,8 +48,9 @@ This architecture aligns with established principles in smartphone-based activit
 \subsubsection{GPS}
 
 \paragraph{GPS correction}
-The GPS subsystem uses Flutter’s geolocator package. Raw coordinates are affected by errors from atmospheric interference, multipath propagation, and satellite geometry. A one-dimensional Kalman filter processes longitude and latitude separately (\texttt{LocationCubit}) \cite{merminod1989} to reduce noise [Section 3.5].
-Updates are triggered by distance changes (>1m) rather than time, avoiding unnecessary updates when stationary (e.g., waiting at a red light or parked).
+The GPS subsystem uses Flutter’s geolocator package. Raw coordinates are affected by errors from atmospheric interference, multipath propagation, and satellite geometry. A one-dimensional Kalman filter \cite{merminod1989} processes longitude and latitude separately (\texttt{LocationCubit}) to reduce noise [Section 3.5].
+
+Updates are triggered by distance changes ($>$1m) rather than time, avoiding unnecessary updates when stationary (e.g., waiting at a red light or parked).
 
 \begin{figure}[h]
     \centering
@@ -68,7 +69,6 @@ The camera-based parking sign recognition feature relies fundamentally on GPS to
 
 \subsubsection{Accelerometer}
 
-
 The accelerometer provides high-frequency measurements of linear acceleration along the device's three orthogonal axes ($x$, $y$, $z$), capturing the subtle vibration signature of vehicle motion. Unlike GPS, which operates at approximately one sample per second, smartphone accelerometers typically provide data at 50--100\,Hz, enabling detection of fine-grained motion patterns that would be invisible to GPS. The \texttt{AccBloc} processes this high-rate data stream through a multi-stage pipeline designed to distinguish between the characteristic vibrations of a moving vehicle and the stillness of a parked state.
 
 After user accelerometer data (linear acceleration excluding gravity) is streamed, a 3D Kalman filter processes the raw $x$, $y$, and $z$ accelerations to reduce sensor noise. The accelerometer bloc then employs a sliding window approach with Root Mean Square (RMS) analysis -- more details provided in Section~3.5
@@ -76,7 +76,7 @@ After user accelerometer data (linear acceleration excluding gravity) is streame
 
 \subsubsection{Gyroscope}
 
-Gyroscopes enable rotation detection for vehicle motion analysis~\cite{vaiana2017}. While the accelerometer is sensitive to linear motion and vibration, the gyroscope exclusively detects rotation, making it ideal for recognizing when a driver picks up their phone to leave the car.
+Gyroscopes enable rotation detection for vehicle motion analysis~\cite{liu2017}. While the accelerometer is sensitive to linear motion and vibration, the gyroscope exclusively detects rotation, making it ideal for recognizing when a driver picks up their phone to leave the car.
 
 The \texttt{GyroBloc} implements a relatively simple processing pipeline compared to the other sensors. Raw gyroscope data undergoes 3D Kalman filtering, followed by computation of the magnitude of angular velocity. A 3-second sliding window tracks the maximum rotation magnitude observed within the window. If this maximum exceeds $0.8\,\mathrm{rad/s}$ (approximately $46^{\circ}/\mathrm{s}$), the gyroscope votes ``parked,'' interpreting the rotation spike as evidence of phone pickup.
 
@@ -89,7 +89,7 @@ The service detects when the device connects to or disconnects from vehicle Blue
 
 \subsubsection{Camera}
 
-The camera functions as a visual sensor, capturing images of parking signs that are subsequently processed by a computer vision algorithm. This enables the system to interpret the sign’s information with respect to the user's current circumstances.
+The camera functions as a visual sensor, capturing images of parking signs that are subsequently processed by a computer vision algorithm (Google Gemini). This enables the system to interpret the sign’s information with respect to the user's current circumstances.
 
 \subsection{Connectivity}
 
@@ -108,14 +108,17 @@ The backend acts as an integration hub, periodically fetching real-time parking 
 
 \subsubsection{API}
 
-The application connects to cloud services hosted on Microsoft Azure, where both the database and API are deployed. Through secure HTTP requests, the frontend retrieves live data such as parking signs, active sessions, and street-segment densities. This removes the need for static or hard-coded data, letting the app reflect updates instantly when changes occur in the backend.
+The application connects to cloud services hosted on Microsoft Azure, where both the database and API are deployed.
 
-The system integrates multiple open datasets from the City of Melbourne, including all parking bay locations \cite{onstreet_parking_bays}, road segment maps, and parking restriction \cite{paystay_restrictions}, meter details \cite{paystay_zones_segments}, and real-time parking sensor data \cite{realtime_availability}. Road segment data from the Victorian Government \cite{road_segment_vic} is used to depict availability.
+The system integrates multiple open datasets from the City of Melbourne, including all parking bay locations \href{https://data.melbourne.vic.gov.au/explore/dataset/on-street-parking-bays/information/}{on-street parking bays}, \href{https://data.melbourne.vic.gov.au/explore/dataset/pay-stay-parking-restrictions/information/}{parking restrictions} , \href{https://data.melbourne.vic.gov.au/explore/dataset/pay-stay-zones-linked-to-street-segments/information/}{meter details}, and \href{https://data.melbourne.vic.gov.au/explore/dataset/on-street-parking-bay-sensors/information/}{real-time parking sensor data}. \href{https://discover.data.vic.gov.au/dataset/road-segment}{Road segment data} from the Victorian Government is used to depict availability.
 
 By relying on cloud APIs, the app stays synchronized with city sensors data and user activity, giving users real-time parking visibility. Centralized processing in the cloud also offloads heavy spatial and aggregation tasks from mobile devices, improving speed, lowering bandwidth use, and extending battery life.
 
-To maintain reliability, the Azure setup supports Business Continuity and Disaster Recovery (BCP/DRP) strategies. Backup hosts and replicated databases can quickly take over if the main system fails, ensuring uninterrupted access. Together, these cloud and connectivity features make the app responsive, scalable, and resilient under real-world conditions.
+To maintain reliability, the Azure setup supports Business Continuity and Disaster Recovery (BCP/DRP) strategies. Backup hosts and replicated databases can quickly take over if the main system fails, ensuring uninterrupted access. 
 
+\subsubsection{Crowdsourced Information}
+
+A key source of information for the app comes from its users. To the best of our knowledge, there is no centralised record of all parking restrictions in Victoria. Some councils (e.g., the City of Melbourne) voluntarily publish this information, but each does so in a different format. Alternatively, services such as EasyPark and PayStay provide parking data, though only for their own proprietary zones. By exploiting user-contributed data, we aim to build a more comprehensive database of parking restrictions. This crowdsourced model has proven successful in other applications, such as \href{https://www.waze.com/en-GB/live-map}{Waze} and \href{https://petrolspy.com.au/map/latlng/-33.8657305/151.20733}{PetrolSpy}.
 
 \subsection{Responsiveness}
 
@@ -148,11 +151,11 @@ Though the server now handles more computation per request, it delivers real-tim
 
 \subsubsection{AI Pipeline}
 
-The Gemini workflow converts parking sign photos into structured database entries and concise summaries. Photos are sent with a JSON prompt, retried up to three times, validated, and uploaded. Backend duplicate detection (within 15m) and sequence allocation ensure data integrity, while a second call generates context-aware summaries to encourage user contributions. 
+The Gemini workflow converts parking sign photos into structured database entries and concise summaries. Photos are sent with a JSON prompt, retried up to three times, validated, and uploaded. Backend duplicate detection (within 15m) and sequence allocation ensure data integrity, while a second call generates context-aware summaries--with reference to user's location and date/time--to encourage user contributions. 
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.5\textwidth]{figures/gemini_pipeline.png}
+    \includegraphics[width=0.4\textwidth]{figures/gemini_pipeline.png}
     \caption{Flow chart of AI pipeline}
     \label{fig:gemini_pipeline}
 \end{figure}
@@ -177,10 +180,18 @@ Key state machine design:
 \end{itemize}
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.4\textwidth]{figures/sensor_fusion.png}
+    \includegraphics[width=0.5\textwidth]{figures/sensor_fusion.png}
     \caption{Flow chart of sensor fusion mechanism}
     \label{fig:sensor-fusion}
 \end{figure}
+
+The conditional voting logic means sensors are used selectively:
+
+\begin{itemize}
+    \item Gyroscope's votes are gated based on the current system state (during \texttt{StoppedCandidate}) as it is unreliable in other states
+    \item GPS' votes are weighted based on real-time accuracy assessments
+\end{itemize}
+
 
 \paragraph{Kalman filter}
 

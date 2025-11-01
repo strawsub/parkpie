@@ -3,47 +3,46 @@ Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
 The top-level auxiliary file: report.aux
 The style file: ieeetr.bst
 Database file #1: references.bib
-Warning--I didn't find a database entry for "vaiana2017"
 Warning--I didn't find a database entry for "IEEE_KalmanGPS"
-You've used 8 entries,
+You've used 4 entries,
             1876 wiz_defined-function locations,
-            512 strings with 4406 characters,
-and the built_in function-call counts, 1326 in all, are:
-= -- 125
-> -- 42
+            505 strings with 4217 characters,
+and the built_in function-call counts, 985 in all, are:
+= -- 98
+> -- 39
 < -- 0
-+ -- 19
++ -- 15
 - -- 11
-* -- 65
-:= -- 196
-add.period$ -- 8
-call.type$ -- 8
-change.case$ -- 9
+* -- 67
+:= -- 152
+add.period$ -- 4
+call.type$ -- 4
+change.case$ -- 5
 chr.to.int$ -- 0
-cite$ -- 8
-duplicate$ -- 61
-empty$ -- 152
+cite$ -- 4
+duplicate$ -- 55
+empty$ -- 81
 format.name$ -- 11
-if$ -- 329
+if$ -- 237
 int.to.chr$ -- 0
-int.to.str$ -- 8
-missing$ -- 2
-newline$ -- 27
-num.names$ -- 8
-pop$ -- 41
+int.to.str$ -- 4
+missing$ -- 3
+newline$ -- 15
+num.names$ -- 4
+pop$ -- 8
 preamble$ -- 1
 purify$ -- 0
 quote$ -- 0
-skip$ -- 52
+skip$ -- 43
 stack$ -- 0
-substring$ -- 36
-swap$ -- 20
+substring$ -- 42
+swap$ -- 27
 text.length$ -- 0
 text.prefix$ -- 0
 top$ -- 0
 type$ -- 0
 warning$ -- 0
-while$ -- 12
-width$ -- 9
-write$ -- 66
-(There were 2 warnings)
+while$ -- 9
+width$ -- 5
+write$ -- 41
+(There was 1 warning)

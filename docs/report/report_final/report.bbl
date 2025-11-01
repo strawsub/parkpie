@@ -6,20 +6,8 @@ A.~M. Khan, A.~Tufail, A.~M. Khattak, and T.~H. Laine, ``Activity {{Recognition}
 \bibitem{merminod1989}
 B.~Merminod, ``The use of {{Kalman}} filters in {{GPS}} navigation ({{UNISURV S35}}),'' tech. rep., School of Surveying, University of New South Wales, 1989.
 
-\bibitem{onstreet_parking_bays}
-{City of Melbourne}, ``On-street parking bays (segments + bays),'' 2025.
-
-\bibitem{paystay_restrictions}
-{City of Melbourne}, ``{{PayStay}} parking restrictions,'' 2025.
-
-\bibitem{paystay_zones_segments}
-{City of Melbourne}, ``{{PayStay}} zones linked to street segments,'' 2025.
-
-\bibitem{realtime_availability}
-{City of Melbourne}, ``Realtime availability (on-street parking bay sensors),'' 2025.
-
-\bibitem{road_segment_vic}
-{Victorian Government}, ``Road segment - victorian government data directory,'' 2025.
+\bibitem{liu2017}
+X.~Liu, H.~Mei, H.~Lu, H.~Kuang, and X.~Ma, ``A {{Vehicle Steering Recognition System Based}} on {{Low-Cost Smartphone Sensors}},'' {\em Sensors}, vol.~17, p.~633, Mar. 2017.
 
 \bibitem{kalman1960}
 R.~E. Kalman, ``A new approach to linear filtering and prediction problems,'' {\em Transactions of the ASME--Journal of Basic Engineering}, vol.~82, pp.~35--45, 1960.

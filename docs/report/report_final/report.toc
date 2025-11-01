@@ -2,24 +2,25 @@
 \contentsline {section}{\numberline {2}Application Overview}{1}{section.2}%
 \contentsline {subsection}{\numberline {2.1}Purpose and Scope}{1}{subsection.2.1}%
 \contentsline {subsection}{\numberline {2.2}Key Features}{1}{subsection.2.2}%
-\contentsline {section}{\numberline {3}Implementation Details}{2}{section.3}%
+\contentsline {section}{\numberline {3}Implementation}{2}{section.3}%
 \contentsline {subsection}{\numberline {3.1}Quality}{2}{subsection.3.1}%
 \contentsline {subsubsection}{\numberline {3.1.1}Frontend}{2}{subsubsection.3.1.1}%
 \contentsline {subsubsection}{\numberline {3.1.2}Backend}{3}{subsubsection.3.1.2}%
 \contentsline {subsection}{\numberline {3.2}Sensors}{3}{subsection.3.2}%
 \contentsline {subsubsection}{\numberline {3.2.1}GPS}{3}{subsubsection.3.2.1}%
 \contentsline {paragraph}{GPS correction}{3}{subsubsection.3.2.1}%
-\contentsline {paragraph}{GPS in parking detection}{4}{figure.caption.3}%
-\contentsline {paragraph}{GPS in camera}{4}{figure.caption.3}%
+\contentsline {paragraph}{GPS in parking detection}{3}{figure.caption.2}%
+\contentsline {paragraph}{GPS in camera}{3}{figure.caption.2}%
 \contentsline {subsubsection}{\numberline {3.2.2}Accelerometer}{4}{subsubsection.3.2.2}%
 \contentsline {subsubsection}{\numberline {3.2.3}Gyroscope}{4}{subsubsection.3.2.3}%
 \contentsline {subsubsection}{\numberline {3.2.4}Bluetooth}{4}{subsubsection.3.2.4}%
-\contentsline {subsubsection}{\numberline {3.2.5}Camera}{5}{subsubsection.3.2.5}%
+\contentsline {subsubsection}{\numberline {3.2.5}Camera}{4}{subsubsection.3.2.5}%
 \contentsline {subsection}{\numberline {3.3}Connectivity}{5}{subsection.3.3}%
 \contentsline {subsubsection}{\numberline {3.3.1}Cloud Infrastructure}{5}{subsubsection.3.3.1}%
 \contentsline {subsubsection}{\numberline {3.3.2}API}{5}{subsubsection.3.3.2}%
-\contentsline {subsection}{\numberline {3.4}Responsiveness}{6}{subsection.3.4}%
-\contentsline {subsubsection}{\numberline {3.4.1}Caching}{6}{subsubsection.3.4.1}%
+\contentsline {subsubsection}{\numberline {3.3.3}Crowdsourced Information}{5}{subsubsection.3.3.3}%
+\contentsline {subsection}{\numberline {3.4}Responsiveness}{5}{subsection.3.4}%
+\contentsline {subsubsection}{\numberline {3.4.1}Caching}{5}{subsubsection.3.4.1}%
 \contentsline {subsubsection}{\numberline {3.4.2}Cluster pin}{6}{subsubsection.3.4.2}%
 \contentsline {subsubsection}{\numberline {3.4.3}Segment}{6}{subsubsection.3.4.3}%
 \contentsline {subsection}{\numberline {3.5}Technical Depth}{6}{subsection.3.5}%
@@ -27,10 +28,10 @@
 \contentsline {subsubsection}{\numberline {3.5.2}Security}{6}{subsubsection.3.5.2}%
 \contentsline {subsubsection}{\numberline {3.5.3}Sensors}{7}{subsubsection.3.5.3}%
 \contentsline {paragraph}{Sensor fusion mechanism}{7}{subsubsection.3.5.3}%
-\contentsline {paragraph}{Kalman filter}{7}{figure.caption.5}%
-\contentsline {paragraph}{Haversine distance calculation}{8}{figure.caption.5}%
-\contentsline {paragraph}{Hysteresis threshold design}{8}{figure.caption.5}%
-\contentsline {paragraph}{Accuracy-adaptive processing}{8}{figure.caption.5}%
+\contentsline {paragraph}{Kalman filter}{7}{figure.caption.4}%
+\contentsline {paragraph}{Haversine distance calculation}{8}{figure.caption.4}%
+\contentsline {paragraph}{Hysteresis threshold design}{8}{figure.caption.4}%
+\contentsline {paragraph}{Accuracy-adaptive processing}{8}{figure.caption.4}%
 \contentsline {section}{\numberline {4}User Interface Design}{8}{section.4}%
 \contentsline {subsection}{\numberline {4.1}Visual Appeal}{8}{subsection.4.1}%
 \contentsline {subsection}{\numberline {4.2}Design Guidelines}{9}{subsection.4.2}%

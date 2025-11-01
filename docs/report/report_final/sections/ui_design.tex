@@ -29,7 +29,7 @@ Key implementations include:
     \item Visual Design: Sans-serif fonts ensure readability, with sufficient contrast between text and background. iOS-standard spacing and minimum tap targets (44pt) are respected.
     \item Buttons: Major buttons and search bars are prominently sized. Layout respects safe areas (notch, home indicator, dynamic island). 
     \item Accessibility: Supports seven languages (English (default), Traditional Chinese, Simplified Chinese, Korean, Japanese, Thai, and Vietnamese) for accessibility. This applies to the app interface as well as Gemini's response.
-    \item Notification: Notifications are used sparingly, primarily for parking time alerts (e.g., 5 minutes remaining).
+    \item Notification: Notifications are used sparingly, primarily for parking time alerts (5 minutes remaining).
 \end{itemize}
 
 Across the app, standard Flutter components are consistently applied in place of platform-specific equivalents. Examples include:
@@ -50,7 +50,7 @@ The app reveals complexity gradually, using sheets and pop-ups to avoid overwhel
     \label{fig:ui_flow}
 \end{figure}
 
-The app also incorporates intelligent navigation based on user context:
+The app also incorporates intelligent navigation based on user context, for instance:
 
 \begin{itemize}
     \item When the timer cannot find parking sign data for the area, the error screen suggests user to ``Scan Sign''. This button transitions to the \texttt{Camera} screen.

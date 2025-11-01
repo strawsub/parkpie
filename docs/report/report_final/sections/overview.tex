@@ -13,9 +13,9 @@ Using a collaborative model, users scan signs, confirm locations, and track park
 \begin{enumerate}
     \item \textbf{Interactive Parking Map} (Figure~\ref{fig:map_screen}): The core feature presents a geospatial view of parking locations with pins indicating parking restrictions by day of the week and time of day. Users can filter results based on their parking duration needs and search for suitable spots before their journey. The map displays crucial information including time limits (e.g., 2-hour parking), restricted hours (e.g., no parking 4-6 PM), and day-specific variations. This allows drivers to plan their parking strategy before reaching their destination.
     
-    \item \textbf{AI-Powered Sign Recognition} (Figure~\ref{fig:camera_screen}): Parking signage can be complex. Our Gemini-powered scanning feature allows users to photograph parking signs and receive instant, plain-language interpretations of the restrictions. The AI extracts key information such as time limits and restricted periods. Critically, this information is then contributed to our crowdsourced database, continuously improving the accuracy and coverage of parking restriction data across the city.
+    \item \textbf{AI-Powered Sign Recognition} (Figure~\ref{fig:camera_screen}): Parking signage can be complex. Our Gemini-powered scanning feature allows users to photograph parking signs and receive instant, plain-language interpretations of the restrictions, with reference to the user's location and current time and day. The AI extracts key information such as time limits and restricted periods. Critically, this information is then contributed to our crowdsourced database, continuously improving the accuracy and coverage of parking restriction data across the city.
     
-    \item \textbf{Automated Parking Timer} (Figure~\ref{fig:map_screen}): Traditional parking timers rely on users to manually set and estimate their duration. Our solution automates this process by detecting when a user has parked (using GPS, gyroscope, accelerometer and bluetooth sensors) and prompting for confirmation. Upon confirmation, the app automatically retrieves the applicable parking restrictions for that specific location, day, and time, then initiates a countdown timer. Push notifications warn users before their parking time expires, with customizable warning intervals that help prevent fines.
+    \item \textbf{Automated Parking Timer} (Figure~\ref{fig:map_screen}): Traditional parking timers rely on users to manually set and estimate their duration. Our solution automates this process by detecting when a user has parked (using GPS, gyroscope, accelerometer and bluetooth sensors) and prompting for confirmation. Upon confirmation, the app automatically retrieves the applicable parking restrictions for that specific location, day, and time, then initiates a countdown timer. Users also have the option to customize the timer to suit their needs. Push notifications warn users 5 minutes before their parking time expires.
     
     \item \textbf{Real-Time Availability Information} (Figure~\ref{fig:map_screen}): Knowing parking availability in advance saves time and reduces congestion. In the City of Melbourne areas with official API data, the app visualises availability using colour segments (orange to red, with red indicating busier zones). In other regions, it estimates availability from anonymised user location data to show relative parking demand compared to the global busiest segment. This crowdsourced availability data helps users choose less congested areas before arrival.
     
@@ -37,11 +37,4 @@ Using a collaborative model, users scan signs, confirm locations, and track park
     \end{subfigure}
 
     \caption{Screenshots of ParkPie main screens}
-
-\end{figure}
-\begin{figure}[h]
-    \centering
-    \includegraphics[width=0.4\textwidth]{figures/bloc.png}
-    \caption{Parking detection architecture}
-    \label{fig:parking-diagram}
 \end{figure}
