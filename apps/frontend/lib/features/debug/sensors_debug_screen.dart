@@ -30,13 +30,13 @@ T? maybeReadBloc<T>(BuildContext context) {
   }
 }
 
-class DebugScreen extends StatefulWidget {
-  const DebugScreen({super.key});
+class SensorsDebugScreen extends StatefulWidget {
+  const SensorsDebugScreen({super.key});
   @override
-  State<DebugScreen> createState() => _DebugScreenState();
+  State<SensorsDebugScreen> createState() => _SensorsDebugScreenState();
 }
 
-class _DebugScreenState extends State<DebugScreen> {
+class _SensorsDebugScreenState extends State<SensorsDebugScreen> {
   // API diagnostics
   final String _apiBaseShown = const String.fromEnvironment(
     'API_BASE_URL',
