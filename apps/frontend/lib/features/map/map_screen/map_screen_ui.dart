@@ -395,7 +395,7 @@ class _MapScreenViewState extends State<_MapScreenView> {
                         BlocProvider.value(value: pinCubit),
                         BlocProvider.value(value: parkingBloc),
                       ],
-                      child: const DebugScreen(),
+                      child: const SensorsDebugScreen(),
                     ),
                   ),
                 );

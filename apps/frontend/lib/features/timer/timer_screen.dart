@@ -119,6 +119,9 @@ class _TimerScreenState extends State<TimerScreen> {
                   ),
                 ),
               );
+            } else if (state is TimerInitial) {
+              // Refresh zones when timer is reset/stopped
+              _fetchNearbyZones();
             }
           },
           builder: (context, state) {
