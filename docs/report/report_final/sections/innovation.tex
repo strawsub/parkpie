@@ -1,12 +1,12 @@
 \section{Innovation}
 
 \subsection{Surprise}
-The automatic parking detection impresses testers. By monitoring accelerometer, gyroscope, GPS, and Bluetooth signals, the app detects when a car stops (`ParkingBloc`, `TimerBloc`) and prompts a confirmation dialog automatically. Once confirmed, a live Lottie countdown appears on the map and syncs with local notifications. Users appreciate this “it just knows I’ve parked” feature, which removes the need to start timers manually while retaining full control to confirm or dismiss detections.
+The automatic parking detection impresses testers. By monitoring accelerometer, gyroscope, GPS, and Bluetooth signals, the app detects when a car stops and prompts a confirmation dialog automatically. Once confirmed, a live Lottie countdown appears on the map and syncs with local notifications. Users appreciate this “it just knows I’ve parked” feature, which removes the need to start timers manually while retaining full control to confirm or dismiss detections.
 
 
 \subsection{Technical Knowledge}
 
-The implementation showcases deep knowledge of information systems across mobile, backend, and geospatial domains. On the backend, Hibernate Spatial queries (e.g. \texttt{ST\_DWithin} in \texttt{ParkingSignRepository}) and database migrations in \texttt{DbPolishRunner} demonstrate familiarity with spatial databases. On the client, BLoC-driven state management coordinates camera, map, and timer flows, while dependency-injected services (\texttt{SignIngestService}, \texttt{SegmentService}, \texttt{TimerService}) keep networking concerns separate from presentation. The Gemini integration applies prompt-engineering best practices—system instructions, retry loops, schema validation—to turn an LLM into a deterministic extractor.
+The implementation showcases deep knowledge of information systems across mobile, backend, and geospatial domains. On the backend, Hibernate Spatial queries and database migrations in \texttt{DbPolishRunner} demonstrate familiarity with spatial databases. On the client, BLoC-driven state management coordinates camera, map, and timer flows, while dependency-injected services keep networking concerns separate from presentation. The Gemini integration applies prompt-engineering best practices (system instructions, retry loops, schema validation) to turn an LLM into a deterministic extractor.
 
 
 \subsection{Cross-Discplinary}

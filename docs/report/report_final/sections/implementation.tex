@@ -21,23 +21,13 @@ To maintain consistent logic throughout development, we implemented unit tests f
 
 The backend is organized into clear, responsibility-focused packages: \texttt{admin}, \texttt{parking}, \texttt{core}, and \texttt{api}, keeping Spring components small, readable, and easy to navigate.
 
-Service and repository classes use intent-revealing method names, for example:
-\begin{itemize}
-    \item \texttt{ParkingSignService.ingestUserSign}
-    \item \texttt{ParkingRestrictionDurationService.calculateDuration}
-\end{itemize}
-
-DTOs such as \texttt{UserSignIngestDto} and \texttt{ParkingSignDto} encapsulate request and response payloads and use Jakarta validation annotations to prevent malformed data from entering the database. The entire backend is documented with JavaDoc, and every API endpoint has OpenAPI (Swagger) documentation, for example:
-\begin{itemize}
-    \item Duplicate-detection heuristics in \texttt{ParkingSignService}
-    \item Database bootstrapping and manual zone reconciliation in \texttt{DbPolishRunner} 
-\end{itemize}
+DTOs such as \texttt{UserSignIngestDto} and \texttt{ParkingSignDto} encapsulate request and response payloads and use Jakarta validation annotations to prevent malformed data from entering the database. The entire backend is documented with JavaDoc, and every API endpoint has OpenAPI (Swagger) documentation.
 
 A comprehensive test suite ensures correctness and consistency:
 \begin{itemize}
     \item Unit tests: Verify complex calculations, e.g., parking restriction duration validates time-window algorithms across edge cases
     \item Controller tests: Assert HTTP contracts and security filters
-    \item Integration tests: Check that data storage and location-based queries work correctly with a PostGIS database using Testcontainers. For example, the \texttt{ParkingSignRepositoryIntegrationTest} runs with data loaded from postgis-init.sql.
+    \item Integration tests: Check that data storage and location-based queries work correctly with a PostGIS database using Testcontainers.
 \end{itemize}
 
 Operations also gain leverage from the Spring Boot admin dashboard, which enables CSV imports, scheduler toggles, and live health monitoring. The dashboard offers a convenient interface for the monitoring and update of the database. \footnote{Admin portal: \url{https://parkpie-90018.azurewebsites.net/admin}\\ Username: \texttt{admin}; Password: \texttt{parkpieh1h1\#}}
