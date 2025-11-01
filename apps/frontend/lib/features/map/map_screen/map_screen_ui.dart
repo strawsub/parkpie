@@ -405,6 +405,26 @@ class _MapScreenViewState extends State<_MapScreenView> {
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
+                  color: Colors.yellow.shade100,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.location_history, color: Colors.yellow.shade700),
+              ),
+              title: const Text('GPS History Map'),
+              subtitle: const Text('View raw vs. Kalman-filtered GPS tracks'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const HistoryMapScreen(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
                   color: Colors.blue.shade100,
                   shape: BoxShape.circle,
                 ),

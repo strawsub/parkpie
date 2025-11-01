@@ -3,7 +3,6 @@ import 'package:lottie/lottie.dart';
 import 'package:frontend/theme/app_colors.dart';
 import 'package:frontend/theme/spacing.dart';
 import '../pin/pin_model.dart';
-import '../../../services/mock_parking_service.dart';
 
 class ParkingInfoSheet extends StatefulWidget {
   final Pin pin;
@@ -23,11 +22,7 @@ class _ParkingInfoSheetState extends State<ParkingInfoSheet> {
   void initState() {
     super.initState();
 
-    final bool useMockData = MockParkingService.useMockData;
-
-    parkingLocation = useMockData
-        ? MockParkingService.getMockParkingLocation()
-        : ParkingLocation.fromPin(widget.pin);
+    parkingLocation =  ParkingLocation.fromPin(widget.pin);
 
     selectedDay = _resolveInitialDay(DateTime.now().weekday);
     _setInitialRestrictionIndex();

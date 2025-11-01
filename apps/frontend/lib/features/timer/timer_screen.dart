@@ -55,11 +55,18 @@ class _TimerScreenState extends State<TimerScreen> {
         radiusMeters: 100,
         maxResults: 5,
       );
+      
       if (mounted) {
         setState(() {
           _nearbyZones = zones;
           _isLoadingZones = false;
         });
+        
+        // If we have zones, automatically select the closest one (first in list since they're sorted by distance)
+        if (zones.isNotEmpty) {
+          final closestZone = zones[0];
+          _onZoneSelected(closestZone, context.read<TimerBloc>().state);
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -225,9 +232,6 @@ class _TimerScreenState extends State<TimerScreen> {
     ThemeData theme,
     ColorScheme colorScheme,
   ) {
-    final zoneLabel = state.zoneNumber != null
-        ? 'Zone ${state.zoneNumber}'
-        : 'this location';
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(Spacing.md),
