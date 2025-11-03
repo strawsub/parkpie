@@ -195,12 +195,15 @@ The conditional voting logic means sensors are used selectively:
 
 \paragraph{Kalman filter}
 
-Kalman filtering \cite{kalman1960} is applied to both GPS and inertial measurement unit (IMU) data to reduce noise and produce smoother state estimates. For each coordinate $(x, y)$, the state is updated as:
+Adaptive Kalman filtering \cite{kalman1960, mohamed1999adaptive} is applied to both GPS and inertial measurement unit (IMU) data to reduce noise and produce smoother state estimates. 
+For each coordinate $(x, y)$, the state is updated as:
 \[
 \hat{x} = \hat{x} + k(x - \hat{x}), \quad
 \hat{y} = \hat{y} + k(y - \hat{y})
 \]
-where $x$ and $y$ are the measured values, $\hat{x}$ and $\hat{y}$ are the estimated values, and $k$ is the Kalman gain. This \textit{predict–update} cycle smooths the measurements and improves trajectory accuracy. Full details are provided in Appendix~6.1.6.
+where $x$ and $y$ are the measured values, $\hat{x}$ and $\hat{y}$ are the estimated values, and $k$ is the Kalman gain. 
+Unlike the standard implementation, the adaptive version dynamically adjusts the process noise $q$ and measurement noise $r$ based on recent innovation statistics, allowing the filter to respond to changing noise conditions and improve estimation stability. 
+Full implementation details are provided in Appendix~6.1.6.
 
 \paragraph{Haversine distance calculation}
 

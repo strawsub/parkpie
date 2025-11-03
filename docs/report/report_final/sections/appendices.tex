@@ -177,11 +177,32 @@ flutter build apk
 \subsubsection{Sensor Data Processing and GPS Calculations}
 
 \paragraph{Kalman Filter}
-The Kalman gain is computed as $k = \frac{p}{p + r}$, where, $p$ denotes the estimation error (uncertainty in the estimate), and $r$ is the measurement noise. Before each update, the estimation error is predicted as:
-$p' = p_t + q$
-and then updated:
-$p_{t+1} = (1 - k)p'$
-, where $q$ represents the process noise. This filtering process yields smoother and more accurate GPS trajectories by balancing prior estimates with new observations. 
+The adaptive Kalman filter dynamically adjusts its parameters based on the incoming GPS measurements. 
+The Kalman gain is computed as 
+\[
+k = \frac{p}{p + r},
+\]
+where \( p \) represents the estimation error (uncertainty of the current estimate) and \( r \) denotes the measurement noise. 
+Before each update, the estimation error is predicted as 
+\[
+p' = p_t + q,
+\]
+where \( q \) is the process noise. 
+After the Kalman gain is obtained, the estimation error is updated as 
+\[
+p_{t+1} = (1 - k)p'.
+\]
+
+To further enhance stability and adaptability, both the measurement noise \( r \) and process noise \( q \) are adaptively updated according to the observed innovation variance, using exponential smoothing factors \( \lambda \) and \( \beta \):
+\[
+r_{t+1} = \lambda r_t + (1 - \lambda)\mathrm{Var}(v_t),
+\]
+\[
+q_{t+1} = \beta q_t + (1 - \beta)(k \cdot \mathrm{Var}(v_t)),
+\]
+where \( v_t \) is the innovation (difference between the measurement and the estimated state). 
+This adaptive mechanism allows the filter to respond to varying GPS noise conditions, yielding smoother and more reliable position estimates compared to a standard Kalman filter. 
+
 
 For inertial sensors (IMU), consisting of accelerometer and gyroscope, Kalman filters are applied to each axis ($x$, $y$, $z$), then combined using Euclidean norm $\sqrt{x^2 + y^2 + z^2}$. The filter parameters ($q$ and $r$) are tuned differently as accelerometer has less noise compared to gyroscope. 
 
