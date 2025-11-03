@@ -15,7 +15,7 @@ class _HistoryMapScreenState extends State<HistoryMapScreen> {
   final Completer<GoogleMapController> _controller = Completer();
   final List<LatLng> _rawPoints = [];
   final List<LatLng> _filteredPoints = [];
-  KalmanFilter? _kalmanFilter;
+  AdaptiveKalmanFilter? _kalmanFilter;
   StreamSubscription<Position>? _positionSub;
   final Set<Polyline> _polylines = {};
   
@@ -57,7 +57,7 @@ class _HistoryMapScreenState extends State<HistoryMapScreen> {
       final lng = position.longitude;
 
       // Initialize Kalman filter with first point
-      _kalmanFilter ??= KalmanFilter(lat, lng);
+      _kalmanFilter ??= AdaptiveKalmanFilter(lat, lng);
 
       // Add raw point
       final rawPoint = LatLng(lat, lng);

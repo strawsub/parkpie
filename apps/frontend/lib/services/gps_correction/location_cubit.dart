@@ -34,7 +34,7 @@ class LocationState {
 }
 
 class LocationCubit extends Cubit<LocationState> {
-  KalmanFilter? _filter;
+  AdaptiveKalmanFilter? _filter;
   StreamSubscription<Position>? _positionStream;
 
   LocationCubit() : super(const LocationState());
@@ -59,7 +59,7 @@ class LocationCubit extends Cubit<LocationState> {
         distanceFilter: 0,  // Changed from 1 → Updates every GPS sample for faster response
       ),
     ).listen((pos) {
-      _filter ??= KalmanFilter(pos.latitude, pos.longitude);
+      _filter ??= AdaptiveKalmanFilter(pos.latitude, pos.longitude);
       final filtered = _filter!.filter(pos.latitude, pos.longitude);
       final newRawHistory = List<Position>.from(state.rawHistory)..add(pos);
       final newFilteredHistory =
